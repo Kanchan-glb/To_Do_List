@@ -56,14 +56,15 @@ function GlobalReminderEngine() {
         setActiveReminder(task);
         setNotifiedTaskIds((prev) => [...prev, task.id]);
       });
-      // Check if it's exactly 8:00 AM to send Morning Planner OS Notification
+      // Send Morning Planner OS Notification during the 8 AM hour (if not already sent today)
       const now = new Date();
-      if (now.getHours() === 8 && now.getMinutes() === 0) {
+      if (now.getHours() === 8) {
         const morningKey = "morning_notified_" + format(now, "yyyy-MM-dd");
         if (!localStorage.getItem(morningKey)) {
           const pendingCount = tasks.filter(t => !t.completed && (t.dueDate <= format(now, "yyyy-MM-dd") || t.rescheduleCount > 0)).length;
           sendBrowserNotification("Good Morning! ☀️", {
-            body: `You have ${pendingCount} pending tasks. Click here to plan your day!`
+            body: `You have ${pendingCount} pending tasks. Click here to plan your day!`,
+            data: { isMorning: true }
           });
           localStorage.setItem(morningKey, "true");
         }

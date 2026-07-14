@@ -51,6 +51,16 @@ function SettingsPage() {
     }
   };
 
+  const testMorningNotification = () => {
+    import('../services/notification').then(({ sendBrowserNotification }) => {
+      sendBrowserNotification("Test: Good Morning! ☀️", {
+        body: "This is exactly what the 8 AM notification will look like.",
+        data: { isMorning: true }
+      });
+      alert("Test notification sent! Check your phone's notification panel.");
+    });
+  };
+
   return (
     <div className="settings-page">
       <section className="settings-hero">
@@ -63,6 +73,17 @@ function SettingsPage() {
 
       <div className="settings-panel">
         <form onSubmit={handleSave}>
+          <div className="settings-form-group">
+            <label>Test Background Notification</label>
+            <button 
+              type="button" 
+              onClick={testMorningNotification}
+              style={{ background: "#0ea5e9", color: "white", padding: "10px 16px", border: "none", borderRadius: "8px", cursor: "pointer", width: "100%", fontWeight: "bold" }}
+            >
+              🔔 Test Morning Notification
+            </button>
+            <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "8px" }}>Click to see if your phone allows the notification.</p>
+          </div>
 
           <div className="settings-form-group">
             <label htmlFor="user-display-name">Display Name</label>
