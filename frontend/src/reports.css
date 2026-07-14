@@ -206,7 +206,7 @@
   font-size: 0.95rem;
   color: #94a3b8;
   font-weight: 600;
-  background: var(--sidebar-bg-top);
+  background: var(--bg-muted);
   padding: 6px 14px;
   border-radius: 20px;
 }
@@ -355,7 +355,7 @@
 }
 
 .history-list::-webkit-scrollbar-track {
-  background: var(--sidebar-bg-top);
+  background: var(--bg-muted);
   border-radius: 10px;
 }
 

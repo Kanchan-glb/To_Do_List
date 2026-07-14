@@ -199,6 +199,9 @@ export function TaskProvider({ children }) {
   };
 
   const updateTask = (taskId, updatedData) => {
+    if (updatedData.dueTime || updatedData.dueDate) {
+      localStorage.removeItem("reminded_" + taskId);
+    }
     setTasks((prev) =>
       prev.map((t) => {
         if (t.id === taskId) {
@@ -250,6 +253,7 @@ export function TaskProvider({ children }) {
   };
 
   const rescheduleTask = (taskId, newDate, newTime) => {
+    localStorage.removeItem("reminded_" + taskId);
     setTasks((prev) =>
       prev.map((t) => {
         if (t.id === taskId) {

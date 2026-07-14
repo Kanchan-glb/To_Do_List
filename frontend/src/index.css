@@ -5,8 +5,9 @@
   --font-body: 'Inter', sans-serif;
 
   /* ── Color Palette: Deep Navy + Electric Indigo + Teal ── */
-  --bg-app: #eef2f7;
+  --bg-app: #ffffff;
   --bg-card: #ffffff;
+  --bg-muted: #f1f5f9;
   --text-primary: #0d1b2a;
   --text-secondary: #4a5568;
   --text-muted: #8fa3b1;
@@ -63,6 +64,7 @@
 html.dark-mode {
   --bg-app: #0f172a;
   --bg-card: #1e293b;
+  --bg-muted: #334155;
   --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
   --text-muted: #64748b;
@@ -371,7 +373,7 @@ textarea:focus {
   font-size: 0.75rem;
   padding: 4px 10px;
   border-radius: 99px;
-  background: var(--sidebar-bg-top);
+  background: var(--bg-muted);
   color: var(--text-muted);
   border: 1px solid rgba(226, 232, 240, 0.8);
   transition: all 0.25s ease;
@@ -873,7 +875,7 @@ textarea:focus {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--sidebar-bg-top);
+  background: var(--bg-muted);
   border: 1px solid rgba(203, 213, 225, 0.8);
   border-radius: 10px;
   padding: 8px 14px;
@@ -1262,7 +1264,7 @@ textarea:focus {
   font-size: 0.62rem;
   font-weight: 600;
   color: #94a3b8;
-  background: var(--sidebar-bg-top);
+  background: var(--bg-muted);
   border: var(--border-light);
   border-radius: 5px;
   padding: 2px 6px;
@@ -1381,7 +1383,7 @@ textarea:focus {
   .mobile-menu-btn {
     padding: 6px;
     margin: 0;
-    background: var(--sidebar-bg-top);
+    background: var(--bg-muted);
     border: var(--border-light);
     border-radius: 8px;
     color: var(--color-primary);

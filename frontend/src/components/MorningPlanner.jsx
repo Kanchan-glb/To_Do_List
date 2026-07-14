@@ -7,13 +7,18 @@ import "../planner.css";
 import "../tasks.css";
 
 function MorningPlanner({ onClose }) {
-  const { tasks, addTask, completeMorningPlanning, geminiApiKey } = useTasks();
+  const { tasks, addTask, updateTask, completeMorningPlanning, geminiApiKey } = useTasks();
   const userName = localStorage.getItem("smartName") || "there";
 
   // Voice recognition states
   const [isRecording, setIsRecording] = useState(false);
   const [transcribedText, setTranscribedText] = useState("");
   const [voiceError, setVoiceError] = useState("");
+
+  // Edit states
+  const [editingTaskId, setEditingTaskId] = useState(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editTime, setEditTime] = useState("");
 
   // Manual input states
   const [showManualForm, setShowManualForm] = useState(false);
@@ -96,9 +101,23 @@ function MorningPlanner({ onClose }) {
           ) : (
             <ul className="planner-task-list">
               {todayTasks.map((task) => (
-                <li key={task.id} className="planner-task-item">
-                  <span className="planner-task-title">{task.title}</span>
-                  <span className="planner-task-time">{task.dueTime}</span>
+                <li key={task.id} className="planner-task-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: "8px" }}>
+                  {editingTaskId === task.id ? (
+                    <div style={{ display: "flex", gap: "8px", width: "100%", alignItems: "center" }}>
+                      <input type="text" value={editTitle} onChange={e => setEditTitle(e.target.value)} className="form-input-styled" style={{ padding: "6px 10px" }} />
+                      <input type="time" value={editTime} onChange={e => setEditTime(e.target.value)} className="form-input-styled" style={{ width: "120px", padding: "6px 10px" }} />
+                      <button onClick={() => { updateTask(task.id, { title: editTitle, dueTime: editTime }); setEditingTaskId(null); }} style={{ background: "var(--color-primary)", color: "white", border: "none", padding: "6px 12px", borderRadius: "8px", cursor: "pointer" }}>Save</button>
+                      <button onClick={() => setEditingTaskId(null)} style={{ background: "transparent", border: "1px solid var(--border-light)", color: "var(--text-secondary)", padding: "6px 12px", borderRadius: "8px", cursor: "pointer" }}>Cancel</button>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
+                      <span className="planner-task-title">{task.title}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <span className="planner-task-time">{task.dueTime}</span>
+                        <button onClick={() => { setEditingTaskId(task.id); setEditTitle(task.title); setEditTime(task.dueTime || "12:00"); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.1rem" }} title="Edit Task">✏️</button>
+                      </div>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

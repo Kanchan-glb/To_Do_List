@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import LoginPage from "./components/LoginPage";
 import DashboardPage from "./components/DashboardPage";
 import Layout from "./components/Layout";
@@ -8,14 +8,12 @@ import MorningPlanner from "./components/MorningPlanner";
 import ReportsPage from "./components/ReportsPage";
 import SettingsPage from "./components/SettingsPage";
 import ProfilePage from "./components/ProfilePage";
+import MorningPopup from "./components/MorningPopup";
 import { TaskProvider, useTasks } from "./context/TaskContext";
 import { checkTaskReminders, sendBrowserNotification } from "./services/notification";
 import { format, addDays } from "date-fns";
 
-function ProtectedRoute({ children }) {
-  const isAuthenticated = localStorage.getItem("smartAuth") === "true";
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
-}
+
 
 /**
  * Global component to handle background task reminders and interactive snoozing/rescheduling.
@@ -199,10 +197,16 @@ function GlobalReminderEngine() {
   );
 }
 
+function ProtectedRoute({ children }) {
+  const isAuthenticated = localStorage.getItem("smartAuth") === "true";
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
+}
+
 function App() {
   return (
     <TaskProvider>
       <BrowserRouter>
+        <MorningPopup />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

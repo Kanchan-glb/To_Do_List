@@ -255,7 +255,7 @@
 /* ── Task list ── */
 .db-task-progress {
   height: 6px; border-radius: 99px;
-  background: var(--sidebar-bg-top); margin-bottom: 20px; overflow: hidden;
+  background: var(--bg-muted); margin-bottom: 20px; overflow: hidden;
   box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
 }
 .db-task-progress-fill {
@@ -323,7 +323,7 @@
 }
 .db-pomo-tabs {
   display: flex; gap: 6px; margin-bottom: 24px;
-  background: var(--sidebar-bg-top); border-radius: 12px; padding: 4px;
+  background: var(--bg-muted); border-radius: 12px; padding: 4px;
 }
 .db-pomo-tab {
   flex: 1; padding: 8px 6px; border: none; border-radius: 10px;

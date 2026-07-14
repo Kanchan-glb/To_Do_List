@@ -77,7 +77,7 @@ function SettingsPage() {
             />
           </div>
 
-          <div className="settings-form-group">
+          {/* <div className="settings-form-group">
             <label>App Theme</label>
             <div>
               <button
@@ -102,7 +102,7 @@ function SettingsPage() {
                 {theme === "dark" ? "🌙 Dark Mode" : "☀️ Light Mode"}
               </button>
             </div>
-          </div>
+          </div> */}
 
           {/* <div className="settings-form-group">
             <label htmlFor="gemini-api-key">Gemini API Key</label>
