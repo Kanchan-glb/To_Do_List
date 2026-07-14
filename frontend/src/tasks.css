@@ -419,6 +419,14 @@
 @media (max-width: 768px) {
   .tasks-hero { flex-direction: column; text-align: center; gap: 24px; padding: 32px 24px; }
   .tasks-filter-bar { flex-direction: column; align-items: stretch; }
-  .task-header { flex-direction: column; }
-  .task-meta { flex-direction: column; align-items: flex-start; }
+  .task-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .task-meta { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .form-row { flex-direction: column; gap: 10px; }
+  .modal-content { padding: 24px; width: 95%; }
+  .btn-group { flex-direction: column; }
+}
+
+@media (max-width: 480px) {
+  .tasks-hero-text h1 { font-size: 2rem; }
+  .task-card { padding: 20px; }
 }

@@ -22,11 +22,28 @@ export function sendBrowserNotification(title, options = {}) {
 
   if (Notification.permission === "granted") {
     try {
-      new Notification(title, {
-        body: options.body || "Task Reminder",
-        icon: "/icon-192.png",
-        ...options
-      });
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(registration => {
+          registration.showNotification(title, {
+            body: options.body || "Task Reminder",
+            icon: "/icon-192.png",
+            actions: [
+              { action: 'complete', title: '✔ Yes, Completed' },
+              { action: 'reschedule', title: '❌ No, Reschedule' }
+            ],
+            data: options.data || {},
+            requireInteraction: true,
+            ...options
+          });
+        });
+      } else {
+        new Notification(title, {
+          body: options.body || "Task Reminder",
+          icon: "/icon-192.png",
+          requireInteraction: true,
+          ...options
+        });
+      }
     } catch (e) {
       console.warn("Failed to trigger native Notification:", e);
     }

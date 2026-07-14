@@ -443,3 +443,9 @@
   .db-stats-row { grid-template-columns: 1fr 1fr; }
   .db-quick-actions { flex-direction: column; align-items: flex-start; }
 }
+@media (max-width: 480px) {
+  .db-stats-row { grid-template-columns: 1fr; }
+  .review-summary-stats { grid-template-columns: 1fr; }
+  .db-page { padding: 16px; }
+  .db-card { padding: 20px; }
+}

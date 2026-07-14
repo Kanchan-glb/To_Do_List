@@ -32,9 +32,10 @@ function GlobalReminderEngine() {
   useEffect(() => {
     const timer = setInterval(() => {
       checkTaskReminders(tasks, notifiedTaskIds, (task) => {
-        // Trigger browser notification
+        // Trigger browser notification with actions
         sendBrowserNotification(task.title, {
-          body: `Due soon at ${task.dueTime}! Did you finish it?`
+          body: `Due soon at ${task.dueTime}! Did you finish it?`,
+          data: { taskId: task.id } // Pass task ID to service worker
         });
         
         // Trigger app sound
@@ -50,8 +51,41 @@ function GlobalReminderEngine() {
       });
     }, 10000); // Check every 10 seconds
 
-    return () => clearInterval(timer);
-  }, [tasks, notifiedTaskIds]);
+    // Listen for messages from the service worker (OS Notification Clicks)
+    const handleAction = (event) => {
+      if (event.data && event.data.type === 'NOTIFICATION_ACTION') {
+        const { action, taskId } = event.data;
+        const matchingTask = tasks.find(t => t.id === taskId);
+        
+        if (matchingTask) {
+          // If the action is from OS, and the big modal is open, we can close it
+          if (action === 'complete') {
+            updateTask(taskId, { completed: true });
+            setActiveReminder(null);
+            setShowRescheduleForm(false);
+          } else if (action === 'reschedule') {
+            setActiveReminder(matchingTask);
+            setShowRescheduleForm(true);
+          }
+        }
+      }
+    };
+
+    const bc = new BroadcastChannel('smart-task-channel');
+    bc.onmessage = handleAction;
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', handleAction);
+    }
+
+    return () => {
+      clearInterval(timer);
+      bc.close();
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('message', handleAction);
+      }
+    };
+  }, [tasks, notifiedTaskIds, updateTask]);
 
   if (!activeReminder) return null;
 
@@ -88,84 +122,70 @@ function GlobalReminderEngine() {
   };
 
   return (
-    <div className="interactive-reminder-banner">
-      <div className="reminder-header">
-        <span style={{ fontSize: "1.2rem" }}>🔔</span>
-        <strong>Smart Task Reminder</strong>
+    <div className="reminder-modal-overlay">
+      <div className="reminder-modal-card scale-in">
+        <div className="reminder-modal-header">
+          <h3 className="reminder-modal-title">
+            <span style={{ marginRight: "8px" }}>🔔</span>
+            Smart Task Reminder
+          </h3>
+          <button className="reminder-modal-close" onClick={() => setActiveReminder(null)}>&times;</button>
+        </div>
+        
+        <div className="reminder-modal-body">
+          <p className="reminder-question">Did you complete <strong>"{activeReminder.title}"</strong>?</p>
+        </div>
+
+        <div className="reminder-modal-footer">
+          {!showRescheduleForm ? (
+            <div className="reminder-actions">
+              <button className="reminder-btn success" onClick={handleMarkComplete}>
+                ✔ Yes, Completed
+              </button>
+              <button className="reminder-btn danger" onClick={() => setShowRescheduleForm(true)}>
+                ❌ No, Reschedule
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleCustomRescheduleSubmit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <p style={{ margin: "0", fontSize: "0.95rem", color: "var(--text-secondary)", textAlign: "center" }}>
+                Choose a new deadline:
+              </p>
+              
+              <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
+                <button type="button" className="reminder-btn secondary" onClick={() => handleQuickReschedule("evening")} style={{ padding: "8px" }}>
+                  🌆 Evening
+                </button>
+                <button type="button" className="reminder-btn secondary" onClick={() => handleQuickReschedule("tomorrow")} style={{ padding: "8px" }}>
+                  🌅 Tomorrow
+                </button>
+              </div>
+              
+              <div className="reminder-reschedule-box" style={{ marginTop: "8px" }}>
+                <input
+                  type="date"
+                  value={customDate}
+                  onChange={(e) => setCustomDate(e.target.value)}
+                  className="reminder-time-input"
+                  required
+                />
+                <input
+                  type="time"
+                  value={customTime}
+                  onChange={(e) => setCustomTime(e.target.value)}
+                  className="reminder-time-input"
+                  required
+                />
+              </div>
+              
+              <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
+                <button type="submit" className="reminder-btn save" style={{ flex: 1 }}>Confirm</button>
+                <button type="button" className="reminder-btn cancel" onClick={() => setShowRescheduleForm(false)} style={{ flex: 1 }}>Cancel</button>
+              </div>
+            </form>
+          )}
+        </div>
       </div>
-      <p className="reminder-title">Did you complete <strong>"{activeReminder.title}"</strong>?</p>
-      
-      {!showRescheduleForm ? (
-        <>
-          <div className="reminder-actions">
-            <button
-              type="button"
-              className="primary-btn"
-              onClick={handleMarkComplete}
-              style={{ background: "#10b981", color: "white" }}
-            >
-              ✔ Yes, Completed
-            </button>
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => setShowRescheduleForm(true)}
-            >
-              ❌ No, Reschedule
-            </button>
-          </div>
-        </>
-      ) : (
-        <form onSubmit={handleCustomRescheduleSubmit} style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          <p style={{ margin: "0 0 4px", fontSize: "0.82rem", color: "#64748b" }}>Choose rescheduling deadline:</p>
-          <div style={{ display: "flex", gap: "6px" }}>
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => handleQuickReschedule("evening")}
-              style={{ fontSize: "0.78rem", padding: "6px 8px" }}
-            >
-              🌆 Evening
-            </button>
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => handleQuickReschedule("tomorrow")}
-              style={{ fontSize: "0.78rem", padding: "6px 8px" }}
-            >
-              🌅 Tomorrow
-            </button>
-          </div>
-          
-          <div style={{ display: "flex", gap: "6px", alignItems: "center", marginTop: "4px" }}>
-            <input
-              type="date"
-              value={customDate}
-              onChange={(e) => setCustomDate(e.target.value)}
-              style={{ padding: "4px", borderRadius: "6px", border: "1px solid #ccc", fontSize: "0.8rem", flex: 1 }}
-              required
-            />
-            <input
-              type="time"
-              value={customTime}
-              onChange={(e) => setCustomTime(e.target.value)}
-              style={{ padding: "4px", borderRadius: "6px", border: "1px solid #ccc", fontSize: "0.8rem", flex: 1 }}
-              required
-            />
-          </div>
-          <div style={{ display: "flex", gap: "6px", marginTop: "4px" }}>
-            <button type="submit" className="primary-btn" style={{ fontSize: "0.8rem", padding: "6px" }}>Confirm</button>
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() => setShowRescheduleForm(false)}
-              style={{ fontSize: "0.8rem", padding: "6px" }}
-            >
-              Back
-            </button>
-          </div>
-        </form>
-      )}
     </div>
   );
 }

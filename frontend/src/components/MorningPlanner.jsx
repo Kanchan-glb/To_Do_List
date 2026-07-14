@@ -21,8 +21,9 @@ function MorningPlanner({ onClose }) {
   const [newCategory, setNewCategory] = useState("Work");
   const [newPriority, setNewPriority] = useState("Medium");
   const [newTime, setNewTime] = useState("12:00");
-
+  
   const todayStr = format(new Date(), "yyyy-MM-dd");
+  const [newDate, setNewDate] = useState(todayStr);
 
   // Filter tasks
   const overdueOrRescheduledTasks = tasks.filter((t) => !t.completed && (t.dueDate < todayStr || t.rescheduleCount > 0));
@@ -38,10 +39,12 @@ function MorningPlanner({ onClose }) {
       (result) => {
         setTranscribedText(result);
         setIsRecording(false);
-        // Parse and create task automatically
+        // Parse task automatically but let user review it
         const parsed = parseSpeechToTask(result);
-        addTask(parsed);
-        alert(`Task Created: "${parsed.title}" due today at ${parsed.dueTime}`);
+        setNewTitle(parsed.title);
+        setNewTime(parsed.dueTime || "12:00");
+        setNewDate(todayStr);
+        setShowManualForm(true);
       },
       (err) => {
         setVoiceError(`Voice Error: ${err}`);
@@ -68,15 +71,16 @@ function MorningPlanner({ onClose }) {
 
     addTask({
       title: newTitle.trim(),
-      description: "Added during Morning Planning",
+      description: transcribedText ? `From Voice: "${transcribedText}"` : "Added during Morning Planning",
       category: newCategory,
       priority: newPriority,
-      dueDate: todayStr,
+      dueDate: newDate,
       dueTime: newTime,
       subtasks: []
     });
 
     setNewTitle("");
+    setTranscribedText("");
     setShowManualForm(false);
   };
 
@@ -206,13 +210,29 @@ function MorningPlanner({ onClose }) {
                   </select>
                 </div>
 
-                <input
-                  type="time"
-                  value={newTime}
-                  onChange={(e) => setNewTime(e.target.value)}
-                  className="form-input-styled"
-                  style={{ width: "100%", padding: "10px 14px" }}
-                />
+                <div style={{ display: "flex", gap: "12px", marginTop: "4px" }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: "0.85rem", color: "#64748b", fontWeight: "600", marginBottom: "4px", display: "block" }}>Complete By Date</label>
+                    <input
+                      type="date"
+                      value={newDate}
+                      onChange={(e) => setNewDate(e.target.value)}
+                      className="form-input-styled"
+                      style={{ width: "100%", padding: "10px 14px" }}
+                      required
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: "0.85rem", color: "#64748b", fontWeight: "600", marginBottom: "4px", display: "block" }}>Time</label>
+                    <input
+                      type="time"
+                      value={newTime}
+                      onChange={(e) => setNewTime(e.target.value)}
+                      className="form-input-styled"
+                      style={{ width: "100%", padding: "10px 14px" }}
+                    />
+                  </div>
+                </div>
 
                 <button type="submit" className="primary-btn" style={{ padding: "12px", borderRadius: "12px", marginTop: "4px" }}>
                   Add Task

@@ -11,51 +11,7 @@ export function TaskProvider({ children }) {
   // Load initial tasks
   const [tasks, setTasks] = useState(() => {
     const stored = localStorage.getItem("smartTasks");
-    return stored ? JSON.parse(stored) : [
-      {
-        id: "1",
-        title: "Complete React Assignment",
-        description: "Finish routing, context, and hook implementations.",
-        category: "Learning",
-        priority: "High",
-        dueDate: format(new Date(), "yyyy-MM-dd"),
-        dueTime: "17:00",
-        completed: false,
-        subtasks: [
-          { id: "s1", title: "Setup router paths", completed: true },
-          { id: "s2", title: "Implement state context", completed: false },
-          { id: "s3", title: "Style with custom layouts", completed: false }
-        ],
-        rescheduleCount: 0,
-        createdDate: format(new Date(), "yyyy-MM-dd")
-      },
-      {
-        id: "2",
-        title: "Gym Workout Session",
-        description: "Focus on upper body strength training.",
-        category: "Health",
-        priority: "Medium",
-        dueDate: format(new Date(), "yyyy-MM-dd"),
-        dueTime: "18:30",
-        completed: false,
-        subtasks: [],
-        rescheduleCount: 0,
-        createdDate: format(new Date(), "yyyy-MM-dd")
-      },
-      {
-        id: "3",
-        title: "Prepare notes for weekly sync",
-        description: "Draft key achievements and bottlenecks.",
-        category: "Work",
-        priority: "Low",
-        dueDate: format(new Date(), "yyyy-MM-dd"),
-        dueTime: "11:00",
-        completed: true,
-        subtasks: [],
-        rescheduleCount: 0,
-        createdDate: format(new Date(), "yyyy-MM-dd")
-      }
-    ];
+    return stored ? JSON.parse(stored) : [];
   });
 
   // API Key & User preferences
@@ -115,6 +71,17 @@ export function TaskProvider({ children }) {
   useEffect(() => {
     localStorage.setItem("smartFocusStats", JSON.stringify(focusStats));
   }, [focusStats]);
+
+  // Request Notification Permissions
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission !== "denied") {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // System Notification Reminders for Tasks (Handled globally in App.jsx via GlobalReminderEngine)
+  // Cleaned up duplicate state here.
+
 
   // Handle Streak & Daily resets on mount
   useEffect(() => {
@@ -176,10 +143,21 @@ export function TaskProvider({ children }) {
         workMinutes: prev.workMinutes + 25,
         completedSessions: prev.completedSessions + 1
       }));
-      alert("Great job! Focus session completed. Take a break.");
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("Pomodoro Complete!", { body: "Great job! Focus session completed. Take a break." });
+      } else {
+        alert("Great job! Focus session completed. Take a break.");
+      }
       switchFocusMode("shortBreak");
     } else {
-      alert("Break is over! Ready to get back to focus?");
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("Break Over!", { body: "Break is over! Ready to get back to focus?" });
+      } else {
+        alert("Break is over! Ready to get back to focus?");
+      }
+      if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission();
+      }
       switchFocusMode("work");
     }
   };
@@ -198,6 +176,11 @@ export function TaskProvider({ children }) {
 
   // Task Actions
   const addTask = (taskData) => {
+    // Request permission on user gesture if not already granted/denied
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+
     const newTask = {
       id: Date.now().toString(),
       title: taskData.title,
@@ -229,6 +212,7 @@ export function TaskProvider({ children }) {
       })
     );
   };
+
 
   const deleteTask = (taskId) => {
     setTasks((prev) => prev.filter((t) => t.id !== taskId));

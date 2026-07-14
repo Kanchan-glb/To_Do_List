@@ -37,6 +37,20 @@ function SettingsPage() {
     }
   };
 
+  const handleForceUpdate = () => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let registration of registrations) {
+          registration.unregister();
+        }
+        alert("System updated successfully! Reloading...");
+        window.location.reload();
+      });
+    } else {
+      window.location.reload();
+    }
+  };
+
   return (
     <div className="settings-page">
       <section className="settings-hero">
@@ -49,7 +63,7 @@ function SettingsPage() {
 
       <div className="settings-panel">
         <form onSubmit={handleSave}>
-          
+
           <div className="settings-form-group">
             <label htmlFor="user-display-name">Display Name</label>
             <input
@@ -63,7 +77,7 @@ function SettingsPage() {
             />
           </div>
 
-          <div className="settings-form-group">
+          {/* <div className="settings-form-group">
             <label htmlFor="gemini-api-key">Gemini API Key</label>
             <input
               type="password"
@@ -76,7 +90,7 @@ function SettingsPage() {
             <span className="settings-hint">
               💡 If left blank, the app runs local smart rules to break down tasks and provide suggestions.
             </span>
-          </div>
+          </div> */}
 
           <div className="settings-form-group">
             <label>Notifications & Alerts</label>
@@ -113,14 +127,17 @@ function SettingsPage() {
         </form>
       </div>
 
-      <div className="settings-panel settings-danger-panel">
-        <h2>Danger Zone</h2>
-        <p className="settings-hint" style={{ marginBottom: "20px", color: "#b91c1c" }}>
-          Clearing local data will log you out, delete all local tasks, and erase your productivity reports history.
-        </p>
-        <button type="button" className="settings-btn-danger" onClick={handleResetData}>
-          ⚠️ Clear Workspace Data
-        </button>
+      <div className="danger-zone">
+        <h3>Danger Zone</h3>
+        <p>Permanently delete all your tasks, history, and workspace settings.</p>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button type="button" className="danger-btn" onClick={handleResetData}>
+            Delete Data & Reset App
+          </button>
+          <button type="button" className="danger-btn" onClick={handleForceUpdate} style={{ background: "#3b82f6", color: "white" }}>
+            Fix Notifications (Update System)
+          </button>
+        </div>
       </div>
     </div>
   );
