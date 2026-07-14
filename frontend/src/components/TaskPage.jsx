@@ -506,7 +506,7 @@ function TaskPage() {
 
               <div className="btn-group" style={{ borderTop: "1px solid #e2e8f0", paddingTop: "20px", marginTop: "16px" }}>
                 <button type="button" className="secondary-button" onClick={resetForm}>Cancel</button>
-                <button type="submit" className="primary-btn">{editTaskId ? "Save Changes" : "Create Task"}</button>
+                <button type="submit" className="primary-btn" style={{ color: "black", fontWeight: "bold" }}>{editTaskId ? "Save Changes" : "Create Task"}</button>
               </div>
             </form>
           </div>

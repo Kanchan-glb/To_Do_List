@@ -9,6 +9,7 @@ import ReportsPage from "./components/ReportsPage";
 import SettingsPage from "./components/SettingsPage";
 import ProfilePage from "./components/ProfilePage";
 import MorningPopup from "./components/MorningPopup";
+import NightPopup from "./components/NightPopup";
 import { TaskProvider, useTasks } from "./context/TaskContext";
 import { checkTaskReminders, sendBrowserNotification } from "./services/notification";
 import { format, addDays } from "date-fns";
@@ -22,7 +23,7 @@ function GlobalReminderEngine() {
   const { tasks, updateTask, rescheduleTask } = useTasks();
   const [activeReminder, setActiveReminder] = useState(null);
   const [notifiedTaskIds, setNotifiedTaskIds] = useState([]);
-  
+
   // Custom reschedule view state
   const [showRescheduleForm, setShowRescheduleForm] = useState(false);
   const [customDate, setCustomDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -44,13 +45,13 @@ function GlobalReminderEngine() {
           body: `Due soon at ${task.dueTime}! Did you finish it?`,
           data: { taskId: task.id } // Pass task ID to service worker
         });
-        
+
         // Trigger app sound
         try {
           const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2019/2019-500.wav");
           audio.volume = 0.4;
           audio.play();
-        } catch(e) {}
+        } catch (e) { }
 
         // Trigger in-app interactive overlay banner
         setActiveReminder(task);
@@ -70,6 +71,21 @@ function GlobalReminderEngine() {
         }
       }
 
+      // Send Night Review OS Notification during the 22:00 (10 PM) hour (if not already sent today)
+      if (now.getHours() === 22) {
+        const nightKey = "night_notified_" + format(now, "yyyy-MM-dd");
+        if (!localStorage.getItem(nightKey)) {
+          const pendingCount = tasks.filter(t => !t.completed && t.dueDate <= format(now, "yyyy-MM-dd")).length;
+          if (pendingCount > 0) {
+            sendBrowserNotification("Night Review 🌙", {
+              body: `You still have ${pendingCount} tasks left. Let's finish them or push them to tomorrow!`,
+              data: { isNight: true }
+            });
+          }
+          localStorage.setItem(nightKey, "true");
+        }
+      }
+
     }, 10000); // Check every 10 seconds
 
     // Listen for messages from the service worker (OS Notification Clicks)
@@ -77,7 +93,7 @@ function GlobalReminderEngine() {
       if (event.data && event.data.type === 'NOTIFICATION_ACTION') {
         const { action, taskId } = event.data;
         const matchingTask = tasks.find(t => t.id === taskId);
-        
+
         if (matchingTask) {
           // If the action is from OS, and the big modal is open, we can close it
           if (action === 'complete') {
@@ -152,7 +168,7 @@ function GlobalReminderEngine() {
           </h3>
           <button className="reminder-modal-close" onClick={() => setActiveReminder(null)}>&times;</button>
         </div>
-        
+
         <div className="reminder-modal-body">
           <p className="reminder-question">Did you complete <strong>"{activeReminder.title}"</strong>?</p>
         </div>
@@ -172,7 +188,7 @@ function GlobalReminderEngine() {
               <p style={{ margin: "0", fontSize: "0.95rem", color: "var(--text-secondary)", textAlign: "center" }}>
                 Choose a new deadline:
               </p>
-              
+
               <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
                 <button type="button" className="reminder-btn secondary" onClick={() => handleQuickReschedule("evening")} style={{ padding: "8px" }}>
                   🌆 Evening
@@ -181,7 +197,7 @@ function GlobalReminderEngine() {
                   🌅 Tomorrow
                 </button>
               </div>
-              
+
               <div className="reminder-reschedule-box" style={{ marginTop: "8px" }}>
                 <input
                   type="date"
@@ -198,9 +214,9 @@ function GlobalReminderEngine() {
                   required
                 />
               </div>
-              
+
               <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
-                <button type="submit" className="reminder-btn save" style={{ flex: 1 }}>Confirm</button>
+                <button type="submit" className="reminder-btn save" style={{ flex: 1, background: "#f1f5f9", color: "black", fontWeight: "800", border: "2px solid #cbd5e1", borderRadius: "10px", padding: "12px", boxShadow: "0 4px 6px rgba(0,0,0,0.05)", cursor: "pointer" }}>Confirm</button>
                 <button type="button" className="reminder-btn cancel" onClick={() => setShowRescheduleForm(false)} style={{ flex: 1 }}>Cancel</button>
               </div>
             </form>
@@ -221,6 +237,7 @@ function App() {
     <TaskProvider>
       <BrowserRouter>
         <MorningPopup />
+        <NightPopup />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

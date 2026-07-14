@@ -57,7 +57,17 @@ function SettingsPage() {
         body: "This is exactly what the 8 AM notification will look like.",
         data: { isMorning: true }
       });
-      alert("Test notification sent! Check your phone's notification panel.");
+      alert("Test morning notification sent! Check your phone's notification panel.");
+    });
+  };
+
+  const testNightNotification = () => {
+    import('../services/notification').then(({ sendBrowserNotification }) => {
+      sendBrowserNotification("Test: Night Review 🌙", {
+        body: "You still have 3 tasks left. Let's finish them or push them to tomorrow!",
+        data: { isNight: true }
+      });
+      alert("Test night notification sent! Check your phone's notification panel.");
     });
   };
 
@@ -74,15 +84,24 @@ function SettingsPage() {
       <div className="settings-panel">
         <form onSubmit={handleSave}>
           <div className="settings-form-group">
-            <label>Test Background Notification</label>
-            <button 
-              type="button" 
-              onClick={testMorningNotification}
-              style={{ background: "#0ea5e9", color: "white", padding: "10px 16px", border: "none", borderRadius: "8px", cursor: "pointer", width: "100%", fontWeight: "bold" }}
-            >
-              🔔 Test Morning Notification
-            </button>
-            <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "8px" }}>Click to see if your phone allows the notification.</p>
+            <label>Test Background Notifications</label>
+            <div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
+              <button
+                type="button"
+                onClick={testMorningNotification}
+                style={{ background: "#0ea5e9", color: "white", padding: "10px 16px", border: "none", borderRadius: "8px", cursor: "pointer", flex: 1, fontWeight: "bold" }}
+              >
+                ☀️ Test Morning
+              </button>
+              <button
+                type="button"
+                onClick={testNightNotification}
+                style={{ background: "#7c3aed", color: "white", padding: "10px 16px", border: "none", borderRadius: "8px", cursor: "pointer", flex: 1, fontWeight: "bold" }}
+              >
+                🌙 Test Night
+              </button>
+            </div>
+            <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "8px" }}>Click to see if your phone allows the notifications.</p>
           </div>
 
           <div className="settings-form-group">
@@ -175,15 +194,15 @@ function SettingsPage() {
         </form>
       </div>
 
-      <div className="danger-zone">
-        <h3>Danger Zone</h3>
-        <p>Permanently delete all your tasks, history, and workspace settings.</p>
-        <div style={{ display: "flex", gap: "10px" }}>
-          <button type="button" className="danger-btn" onClick={handleResetData}>
-            Delete Data & Reset App
+      <div className="settings-danger-panel" style={{ padding: "20px", background: "#fef2f2", borderRadius: "12px", marginTop: "32px" }}>
+        <h2>Danger Zone</h2>
+        <p style={{ color: "#b91c1c", marginBottom: "16px" }}>Permanently delete all your tasks, history, and workspace settings.</p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
+          <button type="button" className="settings-btn-danger" onClick={handleResetData}>
+            ⚠️ Delete Data & Reset App
           </button>
-          <button type="button" className="danger-btn" onClick={handleForceUpdate} style={{ background: "#3b82f6", color: "white" }}>
-            Fix Notifications (Update System)
+          <button type="button" className="settings-btn-danger" onClick={handleForceUpdate} style={{ background: "#3b82f6", color: "white", borderColor: "#2563eb" }}>
+            🔄 Update System
           </button>
         </div>
       </div>
