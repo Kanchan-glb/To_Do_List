@@ -86,6 +86,7 @@ function Layout({ children }) {
     { label: "Planner", path: "/planner", icon: <PlanIcon /> },
     { label: "Reports", path: "/reports", icon: <ReportIcon /> },
     { label: "Settings", path: "/settings", icon: <SettingIcon /> },
+    { label: "Profile", path: "/profile", icon: <UserIcon /> },
   ];
 
   const progressDeg = Math.round((completionRate / 100) * 360);
@@ -94,7 +95,7 @@ function Layout({ children }) {
     <div className="app-shell">
 
       {/* ═══════════════════ SIDEBAR & OVERLAY ═══════════════════ */}
-      <div 
+      <div
         className={`sidebar-overlay ${isSidebarOpen ? "open" : ""}`}
         onClick={() => setIsSidebarOpen(false)}
       />
@@ -219,8 +220,8 @@ function Layout({ children }) {
 
           {/* Left: Page greeting */}
           <div className="topbar-left" style={{ display: "flex", alignItems: "center" }}>
-            <button 
-              className="mobile-menu-btn" 
+            <button
+              className="mobile-menu-btn"
               onClick={() => setIsSidebarOpen(true)}
               aria-label="Open Menu"
             >
@@ -277,32 +278,32 @@ function Layout({ children }) {
 
                   <div className="dropdown-divider" />
 
-                  <button className="dropdown-item" role="menuitem"
+                  {/* <button className="dropdown-item" role="menuitem"
                     onClick={() => { setDropdownOpen(false); navigate("/settings"); }}>
                     <div className="dropdown-item-icon indigo"><UserIcon /></div>
                     <div className="dropdown-item-text">
                       <span className="dropdown-item-label">My Profile</span>
                       <span className="dropdown-item-sub">Account settings</span>
                     </div>
-                  </button>
+                  </button> */}
 
-                  <button className="dropdown-item" role="menuitem"
+                  {/* <button className="dropdown-item" role="menuitem"
                     onClick={() => { setDropdownOpen(false); navigate("/settings"); }}>
                     <div className="dropdown-item-icon teal"><KeyIcon /></div>
                     <div className="dropdown-item-text">
                       <span className="dropdown-item-label">Security</span>
                       <span className="dropdown-item-sub">Change password</span>
                     </div>
-                  </button>
+                  </button> */}
 
-                  <button className="dropdown-item" role="menuitem"
+                  {/* <button className="dropdown-item" role="menuitem"
                     onClick={() => { setDropdownOpen(false); navigate("/settings"); }}>
                     <div className="dropdown-item-icon violet"><SettingIcon /></div>
                     <div className="dropdown-item-text">
                       <span className="dropdown-item-label">Preferences</span>
                       <span className="dropdown-item-sub">App settings</span>
                     </div>
-                  </button>
+                  </button> */}
 
                   <div className="dropdown-divider" />
 

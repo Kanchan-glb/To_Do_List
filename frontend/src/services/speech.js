@@ -1,4 +1,4 @@
-import { format, addDays, nextDay, parse } from "date-fns";
+import { format, addDays, nextDay, parse, addHours } from "date-fns";
 
 /**
  * Custom Speech Recognition wrapper.
@@ -41,7 +41,7 @@ export function parseSpeechToTask(text) {
   // Default values
   let title = text;
   let dueDate = format(new Date(), "yyyy-MM-dd");
-  let dueTime = "12:00";
+  let dueTime = format(addHours(new Date(), 1), "HH:mm");
   let priority = "Medium";
   let category = "General";
 

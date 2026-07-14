@@ -59,6 +59,32 @@
   --border-light: 1px solid rgba(203, 213, 225, 0.75);
 }
 
+/* --- Dark Mode Variables --- */
+html.dark-mode {
+  --bg-app: #0f172a;
+  --bg-card: #1e293b;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #64748b;
+
+  --border-light: 1px solid rgba(51, 65, 85, 0.75);
+
+  --color-primary-light: rgba(79, 70, 229, 0.2);
+  --color-secondary-light: rgba(124, 58, 237, 0.2);
+  --color-accent-light: rgba(14, 165, 233, 0.2);
+  --color-success-light: rgba(5, 150, 105, 0.2);
+  --color-warning-light: rgba(217, 119, 6, 0.2);
+  --color-danger-light: rgba(225, 29, 72, 0.2);
+
+  --sidebar-bg-top: #020617;
+  --sidebar-bg-bottom: #0f172a;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-xl: 0 20px 50px rgba(0, 0, 0, 0.6), 0 6px 14px rgba(0, 0, 0, 0.3);
+}
+
 /* --- Global Resets & Styles --- */
 * {
   box-sizing: border-box;
@@ -135,8 +161,8 @@ button,
 }
 
 .secondary-button:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
+  background: var(--bg-app);
+  border-color: var(--border-light);
   color: var(--text-primary);
 }
 
@@ -291,7 +317,7 @@ textarea:focus {
 }
 
 .login-form input:focus {
-  background: white;
+  background: var(--bg-card);
   border-color: var(--color-primary);
 }
 
@@ -345,8 +371,8 @@ textarea:focus {
   font-size: 0.75rem;
   padding: 4px 10px;
   border-radius: 99px;
-  background: #f1f5f9;
-  color: #64748b;
+  background: var(--sidebar-bg-top);
+  color: var(--text-muted);
   border: 1px solid rgba(226, 232, 240, 0.8);
   transition: all 0.25s ease;
   font-weight: 500;
@@ -847,7 +873,7 @@ textarea:focus {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #f1f5f9;
+  background: var(--sidebar-bg-top);
   border: 1px solid rgba(203, 213, 225, 0.8);
   border-radius: 10px;
   padding: 8px 14px;
@@ -859,7 +885,7 @@ textarea:focus {
 }
 
 .topbar-search:focus-within {
-  background: white;
+  background: var(--bg-card);
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.10);
 }
@@ -889,8 +915,8 @@ textarea:focus {
   font-size: 0.65rem;
   font-weight: 600;
   color: #a0aec0;
-  background: white;
-  border: 1px solid #e2e8f0;
+  background: var(--bg-card);
+  border: var(--border-light);
   border-radius: 5px;
   padding: 2px 6px;
   flex-shrink: 0;
@@ -912,7 +938,7 @@ textarea:focus {
   height: 40px;
   border-radius: 9px;
   border: 1px solid rgba(203, 213, 225, 0.8);
-  background: white;
+  background: var(--bg-card);
   color: var(--text-secondary);
   display: flex;
   align-items: center;
@@ -1009,7 +1035,7 @@ textarea:focus {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: white;
+  background: var(--bg-card);
   color: #4f46e5;
   display: flex;
   align-items: center;
@@ -1027,7 +1053,7 @@ textarea:focus {
   top: calc(100% + 10px);
   right: 0;
   width: 220px;
-  background: white;
+  background: var(--bg-card);
   border: 1px solid rgba(203, 213, 225, 0.8);
   border-radius: 16px;
   box-shadow: 0 20px 50px rgba(13, 27, 42, 0.14), 0 4px 12px rgba(13, 27, 42, 0.06);
@@ -1055,7 +1081,7 @@ textarea:focus {
   top: calc(100% + 12px);
   right: 0;
   width: 260px;
-  background: #ffffff;
+  background: var(--bg-card);
   border: 1px solid rgba(203, 213, 225, 0.75);
   border-radius: 18px;
   box-shadow:
@@ -1236,8 +1262,8 @@ textarea:focus {
   font-size: 0.62rem;
   font-weight: 600;
   color: #94a3b8;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  background: var(--sidebar-bg-top);
+  border: var(--border-light);
   border-radius: 5px;
   padding: 2px 6px;
   flex-shrink: 0;
@@ -1355,8 +1381,8 @@ textarea:focus {
   .mobile-menu-btn {
     padding: 6px;
     margin: 0;
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
+    background: var(--sidebar-bg-top);
+    border: var(--border-light);
     border-radius: 8px;
     color: var(--color-primary);
   }
@@ -1569,11 +1595,11 @@ textarea:focus {
 .task-item-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
-  border-color: #cbd5e1;
+  border-color: var(--border-light);
 }
 
 .task-item-card.completed-task {
-  background: #f8fafc;
+  background: var(--bg-app);
   opacity: 0.75;
   border-left: 4px solid var(--color-success);
 }
@@ -1583,7 +1609,7 @@ textarea:focus {
   height: 22px;
   border-radius: 7px;
   border: 2px solid #cbd5e1;
-  background: white;
+  background: var(--bg-card);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -1661,7 +1687,7 @@ textarea:focus {
 
 /* --- Subtasks & Progress Bars --- */
 .subtasks-section {
-  background: #f8fafc;
+  background: var(--bg-app);
   border-radius: var(--border-radius-md);
   padding: 16px;
   border: 1px solid #f1f5f9;
@@ -1845,7 +1871,7 @@ textarea:focus {
 }
 
 .reminder-modal-card {
-  background: white;
+  background: var(--bg-card);
   width: 100%;
   max-width: 420px;
   border-radius: 12px;
@@ -1916,7 +1942,7 @@ textarea:focus {
 
 .reminder-modal-footer {
   padding: 20px 24px;
-  background: #f8fafc;
+  background: var(--bg-app);
   border-top: 1px solid #e2e8f0;
 }
 
@@ -1952,7 +1978,7 @@ textarea:focus {
 }
 
 .reminder-btn.danger {
-  background: white;
+  background: var(--bg-card);
   color: var(--color-danger);
   border: 1px solid var(--color-danger);
 }
@@ -1970,7 +1996,7 @@ textarea:focus {
 .reminder-time-input {
   flex: 1;
   padding: 10px 14px;
-  border: 1px solid #cbd5e1;
+  border: var(--border-light);
   border-radius: 8px;
   font-size: 1rem;
   font-family: inherit;
@@ -2000,7 +2026,7 @@ textarea:focus {
 /* --- Print/PDF Stylesheet overrides --- */
 @media print {
   body {
-    background: white;
+    background: var(--bg-card);
     color: black;
   }
 

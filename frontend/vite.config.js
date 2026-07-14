@@ -14,6 +14,7 @@ export default defineConfig({
       srcDir: 'src',
       filename: 'sw.js',
       registerType: 'autoUpdate',
+      type: 'module',
       devOptions: {
         enabled: true,
         type: 'module'

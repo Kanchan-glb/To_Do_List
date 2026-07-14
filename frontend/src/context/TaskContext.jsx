@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef } from "react";
-import { format, isToday, isYesterday, differenceInDays } from "date-fns";
+import { format, isToday, isYesterday, differenceInDays, addHours } from "date-fns";
 
 const TaskContext = createContext();
 
@@ -188,7 +188,7 @@ export function TaskProvider({ children }) {
       category: taskData.category || "General",
       priority: taskData.priority || "Medium",
       dueDate: taskData.dueDate || format(new Date(), "yyyy-MM-dd"),
-      dueTime: taskData.dueTime || "12:00",
+      dueTime: taskData.dueTime || format(addHours(new Date(), 1), "HH:mm"),
       completed: false,
       subtasks: taskData.subtasks || [],
       rescheduleCount: 0,

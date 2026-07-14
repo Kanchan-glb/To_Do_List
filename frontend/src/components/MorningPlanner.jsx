@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTasks } from "../context/TaskContext";
-import { format, isToday, parseISO } from "date-fns";
+import { format, isToday, parseISO, addHours } from "date-fns";
 import { generateSuggestions } from "../services/gemini";
 import { getSpeechRecognizer, parseSpeechToTask } from "../services/speech";
 import "../planner.css";
@@ -20,7 +20,8 @@ function MorningPlanner({ onClose }) {
   const [newTitle, setNewTitle] = useState("");
   const [newCategory, setNewCategory] = useState("Work");
   const [newPriority, setNewPriority] = useState("Medium");
-  const [newTime, setNewTime] = useState("12:00");
+  const defaultTime = format(addHours(new Date(), 1), "HH:mm");
+  const [newTime, setNewTime] = useState(defaultTime);
   
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const [newDate, setNewDate] = useState(todayStr);
@@ -42,7 +43,7 @@ function MorningPlanner({ onClose }) {
         // Parse task automatically but let user review it
         const parsed = parseSpeechToTask(result);
         setNewTitle(parsed.title);
-        setNewTime(parsed.dueTime || "12:00");
+        setNewTime(parsed.dueTime || format(addHours(new Date(), 1), "HH:mm"));
         setNewDate(todayStr);
         setShowManualForm(true);
       },

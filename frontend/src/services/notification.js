@@ -23,18 +23,30 @@ export function sendBrowserNotification(title, options = {}) {
   if (Notification.permission === "granted") {
     try {
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.ready.then(registration => {
-          registration.showNotification(title, {
-            body: options.body || "Task Reminder",
-            icon: "/icon-192.png",
-            actions: [
-              { action: 'complete', title: '✔ Yes, Completed' },
-              { action: 'reschedule', title: '❌ No, Reschedule' }
-            ],
-            data: options.data || {},
-            requireInteraction: true,
-            ...options
-          });
+        navigator.serviceWorker.getRegistration().then(registration => {
+          if (registration) {
+            registration.showNotification(title, {
+              body: options.body || "Task Reminder",
+              icon: "/icon-192.png",
+              actions: [
+                { action: 'complete', title: '✔ Yes, Completed' },
+                { action: 'reschedule', title: '❌ No, Reschedule' }
+              ],
+              data: options.data || {},
+              requireInteraction: true,
+              ...options
+            });
+          } else {
+            new Notification(title, {
+              body: options.body || "Task Reminder",
+              icon: "/icon-192.png",
+              requireInteraction: true,
+              ...options
+            });
+          }
+        }).catch(err => {
+          console.warn("SW getRegistration failed:", err);
+          new Notification(title, { body: options.body || "Task Reminder", requireInteraction: true, ...options });
         });
       } else {
         new Notification(title, {

@@ -7,6 +7,7 @@ import TaskPage from "./components/TaskPage";
 import MorningPlanner from "./components/MorningPlanner";
 import ReportsPage from "./components/ReportsPage";
 import SettingsPage from "./components/SettingsPage";
+import ProfilePage from "./components/ProfilePage";
 import { TaskProvider, useTasks } from "./context/TaskContext";
 import { checkTaskReminders, sendBrowserNotification } from "./services/notification";
 import { format, addDays } from "date-fns";
@@ -28,6 +29,14 @@ function GlobalReminderEngine() {
   const [showRescheduleForm, setShowRescheduleForm] = useState(false);
   const [customDate, setCustomDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [customTime, setCustomTime] = useState("17:00");
+
+  useEffect(() => {
+    // Check theme preference
+    const savedTheme = localStorage.getItem("app-theme");
+    if (savedTheme === "dark") {
+      document.documentElement.classList.add("dark-mode");
+    }
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -243,6 +252,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <SettingsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <ProfilePage />
                 </Layout>
               </ProtectedRoute>
             }

@@ -40,7 +40,7 @@
 
 .planner-hero-text p {
   font-size: 1.1rem;
-  color: #64748b;
+  color: var(--text-muted);
   margin: 0;
 }
 
@@ -64,7 +64,7 @@
 
 .planner-card h2 {
   font-size: 1.4rem;
-  color: #1e293b;
+  color: var(--text-primary);
   margin-top: 0;
   margin-bottom: 24px;
   font-weight: 800;
@@ -88,9 +88,9 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  background: #f8fafc;
+  background: var(--bg-app);
   border-radius: 16px;
-  border: 1px solid #e2e8f0;
+  border: var(--border-light);
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
@@ -101,18 +101,18 @@
 
 .planner-task-title {
   font-weight: 600;
-  color: #334155;
+  color: var(--text-secondary);
   font-size: 1rem;
 }
 
 .planner-task-time {
   font-size: 0.85rem;
-  color: #64748b;
+  color: var(--text-muted);
   font-weight: 700;
-  background: white;
+  background: var(--bg-card);
   padding: 6px 12px;
   border-radius: 10px;
-  border: 1px solid #e2e8f0;
+  border: var(--border-light);
   box-shadow: 0 2px 4px rgba(0,0,0,0.01);
 }
 
