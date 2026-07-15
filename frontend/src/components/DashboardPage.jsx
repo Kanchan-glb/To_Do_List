@@ -190,12 +190,12 @@ function DashboardPage() {
       {/* ══════════ QUICK ACTIONS ══════════ */}
       <section className="db-quick-actions">
         <div className="db-quick-btns">
-          <button type="button" className="db-quick-btn" onClick={() => setActiveReviewState("morning")}>
+          {/* <button type="button" className="db-quick-btn" onClick={() => setActiveReviewState("morning")}>
             <IcoSun /> Morning Planner
           </button>
           <button type="button" className="db-quick-btn" onClick={() => setActiveReviewState("night")}>
             <IcoMoon /> Night Review
-          </button>
+          </button> */}
           <button type="button" className="db-quick-btn" onClick={() => navigate("/tasks")}>
             <IcoTasks /> Manage Tasks
           </button>
