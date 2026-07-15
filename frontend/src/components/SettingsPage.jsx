@@ -50,27 +50,6 @@ function SettingsPage() {
       window.location.reload();
     }
   };
-
-  const testMorningNotification = () => {
-    import('../services/notification').then(({ sendBrowserNotification }) => {
-      sendBrowserNotification("Test: Good Morning! ☀️", {
-        body: "This is exactly what the 8 AM notification will look like.",
-        data: { isMorning: true }
-      });
-      alert("Test morning notification sent! Check your phone's notification panel.");
-    });
-  };
-
-  const testNightNotification = () => {
-    import('../services/notification').then(({ sendBrowserNotification }) => {
-      sendBrowserNotification("Test: Night Review 🌙", {
-        body: "You still have 3 tasks left. Let's finish them or push them to tomorrow!",
-        data: { isNight: true }
-      });
-      alert("Test night notification sent! Check your phone's notification panel.");
-    });
-  };
-
   return (
     <div className="settings-page">
       <section className="settings-hero">
@@ -83,26 +62,6 @@ function SettingsPage() {
 
       <div className="settings-panel">
         <form onSubmit={handleSave}>
-          <div className="settings-form-group">
-            <label>Test Background Notifications</label>
-            <div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
-              <button
-                type="button"
-                onClick={testMorningNotification}
-                style={{ background: "#0ea5e9", color: "white", padding: "10px 16px", border: "none", borderRadius: "8px", cursor: "pointer", flex: 1, fontWeight: "bold" }}
-              >
-                ☀️ Test Morning
-              </button>
-              <button
-                type="button"
-                onClick={testNightNotification}
-                style={{ background: "#7c3aed", color: "white", padding: "10px 16px", border: "none", borderRadius: "8px", cursor: "pointer", flex: 1, fontWeight: "bold" }}
-              >
-                🌙 Test Night
-              </button>
-            </div>
-            <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "8px" }}>Click to see if your phone allows the notifications.</p>
-          </div>
 
           <div className="settings-form-group">
             <label htmlFor="user-display-name">Display Name</label>

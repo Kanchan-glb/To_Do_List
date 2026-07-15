@@ -12,20 +12,20 @@ const Ico = ({ children, size = 18 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
     strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
 );
-const IcoTarget   = () => <Ico><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></Ico>;
-const IcoClock    = () => <Ico><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></Ico>;
-const IcoAlert    = () => <Ico><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></Ico>;
-const IcoZap      = () => <Ico><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></Ico>;
-const IcoCheck    = () => <Ico><polyline points="20 6 9 17 4 12"/></Ico>;
-const IcoPlus     = () => <Ico><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></Ico>;
-const IcoArrow    = () => <Ico size={14}><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></Ico>;
-const IcoTasks    = () => <Ico><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></Ico>;
-const IcoFire     = () => <Ico><path d="M12 2c0 0-5.5 4-5.5 9a5.5 5.5 0 0011 0C17.5 6 12 2 12 2z"/><path d="M12 12c0 0-2 1.5-2 3a2 2 0 004 0c0-1.5-2-3-2-3z"/></Ico>;
-const IcoSun      = () => <Ico><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></Ico>;
-const IcoMoon     = () => <Ico><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></Ico>;
-const IcoPlay     = () => <Ico><polygon points="5 3 19 12 5 21 5 3" fill="currentColor" stroke="none"/></Ico>;
-const IcoPause    = () => <Ico><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></Ico>;
-const IcoReset    = () => <Ico><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></Ico>;
+const IcoTarget = () => <Ico><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></Ico>;
+const IcoClock = () => <Ico><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></Ico>;
+const IcoAlert = () => <Ico><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></Ico>;
+const IcoZap = () => <Ico><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></Ico>;
+const IcoCheck = () => <Ico><polyline points="20 6 9 17 4 12" /></Ico>;
+const IcoPlus = () => <Ico><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></Ico>;
+const IcoArrow = () => <Ico size={14}><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></Ico>;
+const IcoTasks = () => <Ico><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" /></Ico>;
+const IcoFire = () => <Ico><path d="M12 2c0 0-5.5 4-5.5 9a5.5 5.5 0 0011 0C17.5 6 12 2 12 2z" /><path d="M12 12c0 0-2 1.5-2 3a2 2 0 004 0c0-1.5-2-3-2-3z" /></Ico>;
+const IcoSun = () => <Ico><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></Ico>;
+const IcoMoon = () => <Ico><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" /></Ico>;
+const IcoPlay = () => <Ico><polygon points="5 3 19 12 5 21 5 3" fill="currentColor" stroke="none" /></Ico>;
+const IcoPause = () => <Ico><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></Ico>;
+const IcoReset = () => <Ico><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 102.13-9.36L1 10" /></Ico>;
 
 function DashboardPage() {
   const navigate = useNavigate();
@@ -62,15 +62,22 @@ function DashboardPage() {
     streak
   } = getDailyProgress();
 
-  const todayStr   = format(currentTime, "yyyy-MM-dd");
+  const todayStr = format(currentTime, "yyyy-MM-dd");
   const todayLabel = format(currentTime, "EEEE, MMMM d");
-  const timeLabel  = format(currentTime, "h:mm a");
+  const timeLabel = format(currentTime, "h:mm a");
   const todayTasks = tasks.filter((t) => t.dueDate === todayStr);
 
-  if (activeReviewState === "morning") return <MorningPlanner onClose={() => setActiveReviewState(null)} />;
-  if (activeReviewState === "night")   return <NightReview onClose={() => setActiveReviewState(null)} />;
+  const overdueTasks = tasks.filter(t => {
+    if (t.completed) return false;
+    if (!t.dueDate) return false;
+    const tDate = new Date(t.dueDate + "T" + (t.dueTime || "23:59"));
+    return tDate < new Date();
+  });
 
-  const formatTime = (s) => `${String(Math.floor(s / 60)).padStart(2,"0")}:${String(s % 60).padStart(2,"0")}`;
+  if (activeReviewState === "morning") return <MorningPlanner onClose={() => setActiveReviewState(null)} />;
+  if (activeReviewState === "night") return <NightReview onClose={() => setActiveReviewState(null)} />;
+
+  const formatTime = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
   /* Weekly chart data */
   const chartData = Array.from({ length: 7 }, (_, i) => {
@@ -89,14 +96,14 @@ function DashboardPage() {
 
   /* Mode config */
   const modeConfig = {
-    work:       { label: "Deep Work",    duration: 25, color: "#4f46e5", bg: "rgba(79,70,229,0.12)"  },
-    shortBreak: { label: "Short Break",  duration:  5, color: "#059669", bg: "rgba(5,150,105,0.12)"  },
-    longBreak:  { label: "Long Break",   duration: 15, color: "#d97706", bg: "rgba(217,119,6,0.12)"  },
+    work: { label: "Deep Work", duration: 25, color: "#4f46e5", bg: "rgba(79,70,229,0.12)" },
+    shortBreak: { label: "Short Break", duration: 5, color: "#059669", bg: "rgba(5,150,105,0.12)" },
+    longBreak: { label: "Long Break", duration: 15, color: "#d97706", bg: "rgba(217,119,6,0.12)" },
   };
   const mc = modeConfig[focusMode];
   const totalSecs = mc.duration * 60;
-  const elapsed   = totalSecs - focusTimeLeft;
-  const ringPct   = Math.round((elapsed / totalSecs) * 100);
+  const elapsed = totalSecs - focusTimeLeft;
+  const ringPct = Math.round((elapsed / totalSecs) * 100);
 
   return (
     <div className="db-page">
@@ -118,7 +125,7 @@ function DashboardPage() {
         <div className="db-hero-right">
           <div className="db-hero-ring-wrap">
             <svg width="110" height="110" viewBox="0 0 110 110">
-              <circle cx="55" cy="55" r="46" fill="none" stroke="#e2e8f0" strokeWidth="8"/>
+              <circle cx="55" cy="55" r="46" fill="none" stroke="#e2e8f0" strokeWidth="8" />
               <circle
                 cx="55" cy="55" r="46" fill="none"
                 stroke="url(#heroGrad)" strokeWidth="8"
@@ -128,8 +135,8 @@ function DashboardPage() {
               />
               <defs>
                 <linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%"   stopColor="#4f46e5"/>
-                  <stop offset="100%" stopColor="#10b981"/>
+                  <stop offset="0%" stopColor="#4f46e5" />
+                  <stop offset="100%" stopColor="#10b981" />
                 </linearGradient>
               </defs>
               <text x="55" y="49" textAnchor="middle" fill="#0d1b2a" fontSize="18" fontWeight="800" fontFamily="Outfit,sans-serif">{completionRate}%</text>
@@ -162,10 +169,10 @@ function DashboardPage() {
       {/* ══════════ STAT CARDS ══════════ */}
       <section className="db-stats-row">
         {[
-          { icon: <IcoTarget />,  label: "Completion Rate",   value: `${completionRate}%`,          sub: `${todayCompleted}/${todayCount} tasks`, color: "#4f46e5", bg: "#ede9fe" },
-          { icon: <IcoTasks />,   label: "Pending Tasks",     value: pendingCount,                   sub: "Needs attention",                       color: "#d97706", bg: "#fef3c7" },
-          { icon: <IcoAlert />,   label: "Overdue Items",     value: overdueCount,                   sub: "Rescheduling needed",                   color: "#e11d48", bg: "#ffe4e6" },
-          { icon: <IcoZap />,     label: "Focus Minutes",     value: `${focusStats.workMinutes}m`,   sub: `${focusStats.completedSessions} sessions`, color: "#7c3aed", bg: "#f3e8ff" },
+          { icon: <IcoTarget />, label: "Completion Rate", value: `${completionRate}%`, sub: `${todayCompleted}/${todayCount} tasks`, color: "#4f46e5", bg: "#ede9fe" },
+          { icon: <IcoTasks />, label: "Pending Tasks", value: pendingCount, sub: "Needs attention", color: "#d97706", bg: "#fef3c7" },
+          { icon: <IcoAlert />, label: "Overdue Items", value: overdueCount, sub: "Rescheduling needed", color: "#e11d48", bg: "#ffe4e6" },
+          { icon: <IcoZap />, label: "Focus Minutes", value: `${focusStats.workMinutes}m`, sub: `${focusStats.completedSessions} sessions`, color: "#7c3aed", bg: "#f3e8ff" },
         ].map(({ icon, label, value, sub, color, bg }) => (
           <div className="db-stat-card" key={label}>
             <div className="db-stat-icon" style={{ background: bg, color }}>{icon}</div>
@@ -180,64 +187,67 @@ function DashboardPage() {
 
       {/* ══════════ MAIN CONTENT GRID ══════════ */}
       <div className="db-main-grid">
-
-        {/* ── Today's Tasks ── */}
-        <section className="db-card db-tasks-card">
-          <div className="db-card-header">
-            <div>
-              <h2 className="db-card-title">Today's Tasks</h2>
-              <p className="db-card-sub">{todayCompleted} of {todayCount} completed</p>
-            </div>
-            <button type="button" className="db-add-btn" onClick={() => navigate("/tasks")}>
-              <IcoPlus /> Add Task
-            </button>
-          </div>
-
-          {todayTasks.length === 0 ? (
-            <div className="db-empty">
-              <div className="db-empty-icon"><IcoTasks /></div>
-              <p className="db-empty-title">No tasks for today</p>
-              <p className="db-empty-sub">Add tasks in the Task panel to see them here.</p>
-              <button type="button" className="db-empty-btn" onClick={() => navigate("/tasks")}>
-                Go to Tasks <IcoArrow />
+        <div className="db-left-col" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {/* ── Today's Tasks ── */}
+          <section className="db-card db-tasks-card" style={{ display: 'flex', flexDirection: 'column' }}>
+            <div className="db-card-header">
+              <div>
+                <h2 className="db-card-title">Today's Tasks</h2>
+                <p className="db-card-sub">{todayCompleted} of {todayCount} completed</p>
+              </div>
+              <button type="button" className="db-add-btn" onClick={() => navigate("/tasks", { state: { openAddTaskModal: true } })}>
+                <IcoPlus /> Add Task
               </button>
             </div>
-          ) : (
-            <>
-              {/* Progress bar */}
-              <div className="db-task-progress">
-                <div className="db-task-progress-fill" style={{ width: `${completionRate}%` }} />
-              </div>
 
-              <div className="db-task-list">
-                {todayTasks.map((task) => (
-                  <div key={task.id} className={`db-task-item${task.completed ? " done" : ""}`}>
-                    <button
-                      type="button"
-                      className={`db-task-check${task.completed ? " checked" : ""}`}
-                      onClick={() => updateTask(task.id, { completed: !task.completed })}
-                      aria-label={task.completed ? "Mark incomplete" : "Mark complete"}
-                    >
-                      {task.completed && <IcoCheck />}
-                    </button>
-                    <div className="db-task-body">
-                      <span className="db-task-title">{task.title}</span>
-                      <div className="db-task-meta">
-                        {task.completed ? (
-                          <span>✅ {task.completedDate || task.dueDate}</span>
-                        ) : (
-                          task.dueTime && <span>⏰ {task.dueTime}</span>
-                        )}
-                        <span className={`badge priority-${task.priority}`}>{task.priority}</span>
-                        {task.category && <span className="badge category">{task.category}</span>}
+            {todayTasks.length === 0 ? (
+              <div className="db-empty">
+                <div className="db-empty-icon"><IcoTasks /></div>
+                <p className="db-empty-title">No tasks for today</p>
+                <p className="db-empty-sub">Add tasks in the Task panel to see them here.</p>
+                <button type="button" className="db-empty-btn" onClick={() => navigate("/tasks")}>
+                  Go to Tasks <IcoArrow />
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Progress bar */}
+                <div className="db-task-progress">
+                  <div className="db-task-progress-fill" style={{ width: `${completionRate}%` }} />
+                </div>
+
+                <div className="db-task-list">
+                  {todayTasks.map((task) => (
+                    <div key={task.id} className={`db-task-item${task.completed ? " done" : ""}`}>
+                      <button
+                        type="button"
+                        className={`db-task-check${task.completed ? " checked" : ""}`}
+                        onClick={() => updateTask(task.id, { completed: !task.completed })}
+                        aria-label={task.completed ? "Mark incomplete" : "Mark complete"}
+                      >
+                        {task.completed && <IcoCheck />}
+                      </button>
+                      <div className="db-task-body">
+                        <span className="db-task-title">{task.title}</span>
+                        <div className="db-task-meta">
+                          {task.completed ? (
+                            <span>✅ {task.completedDate || task.dueDate}</span>
+                          ) : (
+                            task.dueTime && <span>⏰ {task.dueTime}</span>
+                          )}
+                          <span className={`badge priority-${task.priority}`}>{task.priority}</span>
+                          {task.category && <span className="badge category">{task.category}</span>}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </section>
+                  ))}
+                </div>
+              </>
+            )}
+          </section>
+
+
+        </div>
 
         {/* ── Right Column ── */}
         <div className="db-right-col">
@@ -272,7 +282,7 @@ function DashboardPage() {
             {/* Timer ring */}
             <div className="db-pomo-ring-wrap">
               <svg width="150" height="150" viewBox="0 0 150 150">
-                <circle cx="75" cy="75" r="62" fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth="8"/>
+                <circle cx="75" cy="75" r="62" fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth="8" />
                 <circle
                   cx="75" cy="75" r="62" fill="none"
                   stroke={mc.color} strokeWidth="8"
@@ -332,8 +342,8 @@ function DashboardPage() {
             <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="chartGradFull" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#4f46e5" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                  <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <XAxis dataKey="day" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} dy={10} />
@@ -342,7 +352,7 @@ function DashboardPage() {
                 contentStyle={{ background: "rgba(255,255,255,0.9)", backdropFilter: "blur(8px)", border: "1px solid rgba(226,232,240,0.8)", borderRadius: "12px", fontSize: "0.85rem", boxShadow: "0 8px 24px rgba(0,0,0,0.08)" }}
                 cursor={{ stroke: "#4f46e5", strokeWidth: 1, strokeDasharray: "4 4" }}
               />
-              <Area type="monotone" dataKey="done" name="Tasks Done" stroke="#4f46e5" strokeWidth={3} fill="url(#chartGradFull)" dot={{ fill: "white", stroke: "#4f46e5", strokeWidth: 2, r: 4 }} activeDot={{ r: 6, fill: "#4f46e5", stroke: "white", strokeWidth: 2 }}/>
+              <Area type="monotone" dataKey="done" name="Tasks Done" stroke="#4f46e5" strokeWidth={3} fill="url(#chartGradFull)" dot={{ fill: "white", stroke: "#4f46e5", strokeWidth: 2, r: 4 }} activeDot={{ r: 6, fill: "#4f46e5", stroke: "white", strokeWidth: 2 }} />
             </AreaChart>
           </ResponsiveContainer>
         </div>

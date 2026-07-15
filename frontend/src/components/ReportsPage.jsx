@@ -8,7 +8,7 @@ import "../reports.css";
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#64748b"];
 
 function ReportsPage() {
-  const { tasks, history, saveWeeklyReview, geminiApiKey } = useTasks();
+  const { tasks, history, saveWeeklyReview, geminiApiKey, getDailyProgress } = useTasks();
 
   const [aiSuggestions, setAiSuggestions] = useState("Generating Weekly Productivity Insights...");
   const [isGenerating, setIsGenerating] = useState(true);
@@ -178,10 +178,58 @@ function ReportsPage() {
         <div className="report-card">
           <h2>📜 Productivity Logs History</h2>
           <div className="history-list" style={{ marginTop: "20px", maxHeight: "300px", overflowY: "auto", paddingRight: "8px" }}>
-            {history.length === 0 ? (
-              <p style={{ color: "#6b7280", fontStyle: "italic" }}>No entries in history yet. Complete night reviews to build history logs.</p>
-            ) : (
-              history.map((item) => (
+            {(() => {
+              const taskDates = new Set();
+              tasks.forEach(t => {
+                if (t.completed && t.completedDate) taskDates.add(t.completedDate);
+                else if (t.dueDate) taskDates.add(t.dueDate);
+              });
+
+              const todayDateStr = format(new Date(), "yyyy-MM-dd");
+              taskDates.add(todayDateStr);
+
+              const sortedDates = Array.from(taskDates).sort((a, b) => b.localeCompare(a));
+              let dynamicHistory = [];
+
+              sortedDates.forEach(dateStr => {
+                const completedOnDate = tasks.filter(t => t.completed && (t.completedDate || t.dueDate) === dateStr);
+                const pendingOnDate = tasks.filter(t => !t.completed && t.dueDate === dateStr);
+                const total = completedOnDate.length + pendingOnDate.length;
+
+                let comps = completedOnDate.length;
+                let rate = total > 0 ? Math.round((comps / total) * 100) : 0;
+
+                if (dateStr === todayDateStr) {
+                  const dailyStats = getDailyProgress();
+                  comps = dailyStats.todayCompleted;
+                  rate = dailyStats.completionRate;
+                } else if (total === 0) {
+                  return;
+                }
+
+                const savedLog = history.find(h => h.date === dateStr && h.type === "daily");
+                dynamicHistory.push({
+                  id: dateStr,
+                  type: "daily",
+                  date: dateStr === todayDateStr ? dateStr : dateStr,
+                  completedCount: comps,
+                  completionRate: rate,
+                  notes: savedLog ? savedLog.notes : (dateStr === todayDateStr ? "Auto-updating today's progress..." : null)
+                });
+              });
+
+              const weeklyReviews = history.filter(h => h.type === "weekly");
+              let displayHistory = [...dynamicHistory, ...weeklyReviews].sort((a, b) => {
+                const dateA = a.date.split(" ")[0];
+                const dateB = b.date.split(" ")[0];
+                return dateB.localeCompare(dateA);
+              });
+
+              if (displayHistory.length === 0) {
+                return <p style={{ color: "#6b7280", fontStyle: "italic" }}>No entries in history yet. Complete tasks to build history logs.</p>;
+              }
+
+              return displayHistory.map((item) => (
                 <div key={item.id} className="history-card">
                   <div className="history-header">
                     <strong>{item.type === "daily" ? "Daily Summary" : "Weekly Report"}</strong>
@@ -191,14 +239,14 @@ function ReportsPage() {
                     <div>Completion Rate: <strong style={{ color: "#4f46e5" }}>{item.completionRate}%</strong></div>
                     <div>Completed Tasks: <strong>{item.completedCount}</strong></div>
                   </div>
-                  {item.notes && (
+                  {/* {item.notes && (
                     <div className="history-note">
                       Note: "{item.notes}"
                     </div>
-                  )}
+                  )} */}
                 </div>
-              ))
-            )}
+              ));
+            })()}
           </div>
         </div>
       </div>

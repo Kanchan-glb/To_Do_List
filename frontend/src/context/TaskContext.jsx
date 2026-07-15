@@ -8,69 +8,68 @@ export function useTasks() {
 }
 
 export function TaskProvider({ children }) {
+  const userEmail = localStorage.getItem("smartEmail") || "guest";
+
+  const getScopedData = (key, defaultValue, isJson = false) => {
+    const userKey = `${key}_${userEmail}`;
+    const userStored = localStorage.getItem(userKey);
+    if (userStored !== null) {
+      return isJson ? JSON.parse(userStored) : userStored;
+    }
+    
+    // Migration logic for existing users
+    const globalStored = localStorage.getItem(key);
+    if (globalStored !== null) {
+      localStorage.setItem(userKey, globalStored);
+      localStorage.removeItem(key);
+      return isJson ? JSON.parse(globalStored) : globalStored;
+    }
+
+    return defaultValue;
+  };
+
   // Load initial tasks
-  const [tasks, setTasks] = useState(() => {
-    const stored = localStorage.getItem("smartTasks");
-    return stored ? JSON.parse(stored) : [];
-  });
-
-  // API Key & User preferences
-  const [geminiApiKey, setGeminiApiKey] = useState(() => {
-    return localStorage.getItem("smartGeminiKey") || "";
-  });
-
-  const [streak, setStreak] = useState(() => {
-    return parseInt(localStorage.getItem("smartStreak") || "1", 10);
-  });
-
-  const [lastActiveDate, setLastActiveDate] = useState(() => {
-    return localStorage.getItem("smartLastActiveDate") || format(new Date(), "yyyy-MM-dd");
-  });
-
-  // Morning & Night planning status
+  const [tasks, setTasks] = useState(() => getScopedData("smartTasks", [], true));
+  const [geminiApiKey, setGeminiApiKey] = useState(() => getScopedData("smartGeminiKey", ""));
+  const [streak, setStreak] = useState(() => parseInt(getScopedData("smartStreak", "1"), 10));
+  const [lastActiveDate, setLastActiveDate] = useState(() => getScopedData("smartLastActiveDate", format(new Date(), "yyyy-MM-dd")));
+  
   const [morningPlannerCompleted, setMorningPlannerCompleted] = useState(() => {
-    const completedDay = localStorage.getItem("smartMorningDay");
+    const completedDay = getScopedData("smartMorningDay", "");
     return completedDay === format(new Date(), "yyyy-MM-dd");
   });
 
   const [nightReviewCompleted, setNightReviewCompleted] = useState(() => {
-    const completedDay = localStorage.getItem("smartNightDay");
+    const completedDay = getScopedData("smartNightDay", "");
     return completedDay === format(new Date(), "yyyy-MM-dd");
   });
 
-  // Productivity history & reviews
-  const [history, setHistory] = useState(() => {
-    const stored = localStorage.getItem("smartHistory");
-    return stored ? JSON.parse(stored) : [];
-  });
+  const [history, setHistory] = useState(() => getScopedData("smartHistory", [], true));
 
   // Pomodoro Focus Timer State
   const [focusTimeLeft, setFocusTimeLeft] = useState(1500); // 25 minutes standard
   const [isFocusRunning, setIsFocusRunning] = useState(false);
   const [focusMode, setFocusMode] = useState("work"); // work, shortBreak, longBreak
-  const [focusStats, setFocusStats] = useState(() => {
-    const stored = localStorage.getItem("smartFocusStats");
-    return stored ? JSON.parse(stored) : { workMinutes: 0, completedSessions: 0 };
-  });
+  const [focusStats, setFocusStats] = useState(() => getScopedData("smartFocusStats", { workMinutes: 0, completedSessions: 0 }, true));
 
   const timerRef = useRef(null);
 
   // Persistence triggers
   useEffect(() => {
-    localStorage.setItem("smartTasks", JSON.stringify(tasks));
-  }, [tasks]);
+    localStorage.setItem(`smartTasks_${userEmail}`, JSON.stringify(tasks));
+  }, [tasks, userEmail]);
 
   useEffect(() => {
-    localStorage.setItem("smartGeminiKey", geminiApiKey);
-  }, [geminiApiKey]);
+    localStorage.setItem(`smartGeminiKey_${userEmail}`, geminiApiKey);
+  }, [geminiApiKey, userEmail]);
 
   useEffect(() => {
-    localStorage.setItem("smartHistory", JSON.stringify(history));
-  }, [history]);
+    localStorage.setItem(`smartHistory_${userEmail}`, JSON.stringify(history));
+  }, [history, userEmail]);
 
   useEffect(() => {
-    localStorage.setItem("smartFocusStats", JSON.stringify(focusStats));
-  }, [focusStats]);
+    localStorage.setItem(`smartFocusStats_${userEmail}`, JSON.stringify(focusStats));
+  }, [focusStats, userEmail]);
 
   // Request Notification Permissions
   useEffect(() => {
@@ -83,7 +82,7 @@ export function TaskProvider({ children }) {
   // Cleaned up duplicate state here.
 
 
-  // Handle Streak & Daily resets on mount
+  // Handle Streak & Daily resets
   useEffect(() => {
     const todayStr = format(new Date(), "yyyy-MM-dd");
     if (lastActiveDate !== todayStr) {
@@ -96,15 +95,39 @@ export function TaskProvider({ children }) {
         nextStreak = 1;
       }
 
+      // Automatically save history for the lastActiveDate
+      const completedOnLastActive = tasks.filter((t) => t.completed && (t.completedDate || t.dueDate) === lastActiveDate);
+      const pendingOnLastActive = tasks.filter((t) => !t.completed && t.dueDate <= lastActiveDate);
+      const totalForLastActive = completedOnLastActive.length + pendingOnLastActive.length;
+      const rateForLastActive = totalForLastActive > 0 ? Math.round((completedOnLastActive.length / totalForLastActive) * 100) : 0;
+
+      setHistory((prev) => {
+        if (prev.some((h) => h.date === lastActiveDate && h.type === "daily")) {
+          return prev;
+        }
+        return [
+          {
+            id: Date.now().toString() + "-auto",
+            type: "daily",
+            date: lastActiveDate,
+            completedCount: completedOnLastActive.length,
+            pendingCount: pendingOnLastActive.length,
+            completionRate: rateForLastActive,
+            notes: "Auto-saved daily summary"
+          },
+          ...prev
+        ];
+      });
+
       setStreak(nextStreak);
-      localStorage.setItem("smartStreak", nextStreak.toString());
+      localStorage.setItem(`smartStreak_${userEmail}`, nextStreak.toString());
       setLastActiveDate(todayStr);
-      localStorage.setItem("smartLastActiveDate", todayStr);
+      localStorage.setItem(`smartLastActiveDate_${userEmail}`, todayStr);
 
       setMorningPlannerCompleted(false);
       setNightReviewCompleted(false);
     }
-  }, [lastActiveDate, streak]);
+  }, [lastActiveDate, streak, tasks, userEmail]);
 
   // Pomodoro timer tick logic
   useEffect(() => {
@@ -273,14 +296,14 @@ export function TaskProvider({ children }) {
   const completeMorningPlanning = () => {
     const todayStr = format(new Date(), "yyyy-MM-dd");
     setMorningPlannerCompleted(true);
-    localStorage.setItem("smartMorningDay", todayStr);
+    localStorage.setItem(`smartMorningDay_${userEmail}`, todayStr);
   };
 
   // Mark Night Review Done
   const completeNightReview = (summaryData) => {
     const todayStr = format(new Date(), "yyyy-MM-dd");
     setNightReviewCompleted(true);
-    localStorage.setItem("smartNightDay", todayStr);
+    localStorage.setItem(`smartNightDay_${userEmail}`, todayStr);
 
     setHistory((prev) => [
       {

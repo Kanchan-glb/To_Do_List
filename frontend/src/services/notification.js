@@ -74,7 +74,9 @@ export function checkTaskReminders(tasks, notifiedTaskIds, onTriggerReminder) {
   
   tasks.forEach((task) => {
     if (task.completed) return;
-    if (notifiedTaskIds.includes(task.id)) return;
+    
+    const taskScheduleSignature = `${task.id}_${task.dueDate}_${task.dueTime || "12:00"}`;
+    if (notifiedTaskIds.includes(taskScheduleSignature)) return;
 
     // Parse task due datetime
     try {
@@ -87,8 +89,8 @@ export function checkTaskReminders(tasks, notifiedTaskIds, onTriggerReminder) {
 
       // Trigger reminder if task is due in less than 10 minutes and hasn't passed more than 5 minutes ago
       if (diffMins <= 10 && diffMins >= -5) {
-        // Trigger!
-        onTriggerReminder(task);
+        console.log(`[Reminder System] Triggering reminder for task: ${task.title} at ${dueStr}`);
+        onTriggerReminder(task, taskScheduleSignature);
       }
     } catch (e) {
       console.error("Error parsing task date for reminder:", e);

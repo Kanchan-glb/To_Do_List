@@ -38,22 +38,26 @@ self.addEventListener('notificationclick', (event) => {
       matchingClient.focus();
       
       // Fallback: Also send via client.postMessage directly
-      if (action) {
+      if (action || data.isMorning || data.isNight) {
         matchingClient.postMessage({
           type: 'NOTIFICATION_ACTION',
           action: action,
-          taskId: data.taskId
+          taskId: data.taskId,
+          isMorning: data.isMorning,
+          isNight: data.isNight
         });
       }
     } else {
       // Open new window
       clients.openWindow(urlToOpen).then(newClient => {
-        if (newClient && action) {
+        if (newClient && (action || data.isMorning || data.isNight)) {
           setTimeout(() => {
             newClient.postMessage({
               type: 'NOTIFICATION_ACTION',
               action: action,
-              taskId: data.taskId
+              taskId: data.taskId,
+              isMorning: data.isMorning,
+              isNight: data.isNight
             });
           }, 3000);
         }
@@ -61,12 +65,14 @@ self.addEventListener('notificationclick', (event) => {
     }
 
     // Always send action via BroadcastChannel
-    if (action) {
+    if (action || data.isMorning || data.isNight) {
       const bc = new BroadcastChannel('smart-task-channel');
       bc.postMessage({
         type: 'NOTIFICATION_ACTION',
         action: action,
-        taskId: data.taskId
+        taskId: data.taskId,
+        isMorning: data.isMorning,
+        isNight: data.isNight
       });
       // Do not close bc immediately to prevent race conditions
       setTimeout(() => bc.close(), 1000);

@@ -22,7 +22,25 @@ import { format, addDays } from "date-fns";
 function GlobalReminderEngine() {
   const { tasks, updateTask, rescheduleTask } = useTasks();
   const [activeReminder, setActiveReminder] = useState(null);
-  const [notifiedTaskIds, setNotifiedTaskIds] = useState([]);
+  const userEmail = localStorage.getItem("smartEmail") || "guest";
+  
+  const [notifiedTaskIds, setNotifiedTaskIds] = useState(() => {
+    try {
+      const userKey = `smartNotifiedTasks_${userEmail}`;
+      const userStored = localStorage.getItem(userKey);
+      if (userStored) return JSON.parse(userStored);
+      
+      const stored = localStorage.getItem("smartNotifiedTasks");
+      if (stored) {
+        localStorage.setItem(userKey, stored);
+        localStorage.removeItem("smartNotifiedTasks");
+        return JSON.parse(stored);
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  });
 
   // Custom reschedule view state
   const [showRescheduleForm, setShowRescheduleForm] = useState(false);
@@ -39,7 +57,7 @@ function GlobalReminderEngine() {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      checkTaskReminders(tasks, notifiedTaskIds, (task) => {
+      checkTaskReminders(tasks, notifiedTaskIds, (task, signature) => {
         // Trigger browser notification with actions
         sendBrowserNotification(task.title, {
           body: `Due soon at ${task.dueTime}! Did you finish it?`,
@@ -55,33 +73,74 @@ function GlobalReminderEngine() {
 
         // Trigger in-app interactive overlay banner
         setActiveReminder(task);
-        setNotifiedTaskIds((prev) => [...prev, task.id]);
+        
+        setNotifiedTaskIds(prev => {
+          if (prev.includes(signature)) return prev;
+          const next = [...prev, signature];
+          localStorage.setItem(`smartNotifiedTasks_${userEmail}`, JSON.stringify(next));
+          return next;
+        });
       });
-      // Send Morning Planner OS Notification during the 8 AM hour (if not already sent today)
+      // Smart Morning Planner OS Notification
       const now = new Date();
-      if (now.getHours() === 8) {
-        const morningKey = "morning_notified_" + format(now, "yyyy-MM-dd");
+      const currentHour = now.getHours();
+
+      if (currentHour === 8 && now.getMinutes() === 0) {
+        const todayDateStr = format(now, "yyyy-MM-dd");
+        const morningKey = `morning_notified_${todayDateStr}_${userEmail}`;
         if (!localStorage.getItem(morningKey)) {
-          const pendingCount = tasks.filter(t => !t.completed && (t.dueDate <= format(now, "yyyy-MM-dd") || t.rescheduleCount > 0)).length;
-          sendBrowserNotification("Good Morning! ☀️", {
-            body: `You have ${pendingCount} pending tasks. Click here to plan your day!`,
-            data: { isMorning: true }
+          const pendingTasks = tasks.filter(t => !t.completed && (t.dueDate <= todayDateStr || t.rescheduleCount > 0));
+          const pendingCount = pendingTasks.length;
+          
+          let overdueCount = 0;
+          let highestPriority = "None";
+          
+          if (pendingCount > 0) {
+            overdueCount = pendingTasks.filter(t => {
+              const d = new Date(t.dueDate + "T23:59");
+              return d < now && t.dueDate !== todayDateStr;
+            }).length;
+            
+            const highPrio = pendingTasks.find(t => t.priority === "High");
+            const medPrio = pendingTasks.find(t => t.priority === "Medium");
+            if (highPrio) highestPriority = highPrio.title;
+            else if (medPrio) highestPriority = medPrio.title;
+            else highestPriority = pendingTasks[0].title;
+          }
+
+          sendBrowserNotification("🌅 Good Morning!", {
+            body: `You have:\n• ${pendingCount} Pending Tasks\n• ${overdueCount} Overdue Tasks\n• Highest Priority: ${highestPriority}\n\nLet's make today productive!`,
+            data: { isMorning: true },
+            actions: [
+              { action: 'plan', title: '📋 Plan My Day' }
+            ]
           });
+          
           localStorage.setItem(morningKey, "true");
         }
       }
 
-      // Send Night Review OS Notification during the 22:00 (10 PM) hour (if not already sent today)
-      if (now.getHours() === 22) {
-        const nightKey = "night_notified_" + format(now, "yyyy-MM-dd");
+      // Smart Night Review OS Notification
+      if (currentHour === 22 && now.getMinutes() === 0) {
+        const todayDateStr = format(now, "yyyy-MM-dd");
+        const nightKey = `night_notified_${todayDateStr}_${userEmail}`;
         if (!localStorage.getItem(nightKey)) {
-          const pendingCount = tasks.filter(t => !t.completed && t.dueDate <= format(now, "yyyy-MM-dd")).length;
-          if (pendingCount > 0) {
-            sendBrowserNotification("Night Review 🌙", {
-              body: `You still have ${pendingCount} tasks left. Let's finish them or push them to tomorrow!`,
-              data: { isNight: true }
-            });
-          }
+          const pendingCount = tasks.filter(t => !t.completed && t.dueDate === todayDateStr).length;
+          
+          let overdueCount = tasks.filter(t => {
+            if (t.completed) return false;
+            const d = new Date(t.dueDate + "T23:59");
+            return d < now && t.dueDate !== todayDateStr;
+          }).length;
+          
+          sendBrowserNotification("🌙 Night Review", {
+            body: `You have:\n• ${pendingCount} Pending Tasks\n• ${overdueCount} Overdue Tasks\n\nReview your remaining tasks before ending the day.`,
+            data: { isNight: true },
+            actions: [
+              { action: 'review', title: '🌙 Review Tasks' }
+            ]
+          });
+          
           localStorage.setItem(nightKey, "true");
         }
       }
@@ -91,7 +150,18 @@ function GlobalReminderEngine() {
     // Listen for messages from the service worker (OS Notification Clicks)
     const handleAction = (event) => {
       if (event.data && event.data.type === 'NOTIFICATION_ACTION') {
-        const { action, taskId } = event.data;
+        const { action, taskId, isMorning, isNight } = event.data;
+        
+        if (action === 'plan' || isMorning) {
+          window.dispatchEvent(new Event('openMorningPlanner'));
+          return;
+        }
+
+        if (action === 'review' || isNight) {
+          window.dispatchEvent(new Event('openNightReview'));
+          return;
+        }
+
         const matchingTask = tasks.find(t => t.id === taskId);
 
         if (matchingTask) {

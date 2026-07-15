@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { useTasks } from "../context/TaskContext";
 import { format, isAfter, parseISO } from "date-fns";
 import { generateSubtasks } from "../services/gemini";
@@ -15,8 +16,17 @@ function TaskPage() {
   const [filterStatus, setFilterStatus] = useState("All"); // All, Pending, Completed, Overdue
 
   // Modal / Add Form State
-  const [showAddModal, setShowAddModal] = useState(false);
+  const location = useLocation();
+  const [showAddModal, setShowAddModal] = useState(location.state?.openAddTaskModal || false);
   const [editTaskId, setEditTaskId] = useState(null);
+
+  useEffect(() => {
+    if (location.state?.openAddTaskModal) {
+      setShowAddModal(true);
+      // Clear state to prevent reopening on reload
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
   
   // Task form inputs
   const [title, setTitle] = useState("");

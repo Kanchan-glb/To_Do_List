@@ -263,7 +263,29 @@
   background: linear-gradient(90deg, #6366f1, #10b981);
   transition: width 0.6s cubic-bezier(0.16,1,0.3,1);
 }
-.db-task-list { display: flex; flex-direction: column; gap: 10px; }
+.db-task-list { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 10px; 
+  max-height: 350px; 
+  overflow-y: auto; 
+  padding-right: 8px; /* space for scrollbar */
+}
+
+/* Custom Scrollbar for db-task-list */
+.db-task-list::-webkit-scrollbar {
+  width: 6px;
+}
+.db-task-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.db-task-list::-webkit-scrollbar-thumb {
+  background: rgba(203, 213, 225, 0.8);
+  border-radius: 10px;
+}
+.db-task-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.8);
+}
 .db-task-item {
   display: flex; align-items: center; gap: 14px;
   padding: 16px 18px; border-radius: 16px;
