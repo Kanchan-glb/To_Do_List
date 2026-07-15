@@ -17,14 +17,17 @@ export function requestNotificationPermission() {
 
 export function sendBrowserNotification(title, options = {}) {
   if (!("Notification" in window)) {
+    console.warn("[Reminder System] Browser does not support native notifications.");
     return;
   }
 
-  if (Notification.permission === "granted") {
+  const send = () => {
+    console.log(`[Reminder System] Attempting to display browser notification: "${title}"`);
     try {
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistration().then(registration => {
           if (registration) {
+            console.log("[Reminder System] SW registration found, calling showNotification...");
             registration.showNotification(title, {
               body: options.body || "Task Reminder",
               icon: "/icon-192.png",
@@ -35,30 +38,68 @@ export function sendBrowserNotification(title, options = {}) {
               data: options.data || {},
               requireInteraction: true,
               ...options
+            }).then(() => {
+              console.log("[Reminder System] showNotification succeeded.");
+            }).catch(e => {
+              console.error("[Reminder System] showNotification failed:", e);
+              fallbackNotification();
             });
           } else {
-            new Notification(title, {
-              body: options.body || "Task Reminder",
-              icon: "/icon-192.png",
-              requireInteraction: true,
-              ...options
-            });
+            console.log("[Reminder System] No SW registration found, falling back to standard Notification.");
+            fallbackNotification();
           }
         }).catch(err => {
-          console.warn("SW getRegistration failed:", err);
-          new Notification(title, { body: options.body || "Task Reminder", requireInteraction: true, ...options });
+          console.warn("[Reminder System] SW getRegistration failed:", err);
+          fallbackNotification();
         });
       } else {
-        new Notification(title, {
-          body: options.body || "Task Reminder",
-          icon: "/icon-192.png",
-          requireInteraction: true,
-          ...options
-        });
+        console.log("[Reminder System] Service Worker not supported, using standard Notification.");
+        fallbackNotification();
       }
     } catch (e) {
-      console.warn("Failed to trigger native Notification:", e);
+      console.error("[Reminder System] Failed to trigger native Notification:", e);
     }
+  };
+
+  const fallbackNotification = () => {
+    try {
+      // Filter out actions from options to prevent TypeError in standard Notification
+      const safeOptions = { ...options };
+      delete safeOptions.actions;
+      delete safeOptions.requireInteraction; // Sometimes causes issues on non-SW notifications
+
+      const n = new Notification(title, {
+        body: safeOptions.body || "Task Reminder",
+        icon: "/icon-192.png",
+        ...safeOptions
+      });
+      n.onclick = (event) => {
+        console.log("[Reminder System] Native Notification clicked (Fallback).");
+        event.preventDefault();
+        window.focus();
+        n.close();
+      };
+      n.onshow = () => console.log("[Reminder System] Fallback Notification displayed.");
+      n.onerror = (e) => console.error("[Reminder System] Fallback Notification error:", e);
+      n.onclose = () => console.log("[Reminder System] Fallback Notification closed.");
+    } catch (err) {
+      console.error("[Reminder System] Fallback Notification creation failed:", err);
+    }
+  };
+
+  if (Notification.permission === "granted") {
+    send();
+  } else if (Notification.permission === "default") {
+    console.warn("[Reminder System] Notification permission is default. Requesting permission...");
+    Notification.requestPermission().then((permission) => {
+      if (permission === "granted") {
+        send();
+      } else {
+        console.warn("[Reminder System] Notification permission denied by user.");
+      }
+    });
+  } else {
+    console.warn("[Reminder System] Notification permission is denied. Native notification suppressed.");
   }
 }
 

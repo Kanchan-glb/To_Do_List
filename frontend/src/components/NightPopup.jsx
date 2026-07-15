@@ -8,9 +8,9 @@ export default function NightPopup() {
   const { tasks, updateTask, deleteTask, completeNightReview, nightReviewCompleted, geminiApiKey } = useTasks();
   const [show, setShow] = useState(false);
   const navigate = useNavigate();
-  
+
   const [editingTaskId, setEditingTaskId] = useState(null);
-  
+
   // Edit states
   const [editTitle, setEditTitle] = useState("");
   const [editDate, setEditDate] = useState("");
@@ -30,7 +30,7 @@ export default function NightPopup() {
   const pendingTasks = tasks.filter(t => !t.completed && t.dueDate === todayStr);
   const overdueTasks = tasks.filter(t => !t.completed && t.dueDate < todayStr);
   const completedTasks = tasks.filter(t => t.completed && (t.completedDate === todayStr || t.dueDate === todayStr));
-  
+
   const totalTasks = completedTasks.length + pendingTasks.length + overdueTasks.length;
   const completionRate = totalTasks > 0 ? Math.round((completedTasks.length / totalTasks) * 100) : 0;
 
@@ -83,7 +83,7 @@ export default function NightPopup() {
     });
     setEditingTaskId(null);
   };
-  
+
   const handleDelete = (id) => {
     if (confirm("Are you sure you want to delete this task?")) {
       deleteTask(id);
@@ -125,14 +125,14 @@ export default function NightPopup() {
       ) : (
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
           <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", flex: 1 }}>
-            <button 
-              onClick={() => updateTask(task.id, { completed: true })} 
+            <button
+              onClick={() => updateTask(task.id, { completed: true })}
               title="Mark Task Complete ✅"
-              style={{ 
-                width: "22px", height: "22px", borderRadius: "5px", border: "2px solid #cbd5e1", 
+              style={{
+                width: "22px", height: "22px", borderRadius: "5px", border: "2px solid #cbd5e1",
                 background: "white", cursor: "pointer", flexShrink: 0, marginTop: "2px",
                 transition: "all 0.2s"
-              }} 
+              }}
               onMouseOver={(e) => { e.currentTarget.style.borderColor = "#10b981"; e.currentTarget.style.background = "#d1fae5"; }}
               onMouseOut={(e) => { e.currentTarget.style.borderColor = "#cbd5e1"; e.currentTarget.style.background = "white"; }}
             />
@@ -162,7 +162,7 @@ export default function NightPopup() {
   return (
     <div className="reminder-modal-overlay" style={{ zIndex: 9999 }}>
       <div className="reminder-modal-card scale-in" style={{ width: "95%", maxWidth: "600px", padding: "28px", maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
-        
+
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
           <div>
@@ -233,7 +233,7 @@ export default function NightPopup() {
           )}
         </div>
 
-        <button onClick={handleFinish} style={{ width: "100%", padding: "16px", background: "#7c3aed", color: "white", border: "none", borderRadius: "12px", fontSize: "1.05rem", fontWeight: "700", cursor: "pointer", boxShadow: "0 8px 20px rgba(124,58,237,0.3)", transition: "transform 0.2s" }} onMouseOver={e => e.currentTarget.style.transform="translateY(-2px)"} onMouseOut={e => e.currentTarget.style.transform="none"}>
+        <button onClick={handleFinish} style={{ width: "100%", padding: "16px", background: "#7c3aed", color: "white", border: "none", borderRadius: "12px", fontSize: "1.05rem", fontWeight: "700", cursor: "pointer", boxShadow: "0 8px 20px rgba(124,58,237,0.3)", transition: "transform 0.2s" }} onMouseOver={e => e.currentTarget.style.transform = "translateY(-2px)"} onMouseOut={e => e.currentTarget.style.transform = "none"}>
           Close & Good Night 🌙
         </button>
       </div>

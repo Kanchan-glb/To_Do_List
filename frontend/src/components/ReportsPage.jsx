@@ -175,80 +175,76 @@ function ReportsPage() {
           </div>
         </div>
 
-        <div className="report-card">
+        {/* <div className="report-card">
           <h2>📜 Productivity Logs History</h2>
           <div className="history-list" style={{ marginTop: "20px", maxHeight: "300px", overflowY: "auto", paddingRight: "8px" }}>
             {(() => {
-              const taskDates = new Set();
-              tasks.forEach(t => {
-                if (t.completed && t.completedDate) taskDates.add(t.completedDate);
-                else if (t.dueDate) taskDates.add(t.dueDate);
-              });
-
               const todayDateStr = format(new Date(), "yyyy-MM-dd");
-              taskDates.add(todayDateStr);
 
-              const sortedDates = Array.from(taskDates).sort((a, b) => b.localeCompare(a));
-              let dynamicHistory = [];
+              const pastHistory = history.filter(h => !(h.type === "daily" && h.date === todayDateStr));
 
-              sortedDates.forEach(dateStr => {
-                const completedOnDate = tasks.filter(t => t.completed && (t.completedDate || t.dueDate) === dateStr);
-                const pendingOnDate = tasks.filter(t => !t.completed && t.dueDate === dateStr);
-                const total = completedOnDate.length + pendingOnDate.length;
+              const dailyStats = getDailyProgress();
 
-                let comps = completedOnDate.length;
-                let rate = total > 0 ? Math.round((comps / total) * 100) : 0;
+              const todaySummary = {
+                id: "today-live",
+                type: "daily",
+                date: todayDateStr,
+                totalTasks: dailyStats.todayCount + dailyStats.pendingCount, // approximation of all things active today
+                completedCount: dailyStats.todayCompleted,
+                pendingCount: dailyStats.pendingCount,
+                overdueCount: dailyStats.overdueCount,
+                completionRate: dailyStats.completionRate,
+                productivityScore: Math.min(100, dailyStats.completionRate + (dailyStats.streak > 3 ? 5 : 0) + (dailyStats.todayCompleted > 5 ? 10 : 0))
+              };
 
-                if (dateStr === todayDateStr) {
-                  const dailyStats = getDailyProgress();
-                  comps = dailyStats.todayCompleted;
-                  rate = dailyStats.completionRate;
-                } else if (total === 0) {
-                  return;
-                }
-
-                const savedLog = history.find(h => h.date === dateStr && h.type === "daily");
-                dynamicHistory.push({
-                  id: dateStr,
-                  type: "daily",
-                  date: dateStr === todayDateStr ? dateStr : dateStr,
-                  completedCount: comps,
-                  completionRate: rate,
-                  notes: savedLog ? savedLog.notes : (dateStr === todayDateStr ? "Auto-updating today's progress..." : null)
-                });
-              });
-
-              const weeklyReviews = history.filter(h => h.type === "weekly");
-              let displayHistory = [...dynamicHistory, ...weeklyReviews].sort((a, b) => {
+              let displayHistory = [todaySummary, ...pastHistory].sort((a, b) => {
                 const dateA = a.date.split(" ")[0];
                 const dateB = b.date.split(" ")[0];
                 return dateB.localeCompare(dateA);
               });
 
               if (displayHistory.length === 0) {
-                return <p style={{ color: "#6b7280", fontStyle: "italic" }}>No entries in history yet. Complete tasks to build history logs.</p>;
+                return <p style={{ color: "#6b7280", fontStyle: "italic" }}>No entries in history yet.</p>;
               }
 
-              return displayHistory.map((item) => (
-                <div key={item.id} className="history-card">
-                  <div className="history-header">
-                    <strong>{item.type === "daily" ? "Daily Summary" : "Weekly Report"}</strong>
-                    <span>{item.date}</span>
-                  </div>
-                  <div className="history-card-grid">
-                    <div>Completion Rate: <strong style={{ color: "#4f46e5" }}>{item.completionRate}%</strong></div>
-                    <div>Completed Tasks: <strong>{item.completedCount}</strong></div>
-                  </div>
-                  {/* {item.notes && (
-                    <div className="history-note">
-                      Note: "{item.notes}"
+              return displayHistory.map((item) => {
+                if (item.type === "weekly") {
+                  return (
+                    <div key={item.id} className="history-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-light)', paddingBottom: '8px', marginBottom: '4px' }}>
+                        Weekly Report - {item.date}
+                      </div>
+                      <div style={{ fontSize: '0.9rem' }}>
+                        <div>Completed Tasks: <strong>{item.completedCount}</strong></div>
+                      </div>
                     </div>
-                  )} */}
-                </div>
-              ));
+                  );
+                }
+
+                // return (
+                //   <div key={item.id} className="history-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', background: 'var(--surface-bg)', borderRadius: '12px', border: '1px solid var(--border-light)', marginBottom: '12px' }}>
+                //     <div style={{ fontWeight: '600', fontSize: '1.05rem', color: 'var(--text-primary)', borderBottom: '1px dashed var(--border-light)', paddingBottom: '8px', marginBottom: '4px' }}>
+                //       {format(new Date(item.date), "dd MMM yyyy")}
+                //       {item.id === "today-live" && <span style={{ fontSize: '0.75rem', color: '#10b981', marginLeft: '8px', padding: '2px 6px', background: 'rgba(16,185,129,0.1)', borderRadius: '12px' }}>Live</span>}
+                //     </div>
+
+                //     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '0.9rem' }}>
+                //       <div style={{ color: 'var(--text-secondary)' }}>Total Tasks: <strong style={{ color: 'var(--text-primary)' }}>{item.totalTasks || 0}</strong></div>
+                //       <div style={{ color: 'var(--text-secondary)' }}>Completed: <strong style={{ color: '#10b981' }}>{item.completedCount || 0}</strong></div>
+                //       <div style={{ color: 'var(--text-secondary)' }}>Pending: <strong style={{ color: '#f59e0b' }}>{item.pendingCount || 0}</strong></div>
+                //       <div style={{ color: 'var(--text-secondary)' }}>Overdue: <strong style={{ color: '#ef4444' }}>{item.overdueCount || 0}</strong></div>
+                //     </div>
+
+                //     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '0.9rem', marginTop: '4px', paddingTop: '10px', borderTop: '1px dashed var(--border-light)' }}>
+                //       <div style={{ color: 'var(--text-secondary)' }}>Completion: <strong style={{ color: '#3b82f6' }}>{item.completionRate || 0}%</strong></div>
+                //       <div style={{ color: 'var(--text-secondary)' }}>Productivity Score: <strong style={{ color: '#8b5cf6' }}>{item.productivityScore || 0}</strong></div>
+                //     </div>
+                //   </div>
+                // );
+              });
             })()}
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );

@@ -16,7 +16,7 @@ export function TaskProvider({ children }) {
     if (userStored !== null) {
       return isJson ? JSON.parse(userStored) : userStored;
     }
-    
+
     // Migration logic for existing users
     const globalStored = localStorage.getItem(key);
     if (globalStored !== null) {
@@ -33,7 +33,7 @@ export function TaskProvider({ children }) {
   const [geminiApiKey, setGeminiApiKey] = useState(() => getScopedData("smartGeminiKey", ""));
   const [streak, setStreak] = useState(() => parseInt(getScopedData("smartStreak", "1"), 10));
   const [lastActiveDate, setLastActiveDate] = useState(() => getScopedData("smartLastActiveDate", format(new Date(), "yyyy-MM-dd")));
-  
+
   const [morningPlannerCompleted, setMorningPlannerCompleted] = useState(() => {
     const completedDay = getScopedData("smartMorningDay", "");
     return completedDay === format(new Date(), "yyyy-MM-dd");
@@ -96,10 +96,13 @@ export function TaskProvider({ children }) {
       }
 
       // Automatically save history for the lastActiveDate
-      const completedOnLastActive = tasks.filter((t) => t.completed && (t.completedDate || t.dueDate) === lastActiveDate);
-      const pendingOnLastActive = tasks.filter((t) => !t.completed && t.dueDate <= lastActiveDate);
-      const totalForLastActive = completedOnLastActive.length + pendingOnLastActive.length;
+      const completedOnLastActive = tasks.filter((t) => t.completed && (t.completedDate === lastActiveDate || (t.dueDate === lastActiveDate && !t.completedDate)));
+      const pendingOnLastActive = tasks.filter((t) => !t.completed && t.dueDate === lastActiveDate);
+      const overdueOnLastActive = tasks.filter((t) => !t.completed && t.dueDate < lastActiveDate);
+
+      const totalForLastActive = completedOnLastActive.length + pendingOnLastActive.length + overdueOnLastActive.length;
       const rateForLastActive = totalForLastActive > 0 ? Math.round((completedOnLastActive.length / totalForLastActive) * 100) : 0;
+      const prodScore = Math.min(100, rateForLastActive + (nextStreak > 3 ? 5 : 0) + (completedOnLastActive.length > 5 ? 10 : 0));
 
       setHistory((prev) => {
         if (prev.some((h) => h.date === lastActiveDate && h.type === "daily")) {
@@ -110,10 +113,12 @@ export function TaskProvider({ children }) {
             id: Date.now().toString() + "-auto",
             type: "daily",
             date: lastActiveDate,
+            totalTasks: totalForLastActive,
             completedCount: completedOnLastActive.length,
             pendingCount: pendingOnLastActive.length,
+            overdueCount: overdueOnLastActive.length,
             completionRate: rateForLastActive,
-            notes: "Auto-saved daily summary"
+            productivityScore: prodScore
           },
           ...prev
         ];
@@ -217,6 +222,8 @@ export function TaskProvider({ children }) {
       rescheduleCount: 0,
       createdDate: format(new Date(), "yyyy-MM-dd")
     };
+
+    console.log(`[Reminder System] Reminder scheduled for task: "${newTask.title}" at ${newTask.dueDate} ${newTask.dueTime}`);
     setTasks((prev) => [newTask, ...prev]);
     return newTask;
   };
@@ -231,6 +238,12 @@ export function TaskProvider({ children }) {
           const newTask = { ...t, ...updatedData };
           if (updatedData.completed !== undefined && updatedData.completed !== t.completed) {
             newTask.completedDate = updatedData.completed ? format(new Date(), "yyyy-MM-dd") : null;
+            if (updatedData.completed) {
+              console.log(`[Reminder System] Reminder cancelled for completed task: "${t.title}"`);
+            }
+          }
+          if (updatedData.dueDate || updatedData.dueTime) {
+            console.log(`[Reminder System] Reminder rescheduled for task: "${t.title}" to ${newTask.dueDate} ${newTask.dueTime}`);
           }
           return newTask;
         }
@@ -241,7 +254,13 @@ export function TaskProvider({ children }) {
 
 
   const deleteTask = (taskId) => {
-    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    setTasks((prev) => {
+      const taskToDelete = prev.find(t => t.id === taskId);
+      if (taskToDelete && !taskToDelete.completed) {
+        console.log(`[Reminder System] Reminder cancelled for deleted task: "${taskToDelete.title}"`);
+      }
+      return prev.filter((t) => t.id !== taskId);
+    });
   };
 
   const toggleSubtask = (taskId, subtaskId) => {
@@ -251,7 +270,7 @@ export function TaskProvider({ children }) {
           const updatedSubtasks = t.subtasks.map((st) =>
             st.id === subtaskId ? { ...st, completed: !st.completed } : st
           );
-          
+
           const hasSubtasks = updatedSubtasks.length > 0;
           const allCompleted = hasSubtasks && updatedSubtasks.every(st => st.completed);
 
@@ -259,12 +278,13 @@ export function TaskProvider({ children }) {
           let newCompletedDate = t.completedDate;
           if (isNowCompleted && !t.completed) {
             newCompletedDate = format(new Date(), "yyyy-MM-dd");
+            console.log(`[Reminder System] Reminder cancelled for completed task: "${t.title}"`);
           } else if (!isNowCompleted && t.completed) {
             newCompletedDate = null;
           }
 
-          return { 
-            ...t, 
+          return {
+            ...t,
             subtasks: updatedSubtasks,
             completed: isNowCompleted,
             completedDate: newCompletedDate
@@ -280,6 +300,7 @@ export function TaskProvider({ children }) {
     setTasks((prev) =>
       prev.map((t) => {
         if (t.id === taskId) {
+          console.log(`[Reminder System] Reminder rescheduled for task: "${t.title}" to ${newDate} ${newTime || t.dueTime}`);
           return {
             ...t,
             dueDate: newDate,

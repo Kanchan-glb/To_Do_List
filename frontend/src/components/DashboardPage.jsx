@@ -65,7 +65,8 @@ function DashboardPage() {
   const todayStr = format(currentTime, "yyyy-MM-dd");
   const todayLabel = format(currentTime, "EEEE, MMMM d");
   const timeLabel = format(currentTime, "h:mm a");
-  const todayTasks = tasks.filter((t) => t.dueDate === todayStr);
+  
+  const pendingTodayTasks = tasks.filter((t) => !t.completed && t.dueDate === todayStr);
 
   const overdueTasks = tasks.filter(t => {
     if (t.completed) return false;
@@ -105,8 +106,48 @@ function DashboardPage() {
   const elapsed = totalSecs - focusTimeLeft;
   const ringPct = Math.round((elapsed / totalSecs) * 100);
 
+  const [notificationStatus, setNotificationStatus] = useState(
+    "Notification" in window ? Notification.permission : "unsupported"
+  );
+
+  const handleRequestPermission = () => {
+    if ("Notification" in window) {
+      Notification.requestPermission().then((perm) => {
+        setNotificationStatus(perm);
+      });
+    }
+  };
+
   return (
-    <div className="db-page">
+    <div className="page-fade-in dashboard-page">
+      <header className="db-header">
+        <div>
+          <h1 className="db-greeting">
+            Welcome back, {userName}! <span className="wave-emoji">👋</span>
+          </h1>
+          <p className="db-date">{todayLabel}</p>
+        </div>
+      </header>
+
+      {notificationStatus === "default" && (
+        <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", padding: "12px 16px", borderRadius: "12px", marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <strong style={{ color: "#1e40af", display: "block", marginBottom: "4px" }}>Enable Native Notifications</strong>
+            <span style={{ color: "#3b82f6", fontSize: "0.9rem" }}>Never miss a task reminder! Allow browser notifications to see alerts even when the app is minimized.</span>
+          </div>
+          <button onClick={handleRequestPermission} style={{ background: "#2563eb", color: "white", border: "none", padding: "8px 16px", borderRadius: "8px", fontWeight: "600", cursor: "pointer", flexShrink: 0, marginLeft: "16px" }}>
+            Enable
+          </button>
+        </div>
+      )}
+      {notificationStatus === "denied" && (
+        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", padding: "12px 16px", borderRadius: "12px", marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <strong style={{ color: "#991b1b", display: "block", marginBottom: "4px" }}>Notifications Blocked</strong>
+            <span style={{ color: "#ef4444", fontSize: "0.9rem" }}>You have blocked notifications. Please allow them in your browser settings to receive native task reminders.</span>
+          </div>
+        </div>
+      )}
 
       {/* ══════════ HERO BANNER ══════════ */}
       <section className="db-hero">
@@ -200,11 +241,11 @@ function DashboardPage() {
               </button>
             </div>
 
-            {todayTasks.length === 0 ? (
+            {(pendingTodayTasks.length === 0 && overdueTasks.length === 0) ? (
               <div className="db-empty">
                 <div className="db-empty-icon"><IcoTasks /></div>
-                <p className="db-empty-title">No tasks for today</p>
-                <p className="db-empty-sub">Add tasks in the Task panel to see them here.</p>
+                <p className="db-empty-title">All caught up!</p>
+                <p className="db-empty-sub">You have no pending or overdue tasks.</p>
                 <button type="button" className="db-empty-btn" onClick={() => navigate("/tasks")}>
                   Go to Tasks <IcoArrow />
                 </button>
@@ -217,30 +258,59 @@ function DashboardPage() {
                 </div>
 
                 <div className="db-task-list">
-                  {todayTasks.map((task) => (
-                    <div key={task.id} className={`db-task-item${task.completed ? " done" : ""}`}>
-                      <button
-                        type="button"
-                        className={`db-task-check${task.completed ? " checked" : ""}`}
-                        onClick={() => updateTask(task.id, { completed: !task.completed })}
-                        aria-label={task.completed ? "Mark incomplete" : "Mark complete"}
-                      >
-                        {task.completed && <IcoCheck />}
-                      </button>
-                      <div className="db-task-body">
-                        <span className="db-task-title">{task.title}</span>
-                        <div className="db-task-meta">
-                          {task.completed ? (
-                            <span>✅ {task.completedDate || task.dueDate}</span>
-                          ) : (
-                            task.dueTime && <span>⏰ {task.dueTime}</span>
-                          )}
-                          <span className={`badge priority-${task.priority}`}>{task.priority}</span>
-                          {task.category && <span className="badge category">{task.category}</span>}
+                  {/* Overdue Section */}
+                  {overdueTasks.length > 0 && (
+                    <div style={{ marginBottom: "16px" }}>
+                      <h3 style={{ fontSize: "0.9rem", color: "#ef4444", marginBottom: "8px", borderBottom: "1px solid #fee2e2", paddingBottom: "4px" }}>
+                        ⚠️ Overdue Tasks
+                      </h3>
+                      {overdueTasks.map((task) => (
+                        <div key={task.id} className="db-task-item" style={{ borderLeft: "3px solid #ef4444" }}>
+                          <button
+                            type="button"
+                            className="db-task-check"
+                            onClick={() => updateTask(task.id, { completed: true })}
+                            aria-label="Mark complete"
+                          />
+                          <div className="db-task-body">
+                            <span className="db-task-title">{task.title}</span>
+                            <div className="db-task-meta">
+                              <span style={{ color: "#ef4444", background: "#fee2e2", padding: "2px 6px", borderRadius: "8px", fontWeight: "600" }}>{task.dueDate}</span>
+                              {task.dueTime && <span>⏰ {task.dueTime}</span>}
+                              <span className={`badge priority-${task.priority}`}>{task.priority}</span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
+
+                  {/* Today's Section */}
+                  {pendingTodayTasks.length > 0 && (
+                    <div>
+                      <h3 style={{ fontSize: "0.9rem", color: "var(--text-secondary)", marginBottom: "8px", borderBottom: "1px solid var(--border-light)", paddingBottom: "4px" }}>
+                        📅 Today's Tasks
+                      </h3>
+                      {pendingTodayTasks.map((task) => (
+                        <div key={task.id} className="db-task-item">
+                          <button
+                            type="button"
+                            className="db-task-check"
+                            onClick={() => updateTask(task.id, { completed: true })}
+                            aria-label="Mark complete"
+                          />
+                          <div className="db-task-body">
+                            <span className="db-task-title">{task.title}</span>
+                            <div className="db-task-meta">
+                              {task.dueTime && <span>⏰ {task.dueTime}</span>}
+                              <span className={`badge priority-${task.priority}`}>{task.priority}</span>
+                              {task.category && <span className="badge category">{task.category}</span>}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </>
             )}

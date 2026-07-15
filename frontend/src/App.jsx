@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import LoginPage from "./components/LoginPage";
 import DashboardPage from "./components/DashboardPage";
@@ -42,6 +42,16 @@ function GlobalReminderEngine() {
     }
   });
 
+  const tasksRef = useRef(tasks);
+  const notifiedTaskIdsRef = useRef(notifiedTaskIds);
+  const updateTaskRef = useRef(updateTask);
+
+  useEffect(() => {
+    tasksRef.current = tasks;
+    notifiedTaskIdsRef.current = notifiedTaskIds;
+    updateTaskRef.current = updateTask;
+  }, [tasks, notifiedTaskIds, updateTask]);
+
   // Custom reschedule view state
   const [showRescheduleForm, setShowRescheduleForm] = useState(false);
   const [customDate, setCustomDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -57,7 +67,7 @@ function GlobalReminderEngine() {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      checkTaskReminders(tasks, notifiedTaskIds, (task, signature) => {
+      checkTaskReminders(tasksRef.current, notifiedTaskIdsRef.current, (task, signature) => {
         // Trigger browser notification with actions
         sendBrowserNotification(task.title, {
           body: `Due soon at ${task.dueTime}! Did you finish it?`,
@@ -151,6 +161,7 @@ function GlobalReminderEngine() {
     const handleAction = (event) => {
       if (event.data && event.data.type === 'NOTIFICATION_ACTION') {
         const { action, taskId, isMorning, isNight } = event.data;
+        console.log(`[Reminder System] Native Notification clicked. Action: "${action || 'body'}", Task ID: ${taskId}`);
         
         if (action === 'plan' || isMorning) {
           window.dispatchEvent(new Event('openMorningPlanner'));
@@ -162,12 +173,12 @@ function GlobalReminderEngine() {
           return;
         }
 
-        const matchingTask = tasks.find(t => t.id === taskId);
+        const matchingTask = tasksRef.current.find(t => t.id === taskId);
 
         if (matchingTask) {
           // If the action is from OS, and the big modal is open, we can close it
           if (action === 'complete') {
-            updateTask(taskId, { completed: true });
+            updateTaskRef.current(taskId, { completed: true });
             setActiveReminder(null);
             setShowRescheduleForm(false);
           } else if (action === 'reschedule') {
@@ -192,18 +203,21 @@ function GlobalReminderEngine() {
         navigator.serviceWorker.removeEventListener('message', handleAction);
       }
     };
-  }, [tasks, notifiedTaskIds, updateTask]);
+  }, []); // Run only once to start the background engine
 
   if (!activeReminder) return null;
 
-  const handleMarkComplete = () => {
+  const handleMarkComplete = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     updateTask(activeReminder.id, { completed: true });
     setActiveReminder(null);
     setShowRescheduleForm(false);
-    alert(`Success: "${activeReminder.title}" completed!`);
   };
 
-  const handleQuickReschedule = (type) => {
+  const handleQuickReschedule = (e, type) => {
+    e.preventDefault();
+    e.stopPropagation();
     let nextDate = format(new Date(), "yyyy-MM-dd");
     let nextTime = "19:00";
 
@@ -217,15 +231,14 @@ function GlobalReminderEngine() {
     rescheduleTask(activeReminder.id, nextDate, nextTime);
     setActiveReminder(null);
     setShowRescheduleForm(false);
-    alert(`Task rescheduled to ${type === "evening" ? "this evening" : "tomorrow morning"}!`);
   };
 
   const handleCustomRescheduleSubmit = (e) => {
     e.preventDefault();
+    e.stopPropagation();
     rescheduleTask(activeReminder.id, customDate, customTime);
     setActiveReminder(null);
     setShowRescheduleForm(false);
-    alert("Task rescheduled to your custom time!");
   };
 
   return (
@@ -249,7 +262,11 @@ function GlobalReminderEngine() {
               <button className="reminder-btn success" onClick={handleMarkComplete}>
                 ✔ Yes, Completed
               </button>
-              <button className="reminder-btn danger" onClick={() => setShowRescheduleForm(true)}>
+              <button className="reminder-btn danger" onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowRescheduleForm(true);
+              }}>
                 ❌ No, Reschedule
               </button>
             </div>
@@ -260,10 +277,10 @@ function GlobalReminderEngine() {
               </p>
 
               <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
-                <button type="button" className="reminder-btn secondary" onClick={() => handleQuickReschedule("evening")} style={{ padding: "8px" }}>
+                <button type="button" className="reminder-btn secondary" onClick={(e) => handleQuickReschedule(e, "evening")} style={{ padding: "8px" }}>
                   🌆 Evening
                 </button>
-                <button type="button" className="reminder-btn secondary" onClick={() => handleQuickReschedule("tomorrow")} style={{ padding: "8px" }}>
+                <button type="button" className="reminder-btn secondary" onClick={(e) => handleQuickReschedule(e, "tomorrow")} style={{ padding: "8px" }}>
                   🌅 Tomorrow
                 </button>
               </div>
