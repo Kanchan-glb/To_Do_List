@@ -120,14 +120,14 @@ function DashboardPage() {
 
   return (
     <div className="page-fade-in dashboard-page">
-      <header className="db-header">
+      {/* <header className="db-header">
         <div>
           <h1 className="db-greeting">
             Welcome back, {userName}! <span className="wave-emoji">👋</span>
           </h1>
           <p className="db-date">{todayLabel}</p>
         </div>
-      </header>
+      </header> */}
 
       {notificationStatus === "default" && (
         <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", padding: "12px 16px", borderRadius: "12px", marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
