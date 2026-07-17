@@ -243,31 +243,8 @@ function DashboardPage() {
               </svg>
             </div>
           </div>
-<<<<<<< HEAD
         </section>
       </div>
-=======
-        </div>
-      </section>
-
-      {/* ══════════ QUICK ACTIONS ══════════ */}
-      <section className="db-quick-actions">
-        <div className="db-quick-btns">
-          {/* <button type="button" className="db-quick-btn" onClick={() => setActiveReviewState("morning")}>
-            <IcoSun /> Morning Planner
-          </button>
-          <button type="button" className="db-quick-btn" onClick={() => setActiveReviewState("night")}>
-            <IcoMoon /> Night Review
-          </button> */}
-          <button type="button" className="db-quick-btn" onClick={() => navigate("/tasks")}>
-            <IcoTasks /> Manage Tasks
-          </button>
-          <button type="button" className="db-quick-btn" onClick={() => navigate("/reports")}>
-            <IcoZap /> View Reports
-          </button>
-        </div>
-      </section>
->>>>>>> 442a864d3a762e6245cc1d7d9ec107584e1abd9f
 
 
 
