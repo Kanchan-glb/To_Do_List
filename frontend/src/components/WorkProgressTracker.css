@@ -1,0 +1,315 @@
+/* Work Progress Tracker Styling */
+
+.wpt-container {
+  padding: 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 1440px;
+  height: calc(100vh - 76px);
+  margin: 0 auto;
+  overflow: hidden;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.wpt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.wpt-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 4px 0;
+}
+
+.wpt-subtitle {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+/* Filters */
+.wpt-filters {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background: var(--bg-card);
+  padding: 8px;
+  border-radius: 12px;
+  border: var(--border-light);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+
+.wpt-filter-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.wpt-filter-btn:hover {
+  background: var(--bg-muted);
+}
+
+.wpt-filter-btn.active {
+  background: var(--color-primary);
+  color: white;
+}
+
+.wpt-date-picker {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-body);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+/* Top Summary */
+.wpt-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.wpt-sum-card {
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 12px 16px;
+  border: var(--border-light);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: transform 0.2s;
+}
+
+.wpt-sum-card:hover {
+  transform: translateY(-2px);
+}
+
+.wpt-sum-title {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.wpt-sum-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+/* Main Layout Grid */
+.wpt-main-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+}
+
+@media(min-width: 1024px) {
+  .wpt-main-grid {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+.wpt-card {
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 16px;
+  border: var(--border-light);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.wpt-card-header {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Daily Progress Bar */
+.wpt-progress-wrapper {
+  background: var(--bg-muted);
+  border-radius: 99px;
+  height: 24px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.wpt-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #10b981);
+  border-radius: 99px;
+  transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 12px;
+}
+
+.wpt-progress-text {
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.wpt-progress-label {
+  margin-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* Last 7 Days Mini Cards */
+.wpt-weekly-row {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.wpt-day-card {
+  min-width: 100px;
+  flex: 1;
+  background: var(--bg-body);
+  border: 1px solid rgba(0,0,0,0.05);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  text-align: center;
+}
+
+.wpt-day-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.wpt-day-stats {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.wpt-day-pct {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+/* Custom Calendar */
+.wpt-calendar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wpt-cal-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.wpt-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.wpt-cal-cell {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s, opacity 0.2s;
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+.wpt-cal-cell:hover {
+  transform: scale(1.05);
+  opacity: 0.9;
+}
+
+.wpt-cal-cell.disabled {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.wpt-cal-cell.status-none { background: var(--bg-muted); color: var(--text-muted); }
+.wpt-cal-cell.status-bad { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+.wpt-cal-cell.status-ok { background: #fef3c7; color: #d97706; border-color: #fcd34d; }
+.wpt-cal-cell.status-good { background: #d1fae5; color: #047857; border-color: #6ee7b7; }
+
+/* Insights */
+.wpt-insights {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.wpt-insight-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.wpt-insight-row:last-child {
+  border-bottom: none;
+}
+
+.wpt-insight-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wpt-insight-value {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}

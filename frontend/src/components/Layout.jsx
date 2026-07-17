@@ -26,6 +26,8 @@ const UserIcon = () => <Icon size={16}><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 0
 const KeyIcon = () => <Icon size={16}><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></Icon>;
 const ChevronIcon = () => <Icon size={14} strokeWidth={2.5}><polyline points="6 9 12 15 18 9" /></Icon>;
 const MenuIcon = () => <Icon size={24}><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></Icon>;
+const PlusIcon = () => <Icon size={16}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></Icon>;
+const ProgressIcon = () => <Icon><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></Icon>;
 
 function Layout({ children }) {
   const userName = localStorage.getItem("smartName") || "User";
@@ -35,21 +37,31 @@ function Layout({ children }) {
     isFocusRunning,
     setIsFocusRunning,
     focusMode,
-    switchFocusMode
+    switchFocusMode,
+    pomodoroSettings,
+    updatePomodoroSettings
   } = useTasks();
 
   const { completionRate, todayCompleted, todayCount } = getDailyProgress();
 
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [timerDropdownOpen, setTimerDropdownOpen] = useState(false);
+  const [showTimerSettings, setShowTimerSettings] = useState(false);
+  const [tempSettings, setTempSettings] = useState(pomodoroSettings || { work: 25, shortBreak: 5, longBreak: 15 });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const timerDropdownRef = useRef(null);
 
   // Close dropdown on outside click
   useEffect(() => {
     const handler = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setDropdownOpen(false);
+      }
+      if (timerDropdownRef.current && !timerDropdownRef.current.contains(e.target)) {
+        setTimerDropdownOpen(false);
+        setShowTimerSettings(false);
       }
     };
     document.addEventListener("mousedown", handler);
@@ -85,7 +97,8 @@ function Layout({ children }) {
     { label: "Dashboard", path: "/dashboard", icon: <DashIcon /> },
     { label: "Tasks", path: "/tasks", icon: <TaskIcon /> },
     { label: "Planner", path: "/planner", icon: <PlanIcon /> },
-    { label: "Reports", path: "/reports", icon: <ReportIcon /> },
+    // { label: "Reports", path: "/reports", icon: <ReportIcon /> },
+    { label: "Reports", path: "/progress", icon: <ProgressIcon /> },
     // { label: "Settings", path: "/settings", icon: <SettingIcon /> },
     { label: "Profile", path: "/profile", icon: <UserIcon /> },
   ];
@@ -139,48 +152,7 @@ function Layout({ children }) {
         {/* Divider */}
         <div className="sidebar-divider" />
 
-        {/* Pomodoro Mini Widget */}
-        <div className="pomodoro-sidebar-card">
-          <div className="pomo-card-header">
-            <span className="pomo-icon"><TimerIcon /></span>
-            <div>
-              <p className="pomo-mode-label" style={{ color: getModeColor(focusMode) }}>
-                {getModeLabel(focusMode)}
-              </p>
-              <p className="pomo-subtitle">Pomodoro Timer</p>
-            </div>
-          </div>
 
-          <div className="pomo-timer-display">{formatTime(focusTimeLeft)}</div>
-
-          <div className="pomo-progress-bar">
-            <div
-              className="pomo-progress-fill"
-              style={{
-                width: `${Math.max(2, 100 - (focusTimeLeft / (focusMode === "work" ? 1500 : focusMode === "shortBreak" ? 300 : 900)) * 100)}%`,
-                background: getModeColor(focusMode)
-              }}
-            />
-          </div>
-
-          <div className="pomo-actions">
-            <button
-              type="button"
-              className={`pomo-btn pomo-primary${isFocusRunning ? " running" : ""}`}
-              onClick={() => setIsFocusRunning(!isFocusRunning)}
-            >
-              {isFocusRunning ? <><PauseIcon /> Pause</> : <><PlayIcon /> Start</>}
-            </button>
-            <button
-              type="button"
-              className="pomo-btn pomo-switch"
-              onClick={() => switchFocusMode(focusMode === "work" ? "shortBreak" : "work")}
-              title="Switch mode"
-            >
-              <SwitchIcon />
-            </button>
-          </div>
-        </div>
 
         {/* Progress Footer */}
         <div className="sidebar-footer">
@@ -238,6 +210,117 @@ function Layout({ children }) {
 
           {/* Right: Actions */}
           <div className="topbar-actions">
+            {/* Pomodoro Timer Dropdown */}
+            <div className="timer-menu-wrap" ref={timerDropdownRef}>
+              <button
+                type="button"
+                className={`topbar-icon-btn timer-btn ${timerDropdownOpen ? "open" : ""}`}
+                onClick={() => setTimerDropdownOpen(!timerDropdownOpen)}
+                style={{ borderColor: isFocusRunning ? getModeColor(focusMode) : '' }}
+                aria-label="Pomodoro Timer"
+              >
+                <TimerIcon />
+                {isFocusRunning && <span className="timer-active-dot" style={{ background: getModeColor(focusMode) }} />}
+              </button>
+
+              {timerDropdownOpen && (
+                <div className="timer-dropdown">
+                  <div className="timer-dropdown-header">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <h4 className="timer-dropdown-title" style={{ margin: 0 }}>Pomodoro Timer</h4>
+                      <button 
+                        type="button"
+                        className="timer-settings-btn" 
+                        onClick={() => {
+                          if (!showTimerSettings) setTempSettings(pomodoroSettings);
+                          setShowTimerSettings(!showTimerSettings);
+                        }}
+                        title="Edit Timer Durations"
+                        style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)', padding: '4px', borderRadius: '4px' }}
+                      >
+                        <PlusIcon />
+                      </button>
+                    </div>
+                    {!showTimerSettings && (
+                      <div className="timer-mode-tabs">
+                        <button 
+                          className={`timer-tab ${focusMode === "work" ? "active" : ""}`}
+                          onClick={() => switchFocusMode("work")}
+                        >Focus</button>
+                        <button 
+                          className={`timer-tab ${focusMode === "shortBreak" ? "active" : ""}`}
+                          onClick={() => switchFocusMode("shortBreak")}
+                        >Short Break</button>
+                        <button 
+                          className={`timer-tab ${focusMode === "longBreak" ? "active" : ""}`}
+                          onClick={() => switchFocusMode("longBreak")}
+                        >Long Break</button>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {showTimerSettings ? (
+                    <div className="timer-settings-view">
+                      {focusMode === "work" && (
+                        <div className="timer-setting-row">
+                          <label>Focus (min)</label>
+                          <input type="number" min="1" max="90" value={tempSettings.work} onChange={(e) => setTempSettings({...tempSettings, work: Number(e.target.value)})} />
+                        </div>
+                      )}
+                      {focusMode === "shortBreak" && (
+                        <div className="timer-setting-row">
+                          <label>Short Break (min)</label>
+                          <input type="number" min="1" max="30" value={tempSettings.shortBreak} onChange={(e) => setTempSettings({...tempSettings, shortBreak: Number(e.target.value)})} />
+                        </div>
+                      )}
+                      {focusMode === "longBreak" && (
+                        <div className="timer-setting-row">
+                          <label>Long Break (min)</label>
+                          <input type="number" min="1" max="60" value={tempSettings.longBreak} onChange={(e) => setTempSettings({...tempSettings, longBreak: Number(e.target.value)})} />
+                        </div>
+                      )}
+                      <button 
+                        type="button"
+                        className="timer-save-btn"
+                        onClick={() => {
+                          updatePomodoroSettings(tempSettings);
+                          setShowTimerSettings(false);
+                        }}
+                      >
+                        Save Settings
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="timer-dropdown-body">
+                        <div className="timer-display-circle" style={{ 
+                          borderColor: `${getModeColor(focusMode)}30`,
+                          background: `radial-gradient(circle, ${getModeColor(focusMode)}10 0%, transparent 70%)` 
+                        }}>
+                          <span className="timer-time" style={{ color: getModeColor(focusMode) }}>{formatTime(focusTimeLeft)}</span>
+                          <span className="timer-label">{getModeLabel(focusMode)}</span>
+                        </div>
+                      </div>
+
+                      <div className="timer-dropdown-footer">
+                        <button
+                          type="button"
+                          className={`timer-action-btn ${isFocusRunning ? "running" : ""}`}
+                          onClick={() => setIsFocusRunning(!isFocusRunning)}
+                          style={{ 
+                            background: isFocusRunning ? 'transparent' : getModeColor(focusMode), 
+                            color: isFocusRunning ? getModeColor(focusMode) : '#fff',
+                            borderColor: isFocusRunning ? getModeColor(focusMode) : 'transparent'
+                          }}
+                        >
+                          {isFocusRunning ? <><PauseIcon /> Pause</> : <><PlayIcon /> Start</>}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Bell notification button */}
             {/* <button type="button" className="topbar-icon-btn bell-btn" aria-label="Notifications"

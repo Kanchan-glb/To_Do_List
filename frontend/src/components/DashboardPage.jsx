@@ -1,9 +1,12 @@
 import { useState, useEffect } from "react";
 import { useTasks } from "../context/TaskContext";
-import { format, subDays } from "date-fns";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { format, subDays, isThisWeek, parseISO } from "date-fns";
+
 import MorningPlanner from "./MorningPlanner";
 import NightReview from "./NightReview";
+import TaskDetailsModal from "./TaskDetailsModal";
+import TaskActivityCenter from "./TaskActivityCenter";
+import ProductivityAnalytics from "./ProductivityAnalytics";
 import { useNavigate } from "react-router-dom";
 import "../dashboard.css";
 
@@ -26,6 +29,10 @@ const IcoMoon = () => <Ico><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"
 const IcoPlay = () => <Ico><polygon points="5 3 19 12 5 21 5 3" fill="currentColor" stroke="none" /></Ico>;
 const IcoPause = () => <Ico><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></Ico>;
 const IcoReset = () => <Ico><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 102.13-9.36L1 10" /></Ico>;
+const IcoPlusCircle = () => <Ico><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></Ico>;
+const IcoCalendar = () => <Ico><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></Ico>;
+const IcoStar = () => <Ico><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></Ico>;
+const IcoRepeat = () => <Ico><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 102.13-9.36L1 10" /></Ico>;
 
 function DashboardPage() {
   const navigate = useNavigate();
@@ -45,6 +52,7 @@ function DashboardPage() {
 
   const [activeReviewState, setActiveReviewState] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [selectedTask, setSelectedTask] = useState(null);
   const userName = localStorage.getItem("smartName") || "User";
 
   useEffect(() => {
@@ -65,29 +73,77 @@ function DashboardPage() {
   const todayStr = format(currentTime, "yyyy-MM-dd");
   const todayLabel = format(currentTime, "EEEE, MMMM d");
   const timeLabel = format(currentTime, "h:mm a");
-  
-  const pendingTodayTasks = tasks.filter((t) => !t.completed && t.dueDate === todayStr);
+  // ════════════════════════════════════════
+  // ── ADVANCED DAILY & WEEKLY METRICS ──
+  // ════════════════════════════════════════
+  let totalWorkToday = 0;
+  let completedToday = 0;
+  let pendingToday = 0;
+  let carryForward = 0;
+  let remainingToday = 0;
+  let rescheduledToday = 0;
 
-  const overdueTasks = tasks.filter(t => {
-    if (t.completed) return false;
-    if (!t.dueDate) return false;
-    const tDate = new Date(t.dueDate + "T" + (t.dueTime || "23:59"));
-    return tDate < new Date();
+  let totalThisWeek = 0;
+  let completedThisWeek = 0;
+  let remainingThisWeek = 0;
+  let overdueThisWeek = 0;
+
+  const weeklyCompletions = { 'Mon': 0, 'Tue': 0, 'Wed': 0, 'Thu': 0, 'Fri': 0, 'Sat': 0, 'Sun': 0 };
+
+  tasks.forEach(task => {
+    const taskDueStr = task.dueDate || task.createdDate || "2099-01-01";
+    let taskDateObj;
+    try { taskDateObj = parseISO(taskDueStr); } catch (e) { taskDateObj = new Date(); }
+
+    const isCompleted = task.completed;
+    const isCompletedToday = task.completedDate === todayStr;
+    const isDueToday = task.dueDate === todayStr;
+    const isOverdue = !isCompleted && taskDueStr < todayStr;
+    const isCarryForward = taskDueStr < todayStr && (!isCompleted || isCompletedToday);
+
+    // --- TODAY STATS ---
+    if (isDueToday || isCarryForward) {
+      totalWorkToday++;
+      if (isCompleted) {
+        completedToday++;
+      } else {
+        if (taskDueStr < todayStr) {
+          carryForward++;
+        } else {
+          pendingToday++;
+        }
+      }
+    }
+
+    const wasRescheduledToday = task.rescheduleHistory?.some(h => h.rescheduledAtDate === todayStr);
+    if (wasRescheduledToday) rescheduledToday++;
+
+    remainingToday = pendingToday + carryForward;
+
+    // --- THIS WEEK STATS ---
+    const dueThisWeek = isThisWeek(taskDateObj, { weekStartsOn: 1 });
+    const completedThisWeekFlag = isCompleted && task.completedDate && isThisWeek(parseISO(task.completedDate), { weekStartsOn: 1 });
+
+    if (dueThisWeek || isOverdue) totalThisWeek++;
+    if (completedThisWeekFlag) completedThisWeek++;
+    if ((dueThisWeek && !isCompleted) || isOverdue) remainingThisWeek++;
+    if (isOverdue) overdueThisWeek++;
+
+    if (completedThisWeekFlag) {
+      const dayName = format(parseISO(task.completedDate), 'EEE');
+      if (weeklyCompletions[dayName] !== undefined) weeklyCompletions[dayName]++;
+    }
   });
 
-  if (activeReviewState === "morning") return <MorningPlanner onClose={() => setActiveReviewState(null)} />;
-  if (activeReviewState === "night") return <NightReview onClose={() => setActiveReviewState(null)} />;
+  const weeklyCompletionPct = totalThisWeek === 0 ? 0 : Math.round((completedThisWeek / totalThisWeek) * 100);
 
-  const formatTime = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
-
-  /* Weekly chart data */
-  const chartData = Array.from({ length: 7 }, (_, i) => {
-    const d = subDays(new Date(), 6 - i);
-    const dayStr = format(d, "yyyy-MM-dd");
-    return {
-      day: format(d, "EEE"),
-      done: tasks.filter((t) => t.completed && (t.completedDate || t.dueDate) === dayStr).length,
-    };
+  let mostProductiveDay = "None";
+  let maxCompletions = 0;
+  Object.entries(weeklyCompletions).forEach(([day, count]) => {
+    if (count > maxCompletions) {
+      maxCompletions = count;
+      mostProductiveDay = day;
+    }
   });
 
   const currentHour = new Date().getHours();
@@ -120,314 +176,132 @@ function DashboardPage() {
 
   return (
     <div className="page-fade-in dashboard-page">
-      <header className="db-header">
+      {/* <header className="db-header">
         <div>
           <h1 className="db-greeting">
             Welcome back, {userName}! <span className="wave-emoji">👋</span>
           </h1>
           <p className="db-date">{todayLabel}</p>
         </div>
-      </header>
+      </header> */}
 
-      {notificationStatus === "default" && (
-        <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", padding: "12px 16px", borderRadius: "12px", marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <strong style={{ color: "#1e40af", display: "block", marginBottom: "4px" }}>Enable Native Notifications</strong>
-            <span style={{ color: "#3b82f6", fontSize: "0.9rem" }}>Never miss a task reminder! Allow browser notifications to see alerts even when the app is minimized.</span>
+      {/* ══════════ TOP ROW (Notifications + Hero) ══════════ */}
+      <div className="db-top-section" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {notificationStatus === "default" && (
+          <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", padding: "12px 16px", borderRadius: "12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <strong style={{ color: "#1e40af", display: "block", marginBottom: "4px" }}>Enable Native Notifications</strong>
+              <span style={{ color: "#3b82f6", fontSize: "0.9rem" }}>Never miss a task reminder! Allow browser notifications to see alerts even when the app is minimized.</span>
+            </div>
+            <button onClick={handleRequestPermission} style={{ background: "#2563eb", color: "white", border: "none", padding: "8px 16px", borderRadius: "8px", fontWeight: "600", cursor: "pointer", flexShrink: 0, marginLeft: "16px" }}>
+              Enable
+            </button>
           </div>
-          <button onClick={handleRequestPermission} style={{ background: "#2563eb", color: "white", border: "none", padding: "8px 16px", borderRadius: "8px", fontWeight: "600", cursor: "pointer", flexShrink: 0, marginLeft: "16px" }}>
-            Enable
-          </button>
-        </div>
-      )}
-      {notificationStatus === "denied" && (
-        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", padding: "12px 16px", borderRadius: "12px", marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <strong style={{ color: "#991b1b", display: "block", marginBottom: "4px" }}>Notifications Blocked</strong>
-            <span style={{ color: "#ef4444", fontSize: "0.9rem" }}>You have blocked notifications. Please allow them in your browser settings to receive native task reminders.</span>
+        )}
+        {notificationStatus === "denied" && (
+          <div style={{ background: "#fef2f2", border: "1px solid #fecaca", padding: "12px 16px", borderRadius: "12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <strong style={{ color: "#991b1b", display: "block", marginBottom: "4px" }}>Notifications Blocked</strong>
+              <span style={{ color: "#ef4444", fontSize: "0.9rem" }}>You have blocked notifications. Please allow them in your browser settings to receive native task reminders.</span>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* ══════════ HERO BANNER ══════════ */}
-      <section className="db-hero">
-        <div className="db-hero-left">
-          <p className="db-hero-eyebrow">{todayLabel} &nbsp;•&nbsp; {timeLabel}</p>
-          <h1 className="db-hero-title">{greeting}, {userName} 👋</h1>
-          <p className="db-hero-sub">
-            You have <strong>{todayCount} tasks</strong> today — {todayCompleted} done, {pendingCount} remaining.
-          </p>
-          <div className="db-hero-tags">
-            <span className="db-tag indigo"><IcoFire /> {streak} day streak</span>
-            <span className="db-tag emerald"><IcoCheck /> {completionRate}% complete</span>
-            {overdueCount > 0 && <span className="db-tag rose"><IcoAlert /> {overdueCount} overdue</span>}
+        {/* ══════════ HERO BANNER ══════════ */}
+        <section className="db-hero">
+          <div className="db-hero-left">
+            <p className="db-hero-eyebrow">{todayLabel} &nbsp;•&nbsp; {timeLabel}</p>
+            <h1 className="db-hero-title">{greeting}, {userName} 👋</h1>
+            <p className="db-hero-sub">
+              You have <strong>{todayCount} tasks</strong> today — {todayCompleted} done, {pendingCount} remaining.
+            </p>
+            <div className="db-hero-tags">
+              <span className="db-tag indigo"><IcoFire /> {streak} day streak</span>
+              <span className="db-tag emerald"><IcoCheck /> {completionRate}% complete</span>
+              {overdueCount > 0 && <span className="db-tag rose"><IcoAlert /> {overdueCount} overdue</span>}
+            </div>
           </div>
-        </div>
-        <div className="db-hero-right">
-          <div className="db-hero-ring-wrap">
-            <svg width="110" height="110" viewBox="0 0 110 110">
-              <circle cx="55" cy="55" r="46" fill="none" stroke="#e2e8f0" strokeWidth="8" />
-              <circle
-                cx="55" cy="55" r="46" fill="none"
-                stroke="url(#heroGrad)" strokeWidth="8"
-                strokeLinecap="round"
-                strokeDasharray={`${(completionRate / 100) * 289.0} 289.0`}
-                transform="rotate(-90 55 55)"
-              />
-              <defs>
-                <linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#4f46e5" />
-                  <stop offset="100%" stopColor="#10b981" />
-                </linearGradient>
-              </defs>
-              <text x="55" y="49" textAnchor="middle" fill="#0d1b2a" fontSize="18" fontWeight="800" fontFamily="Outfit,sans-serif">{completionRate}%</text>
-              <text x="55" y="64" textAnchor="middle" fill="#8fa3b1" fontSize="9" fontFamily="Inter,sans-serif">Today</text>
-            </svg>
+          <div className="db-hero-right">
+            <div className="db-hero-ring-wrap">
+              <svg width="80" height="80" viewBox="0 0 110 110">
+                <circle cx="55" cy="55" r="46" fill="none" stroke="#e2e8f0" strokeWidth="8" />
+                <circle
+                  cx="55" cy="55" r="46" fill="none"
+                  stroke="url(#heroGrad)" strokeWidth="8"
+                  strokeLinecap="round"
+                  strokeDasharray={`${(completionRate / 100) * 289.0} 289.0`}
+                  transform="rotate(-90 55 55)"
+                />
+                <defs>
+                  <linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#4f46e5" />
+                    <stop offset="100%" stopColor="#10b981" />
+                  </linearGradient>
+                </defs>
+                <text x="55" y="49" textAnchor="middle" fill="#0d1b2a" fontSize="18" fontWeight="800" fontFamily="Outfit,sans-serif">{completionRate}%</text>
+                <text x="55" y="64" textAnchor="middle" fill="#8fa3b1" fontSize="9" fontFamily="Inter,sans-serif">Today</text>
+              </svg>
+            </div>
           </div>
-        </div>
-      </section>
-
-      {/* ══════════ QUICK ACTIONS ══════════ */}
-      <section className="db-quick-actions">
-        <div className="db-quick-btns">
-          <button type="button" className="db-quick-btn" onClick={() => setActiveReviewState("morning")}>
-            <IcoSun /> Morning Planner
-          </button>
-          <button type="button" className="db-quick-btn" onClick={() => setActiveReviewState("night")}>
-            <IcoMoon /> Night Review
-          </button>
-          <button type="button" className="db-quick-btn" onClick={() => navigate("/tasks")}>
-            <IcoTasks /> Manage Tasks
-          </button>
-          <button type="button" className="db-quick-btn" onClick={() => navigate("/reports")}>
-            <IcoZap /> View Reports
-          </button>
-        </div>
-      </section>
+        </section>
+      </div>
 
 
 
-      {/* ══════════ STAT CARDS ══════════ */}
-      <section className="db-stats-row">
+      {/* ══════════ SUMMARIES GRID ══════════ */}
+      <div className="db-summaries-wrapper">
+        <div className="db-summary-group">
+          <h3 className="db-summary-title">Today's Summary</h3>
+          <section className="db-stats-row compact">
         {[
-          { icon: <IcoTarget />, label: "Completion Rate", value: `${completionRate}%`, sub: `${todayCompleted}/${todayCount} tasks`, color: "#4f46e5", bg: "#ede9fe" },
-          { icon: <IcoTasks />, label: "Pending Tasks", value: pendingCount, sub: "Needs attention", color: "#d97706", bg: "#fef3c7" },
-          { icon: <IcoAlert />, label: "Overdue Items", value: overdueCount, sub: "Rescheduling needed", color: "#e11d48", bg: "#ffe4e6" },
-          { icon: <IcoZap />, label: "Focus Minutes", value: `${focusStats.workMinutes}m`, sub: `${focusStats.completedSessions} sessions`, color: "#7c3aed", bg: "#f3e8ff" },
-        ].map(({ icon, label, value, sub, color, bg }) => (
+          { icon: <IcoTasks />, label: "Total Work Today", value: totalWorkToday, color: "#6366f1", bg: "#e0e7ff" },
+          { icon: <IcoCheck />, label: "Completed Today", value: completedToday, color: "#10b981", bg: "#d1fae5" },
+          { icon: <IcoClock />, label: "Pending Today", value: pendingToday, color: "#f59e0b", bg: "#fef3c7" },
+          { icon: <IcoAlert />, label: "Carry Forward", value: carryForward, color: "#ef4444", bg: "#fef2f2" },
+          { icon: <IcoZap />, label: "Remaining Today", value: remainingToday, color: "#d97706", bg: "#ffedd5" },
+          { icon: <IcoRepeat />, label: "Rescheduled Today", value: rescheduledToday, color: "#3b82f6", bg: "#eff6ff" },
+        ].map(({ icon, label, value, color, bg }) => (
           <div className="db-stat-card" key={label}>
             <div className="db-stat-icon" style={{ background: bg, color }}>{icon}</div>
             <div className="db-stat-body">
-              <p className="db-stat-label">{label}</p>
               <p className="db-stat-value" style={{ color }}>{value}</p>
-              <p className="db-stat-sub">{sub}</p>
+              <p className="db-stat-label">{label}</p>
             </div>
           </div>
         ))}
-      </section>
-
-      {/* ══════════ MAIN CONTENT GRID ══════════ */}
-      <div className="db-main-grid">
-        <div className="db-left-col" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          {/* ── Today's Tasks ── */}
-          <section className="db-card db-tasks-card" style={{ display: 'flex', flexDirection: 'column' }}>
-            <div className="db-card-header">
-              <div>
-                <h2 className="db-card-title">Today's Tasks</h2>
-                <p className="db-card-sub">{todayCompleted} of {todayCount} completed</p>
-              </div>
-              <button type="button" className="db-add-btn" onClick={() => navigate("/tasks", { state: { openAddTaskModal: true } })}>
-                <IcoPlus /> Add Task
-              </button>
-            </div>
-
-            {(pendingTodayTasks.length === 0 && overdueTasks.length === 0) ? (
-              <div className="db-empty">
-                <div className="db-empty-icon"><IcoTasks /></div>
-                <p className="db-empty-title">All caught up!</p>
-                <p className="db-empty-sub">You have no pending or overdue tasks.</p>
-                <button type="button" className="db-empty-btn" onClick={() => navigate("/tasks")}>
-                  Go to Tasks <IcoArrow />
-                </button>
-              </div>
-            ) : (
-              <>
-                {/* Progress bar */}
-                <div className="db-task-progress">
-                  <div className="db-task-progress-fill" style={{ width: `${completionRate}%` }} />
-                </div>
-
-                <div className="db-task-list">
-                  {/* Overdue Section */}
-                  {overdueTasks.length > 0 && (
-                    <div style={{ marginBottom: "16px" }}>
-                      <h3 style={{ fontSize: "0.9rem", color: "#ef4444", marginBottom: "8px", borderBottom: "1px solid #fee2e2", paddingBottom: "4px" }}>
-                        ⚠️ Overdue Tasks
-                      </h3>
-                      {overdueTasks.map((task) => (
-                        <div key={task.id} className="db-task-item" style={{ borderLeft: "3px solid #ef4444" }}>
-                          <button
-                            type="button"
-                            className="db-task-check"
-                            onClick={() => updateTask(task.id, { completed: true })}
-                            aria-label="Mark complete"
-                          />
-                          <div className="db-task-body">
-                            <span className="db-task-title">{task.title}</span>
-                            <div className="db-task-meta">
-                              <span style={{ color: "#ef4444", background: "#fee2e2", padding: "2px 6px", borderRadius: "8px", fontWeight: "600" }}>{task.dueDate}</span>
-                              {task.dueTime && <span>⏰ {task.dueTime}</span>}
-                              <span className={`badge priority-${task.priority}`}>{task.priority}</span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Today's Section */}
-                  {pendingTodayTasks.length > 0 && (
-                    <div>
-                      <h3 style={{ fontSize: "0.9rem", color: "var(--text-secondary)", marginBottom: "8px", borderBottom: "1px solid var(--border-light)", paddingBottom: "4px" }}>
-                        📅 Today's Tasks
-                      </h3>
-                      {pendingTodayTasks.map((task) => (
-                        <div key={task.id} className="db-task-item">
-                          <button
-                            type="button"
-                            className="db-task-check"
-                            onClick={() => updateTask(task.id, { completed: true })}
-                            aria-label="Mark complete"
-                          />
-                          <div className="db-task-body">
-                            <span className="db-task-title">{task.title}</span>
-                            <div className="db-task-meta">
-                              {task.dueTime && <span>⏰ {task.dueTime}</span>}
-                              <span className={`badge priority-${task.priority}`}>{task.priority}</span>
-                              {task.category && <span className="badge category">{task.category}</span>}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
           </section>
-
-
         </div>
 
-        {/* ── Right Column ── */}
-        <div className="db-right-col">
-
-          {/* ── Pomodoro Timer ── */}
-          <section className="db-card db-pomo-card">
-            <div className="db-card-header">
-              <div>
-                <h2 className="db-card-title">Focus Timer</h2>
-                <p className="db-card-sub">Pomodoro technique</p>
-              </div>
-              <span className="db-pomo-mode-pill" style={{ background: mc.bg, color: mc.color }}>
-                {mc.label}
-              </span>
+        <div className="db-summary-group">
+          <h3 className="db-summary-title">This Week Summary</h3>
+          <section className="db-stats-row compact">
+        {[
+          { icon: <IcoCalendar />, label: "Total This Week", value: totalThisWeek, color: "#3b82f6", bg: "#eff6ff" },
+          { icon: <IcoCheck />, label: "Completed This Week", value: completedThisWeek, color: "#10b981", bg: "#d1fae5" },
+          { icon: <IcoClock />, label: "Remaining This Week", value: remainingThisWeek, color: "#f59e0b", bg: "#fef3c7" },
+          { icon: <IcoAlert />, label: "Overdue This Week", value: overdueThisWeek, color: "#ef4444", bg: "#fef2f2" },
+          { icon: <IcoTarget />, label: "Weekly Completion", value: `${weeklyCompletionPct}%`, color: "#a855f7", bg: "#faf5ff" },
+          { icon: <IcoStar />, label: "Most Productive Day", value: mostProductiveDay, color: "#0ea5e9", bg: "#e0f2fe" },
+        ].map(({ icon, label, value, color, bg }) => (
+          <div className="db-stat-card" key={label}>
+            <div className="db-stat-icon" style={{ background: bg, color }}>{icon}</div>
+            <div className="db-stat-body">
+              <p className="db-stat-value" style={{ color }}>{value}</p>
+              <p className="db-stat-label">{label}</p>
             </div>
-
-            {/* Mode tabs */}
-            <div className="db-pomo-tabs">
-              {Object.entries(modeConfig).map(([key, cfg]) => (
-                <button
-                  key={key}
-                  type="button"
-                  className={`db-pomo-tab${focusMode === key ? " active" : ""}`}
-                  style={focusMode === key ? { color: cfg.color, borderColor: cfg.color, background: cfg.bg } : {}}
-                  onClick={() => switchFocusMode(key)}
-                >
-                  {cfg.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Timer ring */}
-            <div className="db-pomo-ring-wrap">
-              <svg width="150" height="150" viewBox="0 0 150 150">
-                <circle cx="75" cy="75" r="62" fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth="8" />
-                <circle
-                  cx="75" cy="75" r="62" fill="none"
-                  stroke={mc.color} strokeWidth="8"
-                  strokeLinecap="round"
-                  strokeDasharray={`${(ringPct / 100) * 389.6} 389.6`}
-                  transform="rotate(-90 75 75)"
-                  style={{ transition: "stroke-dasharray 1s linear" }}
-                />
-              </svg>
-              <div className="db-pomo-ring-center">
-                <span className="db-pomo-time" style={{ color: mc.color }}>{formatTime(focusTimeLeft)}</span>
-                <span className="db-pomo-time-label">{mc.label}</span>
-              </div>
-            </div>
-
-            {/* Controls */}
-            <div className="db-pomo-controls">
-              <button
-                type="button"
-                className="db-pomo-primary-btn"
-                style={{ background: mc.color }}
-                onClick={() => setIsFocusRunning(!isFocusRunning)}
-              >
-                {isFocusRunning ? <><IcoPause /> Pause</> : <><IcoPlay /> Start Focus</>}
-              </button>
-              <button
-                type="button"
-                className="db-pomo-reset-btn"
-                onClick={() => switchFocusMode(focusMode)}
-              >
-                <IcoReset />
-              </button>
-            </div>
-
-            <p className="db-pomo-stats">
-              <span><strong>{focusStats.workMinutes}m</strong> focused today</span>
-              <span>·</span>
-              <span><strong>{focusStats.completedSessions}</strong> sessions</span>
-            </p>
+          </div>
+        ))}
           </section>
         </div>
       </div>
 
-      {/* ══════════ CHART SECTION ══════════ */}
-      <section className="db-card db-chart-full">
-        <div className="db-card-header">
-          <div>
-            <h2 className="db-card-title">Productivity Overview</h2>
-            <p className="db-card-sub">Tasks completed over the past 7 days</p>
-          </div>
-          <button type="button" className="db-link-btn" onClick={() => navigate("/reports")}>
-            Full Report <IcoArrow />
-          </button>
-        </div>
-        <div style={{ width: "100%", height: 220 }}>
-          <ResponsiveContainer>
-            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="chartGradFull" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="day" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} dy={10} />
-              <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} dx={-10} />
-              <Tooltip
-                contentStyle={{ background: "rgba(255,255,255,0.9)", backdropFilter: "blur(8px)", border: "1px solid rgba(226,232,240,0.8)", borderRadius: "12px", fontSize: "0.85rem", boxShadow: "0 8px 24px rgba(0,0,0,0.08)" }}
-                cursor={{ stroke: "#4f46e5", strokeWidth: 1, strokeDasharray: "4 4" }}
-              />
-              <Area type="monotone" dataKey="done" name="Tasks Done" stroke="#4f46e5" strokeWidth={3} fill="url(#chartGradFull)" dot={{ fill: "white", stroke: "#4f46e5", strokeWidth: 2, r: 4 }} activeDot={{ r: 6, fill: "#4f46e5", stroke: "white", strokeWidth: 2 }} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+      {/* ══════════ BOTTOM GRID (TASKS & ANALYTICS) ══════════ */}
+      <section className="dashboard-bottom-grid">
+        <TaskActivityCenter />
+        <ProductivityAnalytics />
       </section>
 
+      {selectedTask && <TaskDetailsModal task={selectedTask} onClose={() => setSelectedTask(null)} />}
     </div>
   );
 }

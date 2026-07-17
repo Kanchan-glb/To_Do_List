@@ -806,7 +806,8 @@ textarea:focus {
   padding: 8px 24px;
   border-bottom: 1px solid rgba(203, 213, 225, 0.6);
   box-shadow: 0 1px 12px rgba(13, 27, 42, 0.06);
-  position: sticky; /* Sticky is more appropriate here to avoid breaking the sidebar layout */
+  position: sticky;
+  /* Sticky is more appropriate here to avoid breaking the sidebar layout */
   top: 0;
   left: 0;
   width: 100%;
@@ -928,6 +929,219 @@ textarea:focus {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
+/* Timer Menu Wrap */
+.timer-menu-wrap {
+  position: relative;
+}
+
+.timer-btn.open {
+  background: #f0f4ff;
+  border-color: #a5b4fc;
+  color: var(--color-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.12);
+}
+
+.timer-active-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid white;
+}
+
+/* Timer Dropdown */
+.timer-dropdown {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  width: 280px;
+  background: var(--bg-card);
+  border: 1px solid rgba(203, 213, 225, 0.75);
+  border-radius: 18px;
+  box-shadow: 0 4px 6px rgba(13, 27, 42, 0.04), 0 12px 32px rgba(13, 27, 42, 0.12), 0 32px 64px rgba(13, 27, 42, 0.08);
+  padding: 16px;
+  z-index: 200;
+  animation: dropdownIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: top right;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.timer-dropdown::before {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: 0;
+  right: 0;
+  height: 12px;
+  background: transparent;
+}
+
+.timer-dropdown-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.timer-dropdown-title {
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  text-align: center;
+  margin: 0;
+}
+
+.timer-mode-tabs {
+  display: flex;
+  background: var(--bg-muted);
+  border-radius: 10px;
+  padding: 4px;
+  gap: 4px;
+}
+
+.timer-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 6px 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.timer-tab.active {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.timer-dropdown-body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px 0;
+}
+
+.timer-display-circle {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: 4px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.timer-time {
+  font-family: var(--font-heading);
+  font-size: 2.2rem;
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.timer-dropdown-footer {
+  display: flex;
+  justify-content: center;
+}
+
+.timer-action-btn {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font-weight: 700;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.timer-action-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.timer-action-btn:hover {
+  filter: brightness(0.9);
+  transform: translateY(-1px);
+}
+
+.timer-settings-view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.timer-setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.timer-setting-row label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.timer-setting-row input {
+  width: 60px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(203, 213, 225, 0.8);
+  background: var(--bg-body);
+  color: var(--text-primary);
+  font-weight: 700;
+  text-align: center;
+  font-family: var(--font-body);
+}
+
+.timer-setting-row input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.timer-save-btn {
+  margin-top: 8px;
+  padding: 8px;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.timer-save-btn:hover {
+  filter: brightness(0.9);
+}
+
+.timer-settings-btn:hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+}
+
 /* Topbar: Right Actions */
 .topbar-actions {
   display: flex;
@@ -1037,22 +1251,6 @@ textarea:focus {
   transform: rotate(180deg);
 }
 
-/* ── Dropdown panel ── */
-.avatar-dropdown {
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
-  width: 220px;
-  background: var(--bg-card);
-  border: 1px solid rgba(203, 213, 225, 0.8);
-  border-radius: 16px;
-  box-shadow: 0 20px 50px rgba(13, 27, 42, 0.14), 0 4px 12px rgba(13, 27, 42, 0.06);
-  padding: 8px;
-  z-index: 200;
-  animation: dropdownIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-  transform-origin: top right;
-}
-
 @keyframes dropdownIn {
   from {
     opacity: 0;
@@ -1082,7 +1280,17 @@ textarea:focus {
   z-index: 200;
   animation: dropdownIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   transform-origin: top right;
-  overflow: hidden;
+  overflow: visible;
+}
+
+.avatar-dropdown::before {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: 0;
+  right: 0;
+  height: 12px;
+  background: transparent;
 }
 
 /* User header */
@@ -1304,6 +1512,7 @@ textarea:focus {
     margin-right: 12px;
     border-radius: 8px;
   }
+
   .mobile-menu-btn:hover {
     background: var(--bg-hover);
   }
@@ -1317,7 +1526,7 @@ textarea:focus {
     width: 260px;
     z-index: 10000;
     transition: left 0.3s ease;
-    box-shadow: 4px 0 24px rgba(0,0,0,0.15);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
   }
 
   .sidebar.open {
@@ -1376,13 +1585,14 @@ textarea:focus {
     border-radius: 8px;
     color: var(--color-primary);
   }
-  
+
   .mobile-menu-btn:hover {
     background: #e2e8f0;
   }
 
   .main-area {
-    padding: 24px 16px; /* slightly smaller horizontal padding */
+    padding: 24px 16px;
+    /* slightly smaller horizontal padding */
   }
 }
 
@@ -1391,29 +1601,35 @@ textarea:focus {
     padding: 10px 12px;
     gap: 8px;
   }
+
   .topbar-title {
     font-size: 1rem;
     max-width: 120px;
   }
+
   .topbar-actions {
     gap: 6px;
   }
+
   .topbar-icon-btn {
     width: 32px;
     height: 32px;
   }
+
   .avatar-btn {
     padding: 4px;
     border-radius: 50%;
   }
+
   .avatar-letter {
     width: 26px;
     height: 26px;
     font-size: 0.85rem;
   }
+
   .avatar-chevron,
   .avatar-status {
-    display: none; 
+    display: none;
   }
 }
 
@@ -1421,15 +1637,45 @@ textarea:focus {
   .mobile-menu-btn {
     display: none;
   }
+
   .sidebar-overlay {
     display: none;
   }
 }
+
+.dashboard-bottom-grid {
+  display: grid;
+  grid-template-columns: 45fr 55fr;
+  gap: 24px;
+  min-height: 0;
+}
+
+@media (max-width: 1199px) {
+  .dashboard-bottom-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 1024px) {
+  .dashboard-page {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+  }
+
+  .dashboard-bottom-grid {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: auto;
+  }
+}
+
 /* --- Dashboard Pages Layout --- */
 .dashboard-page {
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 16px;
+  height: 100%;
 }
 
 .dashboard-hero {
@@ -1865,7 +2111,7 @@ textarea:focus {
   width: 100%;
   max-width: 420px;
   border-radius: 12px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
   overflow: hidden;
 }
 
@@ -1878,6 +2124,7 @@ textarea:focus {
     transform: scale(0.9);
     opacity: 0;
   }
+
   to {
     transform: scale(1);
     opacity: 1;
@@ -1910,6 +2157,7 @@ textarea:focus {
   opacity: 0.8;
   transition: opacity 0.2s;
 }
+
 .reminder-modal-close:hover {
   opacity: 1;
 }
@@ -1925,6 +2173,7 @@ textarea:focus {
   margin: 0;
   line-height: 1.5;
 }
+
 .reminder-question strong {
   color: var(--color-primary);
   font-weight: 800;
@@ -1962,6 +2211,7 @@ textarea:focus {
   color: white;
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
 }
+
 .reminder-btn.success:hover {
   background: var(--color-success-dark);
   transform: translateY(-2px);
@@ -1972,6 +2222,7 @@ textarea:focus {
   color: var(--color-danger);
   border: 1px solid var(--color-danger);
 }
+
 .reminder-btn.danger:hover {
   background: #fff1f2;
   transform: translateY(-2px);
@@ -1992,6 +2243,7 @@ textarea:focus {
   font-family: inherit;
   outline: none;
 }
+
 .reminder-time-input:focus {
   border-color: var(--color-primary);
 }
@@ -2002,12 +2254,14 @@ textarea:focus {
   padding: 10px 16px;
   flex: none;
 }
+
 .reminder-btn.cancel {
   background: transparent;
   color: var(--text-muted);
   flex: none;
   padding: 10px 12px;
 }
+
 .reminder-btn.cancel:hover {
   color: var(--text-primary);
   background: #e2e8f0;
@@ -2245,11 +2499,13 @@ textarea:focus {
 
   .topbar-left {
     flex: 1;
-    min-width: 0; /* allows text truncation */
+    min-width: 0;
+    /* allows text truncation */
   }
 
-  .topbar-left > div {
-    min-width: 0; /* allows truncation of inner elements */
+  .topbar-left>div {
+    min-width: 0;
+    /* allows truncation of inner elements */
   }
 
   .topbar-title {
@@ -2272,14 +2528,16 @@ textarea:focus {
   }
 
   .avatar-btn {
-    width: 44px; /* 44px touch target */
+    width: 44px;
+    /* 44px touch target */
     height: 44px;
     min-width: 44px;
     min-height: 44px;
     flex-shrink: 0;
     padding: 0;
     margin: 0;
-    border-radius: 50%; /* Perfect circle on mobile */
+    border-radius: 50%;
+    /* Perfect circle on mobile */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2290,7 +2548,8 @@ textarea:focus {
     margin: 0;
     padding: 0;
     line-height: 1;
-    font-size: 1.15rem; /* Large and readable */
+    font-size: 1.15rem;
+    /* Large and readable */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2309,7 +2568,7 @@ textarea:focus {
 
   .avatar-dropdown {
     width: 240px;
-    right: 0; 
+    right: 0;
     max-width: calc(100vw - 32px);
     top: calc(100% + 8px);
   }

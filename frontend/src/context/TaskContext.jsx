@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef } from "react";
 import { format, isToday, isYesterday, differenceInDays, addHours } from "date-fns";
+import { calculateDefaultDueTime } from "../utils/taskUtils";
 
 const TaskContext = createContext();
 
@@ -28,8 +29,22 @@ export function TaskProvider({ children }) {
     return defaultValue;
   };
 
+  const formatCategory = (cat) => {
+    if (!cat) return "General";
+    return cat
+      .split(/[\s_]+/)
+      .map(word => word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : "")
+      .join('');
+  };
+
   // Load initial tasks
-  const [tasks, setTasks] = useState(() => getScopedData("smartTasks", [], true));
+  const [tasks, setTasks] = useState(() => {
+    const loadedTasks = getScopedData("smartTasks", [], true);
+    return loadedTasks.map(task => ({
+      ...task,
+      category: formatCategory(task.category)
+    }));
+  });
   const [geminiApiKey, setGeminiApiKey] = useState(() => getScopedData("smartGeminiKey", ""));
   const [streak, setStreak] = useState(() => parseInt(getScopedData("smartStreak", "1"), 10));
   const [lastActiveDate, setLastActiveDate] = useState(() => getScopedData("smartLastActiveDate", format(new Date(), "yyyy-MM-dd")));
@@ -46,11 +61,31 @@ export function TaskProvider({ children }) {
 
   const [history, setHistory] = useState(() => getScopedData("smartHistory", [], true));
 
+  const [pomodoroSettings, setPomodoroSettings] = useState(() => getScopedData("smartPomodoroSettings", {
+    work: 25,
+    shortBreak: 5,
+    longBreak: 15
+  }, true));
+
+  useEffect(() => {
+    localStorage.setItem(`smartPomodoroSettings_${userEmail}`, JSON.stringify(pomodoroSettings));
+  }, [pomodoroSettings, userEmail]);
+
   // Pomodoro Focus Timer State
-  const [focusTimeLeft, setFocusTimeLeft] = useState(1500); // 25 minutes standard
+  const [focusTimeLeft, setFocusTimeLeft] = useState(() => {
+    const settings = getScopedData("smartPomodoroSettings", { work: 25 }, true);
+    return settings.work * 60;
+  });
   const [isFocusRunning, setIsFocusRunning] = useState(false);
   const [focusMode, setFocusMode] = useState("work"); // work, shortBreak, longBreak
   const [focusStats, setFocusStats] = useState(() => getScopedData("smartFocusStats", { workMinutes: 0, completedSessions: 0 }, true));
+
+  const updatePomodoroSettings = (newSettings) => {
+    setPomodoroSettings(newSettings);
+    if (!isFocusRunning) {
+      setFocusTimeLeft(newSettings[focusMode] * 60);
+    }
+  };
 
   const timerRef = useRef(null);
 
@@ -96,13 +131,33 @@ export function TaskProvider({ children }) {
       }
 
       // Automatically save history for the lastActiveDate
-      const completedOnLastActive = tasks.filter((t) => t.completed && (t.completedDate === lastActiveDate || (t.dueDate === lastActiveDate && !t.completedDate)));
-      const pendingOnLastActive = tasks.filter((t) => !t.completed && t.dueDate === lastActiveDate);
-      const overdueOnLastActive = tasks.filter((t) => !t.completed && t.dueDate < lastActiveDate);
+      let completedCount = 0, pendingCount = 0, overdueCount = 0, totalCount = 0, rescheduledCount = 0;
+      
+      tasks.forEach(t => {
+        const taskDue = t.dueDate || t.createdDate || "2099-01-01";
+        const isCompletedOnOrBefore = t.completed && t.completedDate && t.completedDate <= lastActiveDate;
+        const isCompletedOnDay = t.completed && t.completedDate === lastActiveDate;
+        const isDueOnDay = taskDue === lastActiveDate;
+        const isCarryForward = taskDue < lastActiveDate && (!isCompletedOnOrBefore || isCompletedOnDay);
+        
+        if (isDueOnDay || isCarryForward) {
+          totalCount++;
+          if (isCompletedOnDay) {
+            completedCount++;
+          } else if (taskDue < lastActiveDate) {
+            overdueCount++;
+          } else {
+            pendingCount++;
+          }
+        }
+        
+        if (t.rescheduleHistory?.some(h => h.rescheduledAtDate === lastActiveDate)) {
+          rescheduledCount++;
+        }
+      });
 
-      const totalForLastActive = completedOnLastActive.length + pendingOnLastActive.length + overdueOnLastActive.length;
-      const rateForLastActive = totalForLastActive > 0 ? Math.round((completedOnLastActive.length / totalForLastActive) * 100) : 0;
-      const prodScore = Math.min(100, rateForLastActive + (nextStreak > 3 ? 5 : 0) + (completedOnLastActive.length > 5 ? 10 : 0));
+      const rateForLastActive = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+      const prodScore = Math.min(100, rateForLastActive + (nextStreak > 3 ? 5 : 0) + (completedCount > 5 ? 10 : 0));
 
       setHistory((prev) => {
         if (prev.some((h) => h.date === lastActiveDate && h.type === "daily")) {
@@ -113,10 +168,11 @@ export function TaskProvider({ children }) {
             id: Date.now().toString() + "-auto",
             type: "daily",
             date: lastActiveDate,
-            totalTasks: totalForLastActive,
-            completedCount: completedOnLastActive.length,
-            pendingCount: pendingOnLastActive.length,
-            overdueCount: overdueOnLastActive.length,
+            totalTasks: totalCount,
+            completedCount: completedCount,
+            pendingCount: pendingCount,
+            overdueCount: overdueCount,
+            rescheduledCount: rescheduledCount,
             completionRate: rateForLastActive,
             productivityScore: prodScore
           },
@@ -168,7 +224,7 @@ export function TaskProvider({ children }) {
 
     if (focusMode === "work") {
       setFocusStats((prev) => ({
-        workMinutes: prev.workMinutes + 25,
+        workMinutes: prev.workMinutes + pomodoroSettings.work,
         completedSessions: prev.completedSessions + 1
       }));
       if ("Notification" in window && Notification.permission === "granted") {
@@ -193,13 +249,7 @@ export function TaskProvider({ children }) {
   const switchFocusMode = (mode) => {
     setIsFocusRunning(false);
     setFocusMode(mode);
-    if (mode === "work") {
-      setFocusTimeLeft(1500);
-    } else if (mode === "shortBreak") {
-      setFocusTimeLeft(300);
-    } else if (mode === "longBreak") {
-      setFocusTimeLeft(900);
-    }
+    setFocusTimeLeft(pomodoroSettings[mode] * 60);
   };
 
   // Task Actions
@@ -213,14 +263,16 @@ export function TaskProvider({ children }) {
       id: Date.now().toString(),
       title: taskData.title,
       description: taskData.description || "",
-      category: taskData.category || "General",
+      category: formatCategory(taskData.category),
       priority: taskData.priority || "Medium",
       dueDate: taskData.dueDate || format(new Date(), "yyyy-MM-dd"),
-      dueTime: taskData.dueTime || format(addHours(new Date(), 1), "HH:mm"),
+      dueTime: taskData.dueTime || calculateDefaultDueTime(formatCategory(taskData.category)),
       completed: false,
       subtasks: taskData.subtasks || [],
       rescheduleCount: 0,
-      createdDate: format(new Date(), "yyyy-MM-dd")
+      rescheduleHistory: [],
+      createdDate: format(new Date(), "yyyy-MM-dd"),
+      createdTime: format(new Date(), "HH:mm:ss")
     };
 
     console.log(`[Reminder System] Reminder scheduled for task: "${newTask.title}" at ${newTask.dueDate} ${newTask.dueTime}`);
@@ -235,9 +287,30 @@ export function TaskProvider({ children }) {
     setTasks((prev) =>
       prev.map((t) => {
         if (t.id === taskId) {
-          const newTask = { ...t, ...updatedData };
+          let rescheduleUpdates = {};
+          if ((updatedData.dueDate && updatedData.dueDate !== t.dueDate) || 
+              (updatedData.dueTime && updatedData.dueTime !== t.dueTime)) {
+            const historyItem = {
+              previousDate: t.dueDate,
+              previousTime: t.dueTime,
+              newDate: updatedData.dueDate || t.dueDate,
+              newTime: updatedData.dueTime || t.dueTime,
+              rescheduledAtDate: format(new Date(), "yyyy-MM-dd"),
+              rescheduledAtTime: format(new Date(), "HH:mm:ss")
+            };
+            rescheduleUpdates = {
+              rescheduleCount: (t.rescheduleCount || 0) + 1,
+              rescheduleHistory: [...(t.rescheduleHistory || []), historyItem]
+            };
+          }
+
+          const newTask = { ...t, ...updatedData, ...rescheduleUpdates };
+          if (updatedData.category) {
+            newTask.category = formatCategory(updatedData.category);
+          }
           if (updatedData.completed !== undefined && updatedData.completed !== t.completed) {
             newTask.completedDate = updatedData.completed ? format(new Date(), "yyyy-MM-dd") : null;
+            newTask.completedAt = updatedData.completed ? new Date().toISOString() : null;
             if (updatedData.completed) {
               console.log(`[Reminder System] Reminder cancelled for completed task: "${t.title}"`);
             }
@@ -276,18 +349,22 @@ export function TaskProvider({ children }) {
 
           const isNowCompleted = hasSubtasks ? allCompleted : t.completed;
           let newCompletedDate = t.completedDate;
+          let newCompletedAt = t.completedAt;
           if (isNowCompleted && !t.completed) {
             newCompletedDate = format(new Date(), "yyyy-MM-dd");
+            newCompletedAt = new Date().toISOString();
             console.log(`[Reminder System] Reminder cancelled for completed task: "${t.title}"`);
           } else if (!isNowCompleted && t.completed) {
             newCompletedDate = null;
+            newCompletedAt = null;
           }
 
           return {
             ...t,
             subtasks: updatedSubtasks,
             completed: isNowCompleted,
-            completedDate: newCompletedDate
+            completedDate: newCompletedDate,
+            completedAt: newCompletedAt
           };
         }
         return t;
@@ -301,11 +378,22 @@ export function TaskProvider({ children }) {
       prev.map((t) => {
         if (t.id === taskId) {
           console.log(`[Reminder System] Reminder rescheduled for task: "${t.title}" to ${newDate} ${newTime || t.dueTime}`);
+          
+          const historyItem = {
+            previousDate: t.dueDate,
+            previousTime: t.dueTime,
+            newDate: newDate,
+            newTime: newTime || t.dueTime,
+            rescheduledAtDate: format(new Date(), "yyyy-MM-dd"),
+            rescheduledAtTime: format(new Date(), "HH:mm:ss")
+          };
+
           return {
             ...t,
             dueDate: newDate,
             dueTime: newTime || t.dueTime,
-            rescheduleCount: t.rescheduleCount + 1
+            rescheduleCount: (t.rescheduleCount || 0) + 1,
+            rescheduleHistory: [...(t.rescheduleHistory || []), historyItem]
           };
         }
         return t;
@@ -404,7 +492,9 @@ export function TaskProvider({ children }) {
         setIsFocusRunning,
         focusMode,
         focusStats,
-        switchFocusMode
+        switchFocusMode,
+        pomodoroSettings,
+        updatePomodoroSettings
       }}
     >
       {children}

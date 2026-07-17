@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTasks } from "../context/TaskContext";
 import { format, isToday, parseISO, addHours } from "date-fns";
 import { generateSuggestions } from "../services/gemini";
 import { getSpeechRecognizer, parseSpeechToTask } from "../services/speech";
+import { calculateDefaultDueTime } from "../utils/taskUtils";
 import "../planner.css";
 import "../tasks.css";
 
@@ -24,22 +25,53 @@ function MorningPlanner({ onClose }) {
   const [showManualForm, setShowManualForm] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newCategory, setNewCategory] = useState("Work");
+  const [newCustomCategory, setNewCustomCategory] = useState("");
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [newPriority, setNewPriority] = useState("Medium");
-  const defaultTime = format(addHours(new Date(), 1), "HH:mm");
-  const [newTime, setNewTime] = useState(defaultTime);
   
+  const presetCategories = ["Work", "Personal", "Health", "Learning", "Shopping"];
+  const dynamicCategories = [...new Set([...tasks.map(t => t.category), newCategory].filter(Boolean))];
+  const allCategories = [...new Set([...presetCategories, ...dynamicCategories])].filter(cat => cat !== "Custom");
+  
+  const [isTimeManuallySet, setIsTimeManuallySet] = useState(false);
+  const [newTime, setNewTime] = useState(() => calculateDefaultDueTime("Work"));
+  
+  // Recalculate time on category change if not manually set
+  useEffect(() => {
+    if (!isTimeManuallySet) {
+      const activeCat = isAddingCategory ? newCustomCategory : newCategory;
+      setNewTime(calculateDefaultDueTime(activeCat));
+    }
+  }, [newCategory, newCustomCategory, isAddingCategory, isTimeManuallySet]);
+
   const todayStr = format(new Date(), "yyyy-MM-dd");
+  const currentTimeStr = format(new Date(), "HH:mm");
   const [newDate, setNewDate] = useState(todayStr);
+  const [timeError, setTimeError] = useState("");
 
   // Filter tasks
   const overdueOrRescheduledTasks = tasks.filter((t) => !t.completed && (t.dueDate < todayStr || t.rescheduleCount > 0));
   const todayTasks = tasks.filter((t) => !t.completed && t.dueDate === todayStr && t.rescheduleCount === 0);
   const futureTasks = tasks.filter((t) => !t.completed && t.dueDate > todayStr && t.rescheduleCount === 0);
 
-  // Voice Handler
-  const handleVoiceInput = () => {
+  const resetForm = () => {
+    setNewTitle("");
+    setNewCategory("Work");
+    setNewCustomCategory("");
+    setIsAddingCategory(false);
+    setNewPriority("Medium");
+    setIsTimeManuallySet(false);
+    setNewTime(calculateDefaultDueTime("Work"));
+    setNewDate(todayStr);
+    setTimeError("");
     setVoiceError("");
     setTranscribedText("");
+  };
+
+  // Voice Handler
+  const handleVoiceInput = () => {
+    resetForm();
+    setShowManualForm(false);
 
     const recognizer = getSpeechRecognizer(
       (result) => {
@@ -48,12 +80,12 @@ function MorningPlanner({ onClose }) {
         // Parse task automatically but let user review it
         const parsed = parseSpeechToTask(result);
         setNewTitle(parsed.title);
-        setNewTime(parsed.dueTime || format(addHours(new Date(), 1), "HH:mm"));
+        setNewTime(parsed.dueTime || calculateDefaultDueTime(newCategory || "Work"));
         setNewDate(todayStr);
         setShowManualForm(true);
       },
       (err) => {
-        setVoiceError(`Voice Error: ${err}`);
+        setVoiceError(err);
         setIsRecording(false);
       },
       () => {
@@ -62,12 +94,27 @@ function MorningPlanner({ onClose }) {
     );
 
     if (!recognizer) {
-      setVoiceError("Your browser doesn't support Voice Input, or microphone is blocked. Please try Chrome/Edge and ensure microphone permission is allowed.");
+      setVoiceError("Your browser doesn't support Voice Input. Please try Chrome/Edge.");
       return;
     }
 
     setIsRecording(true);
-    recognizer.start();
+    try {
+      recognizer.start();
+    } catch (e) {
+      setIsRecording(false);
+      setVoiceError("Microphone access is blocked. Please allow microphone permission in your browser settings and try again.");
+    }
+  };
+
+  const handleWriteTaskClick = () => {
+    if (!showManualForm) {
+      resetForm();
+      setShowManualForm(true);
+      setIsRecording(false);
+    } else {
+      setShowManualForm(false);
+    }
   };
 
   // Manual Add Handler
@@ -75,18 +122,19 @@ function MorningPlanner({ onClose }) {
     e.preventDefault();
     if (!newTitle.trim()) return;
 
-    addTask({
+    const taskObj = {
       title: newTitle.trim(),
       description: transcribedText ? `From Voice: "${transcribedText}"` : "Added during Morning Planning",
-      category: newCategory,
+      category: isAddingCategory ? (newCustomCategory.trim() || "General") : newCategory,
       priority: newPriority,
       dueDate: newDate,
       dueTime: newTime,
       subtasks: []
-    });
+    };
 
-    setNewTitle("");
-    setTranscribedText("");
+    addTask(taskObj);
+
+    resetForm();
     setShowManualForm(false);
   };
 
@@ -113,7 +161,7 @@ function MorningPlanner({ onClose }) {
                     <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
                       <span className="planner-task-title">{task.title}</span>
                       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                        <span className="planner-task-time">{task.dueTime}</span>
+                        <span className="planner-task-time">Due Date: {task.dueDate}{task.dueTime ? ` • Due Time: ${task.dueTime}` : ''}</span>
                         <button onClick={() => { setEditingTaskId(task.id); setEditTitle(task.title); setEditTime(task.dueTime || "12:00"); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.1rem" }} title="Edit Task">✏️</button>
                       </div>
                     </div>
@@ -169,7 +217,7 @@ function MorningPlanner({ onClose }) {
               <button
                 type="button"
                 className="secondary-button"
-                onClick={() => setShowManualForm(!showManualForm)}
+                onClick={handleWriteTaskClick}
                 style={{ flex: 1, padding: "12px", borderRadius: "12px" }}
               >
                 ✍️ Write Task
@@ -189,7 +237,20 @@ function MorningPlanner({ onClose }) {
               </div>
             )}
 
-            {voiceError && <p style={{ color: "#ef4444", fontSize: "0.85rem", margin: "8px 0" }}>{voiceError}</p>}
+            {voiceError && (
+              <div style={{ margin: "8px 0", padding: "12px", background: "#fef2f2", border: "1px solid #f87171", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                <p style={{ color: "#ef4444", fontSize: "0.85rem", margin: 0 }}>{voiceError}</p>
+                {voiceError.includes("Microphone access is blocked") && (
+                  <button
+                    type="button"
+                    onClick={handleVoiceInput}
+                    style={{ background: "#ef4444", color: "white", border: "none", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "0.85rem", fontWeight: "bold", width: "fit-content" }}
+                  >
+                    Retry
+                  </button>
+                )}
+              </div>
+            )}
             {transcribedText && <p style={{ fontSize: "0.95rem", margin: "8px 0", fontStyle: "italic", color: "#4f46e5", fontWeight: "500" }}>"{transcribedText}"</p>}
 
             {showManualForm && (
@@ -206,23 +267,52 @@ function MorningPlanner({ onClose }) {
                 />
 
                 <div style={{ display: "flex", gap: "12px" }}>
-                  <select
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value)}
-                    className="form-input-styled"
-                    style={{ flex: 1, padding: "10px 14px" }}
-                  >
-                    <option value="Work">Work</option>
-                    <option value="Personal">Personal</option>
-                    <option value="Health">Health</option>
-                    <option value="Learning">Learning</option>
-                    <option value="Shopping">Shopping</option>
-                  </select>
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {!isAddingCategory ? (
+                      <select
+                        value={newCategory}
+                        onChange={(e) => {
+                          if (e.target.value === "Custom") {
+                            setIsAddingCategory(true);
+                          } else {
+                            setNewCategory(e.target.value);
+                          }
+                        }}
+                        className="form-input-styled"
+                        style={{ padding: "10px 14px" }}
+                      >
+                        {allCategories.map(cat => (
+                          <option key={`opt-${cat}`} value={cat}>{cat}</option>
+                        ))}
+                        <option value="Custom" style={{ fontWeight: 'bold' }}>+ Add New Category</option>
+                      </select>
+                    ) : (
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <input
+                          type="text"
+                          placeholder="New category..."
+                          value={newCustomCategory}
+                          onChange={(e) => setNewCustomCategory(e.target.value)}
+                          className="form-input-styled"
+                          style={{ flex: 1, padding: "10px 14px" }}
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={() => { setIsAddingCategory(false); setNewCustomCategory(""); setNewCategory("Work"); }}
+                          style={{ background: "#e2e8f0", color: "#475569", border: "none", borderRadius: "8px", width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontWeight: "bold", flexShrink: 0 }}
+                          title="Cancel"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
+                  </div>
                   <select
                     value={newPriority}
                     onChange={(e) => setNewPriority(e.target.value)}
                     className="form-input-styled"
-                    style={{ flex: 1, padding: "10px 14px" }}
+                    style={{ flex: 1, padding: "10px 14px", height: "fit-content" }}
                   >
                     <option value="High">High Priority</option>
                     <option value="Medium">Medium Priority</option>
@@ -236,7 +326,28 @@ function MorningPlanner({ onClose }) {
                     <input
                       type="date"
                       value={newDate}
-                      onChange={(e) => setNewDate(e.target.value)}
+                      min={todayStr}
+                      onChange={(e) => {
+                        const selectedDate = e.target.value;
+                        setNewDate(selectedDate);
+                        if (selectedDate === todayStr) {
+                          const nowTime = format(new Date(), "HH:mm");
+                          if (newTime < nowTime) {
+                            setTimeError("You can't select a previous time for today.");
+                          } else {
+                            setTimeError("");
+                          }
+                        } else {
+                          setTimeError("");
+                        }
+                      }}
+                      onClick={(e) => {
+                        try {
+                          e.target.showPicker();
+                        } catch (err) {
+                          // ignore
+                        }
+                      }}
                       className="form-input-styled"
                       style={{ width: "100%", padding: "10px 14px" }}
                       required
@@ -247,14 +358,41 @@ function MorningPlanner({ onClose }) {
                     <input
                       type="time"
                       value={newTime}
-                      onChange={(e) => setNewTime(e.target.value)}
+                      min={newDate === todayStr ? currentTimeStr : undefined}
+                      onChange={(e) => {
+                        const selectedTime = e.target.value;
+                        setIsTimeManuallySet(true);
+                        if (newDate === todayStr) {
+                          const nowTime = format(new Date(), "HH:mm");
+                          if (selectedTime < nowTime) {
+                            setTimeError("You can't select a previous time for today.");
+                            setNewTime(selectedTime);
+                            return;
+                          }
+                        }
+                        setTimeError("");
+                        setNewTime(selectedTime);
+                      }}
+                      onClick={(e) => {
+                        try {
+                          e.target.showPicker();
+                        } catch (err) {
+                          // ignore
+                        }
+                      }}
                       className="form-input-styled"
                       style={{ width: "100%", padding: "10px 14px" }}
+                      required
                     />
+                    {timeError && (
+                      <div style={{ color: "#ef4444", fontSize: "0.8rem", marginTop: "4px" }}>
+                        {timeError}
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <button type="submit" className="primary-btn" style={{ padding: "12px", borderRadius: "12px", marginTop: "4px" }}>
+                <button type="submit" className="primary-btn" style={{ padding: "12px", borderRadius: "12px", marginTop: "4px", color: "black", fontWeight: "bold", opacity: timeError ? 0.5 : 1 }} disabled={!!timeError}>
                   Add Task
                 </button>
               </form>

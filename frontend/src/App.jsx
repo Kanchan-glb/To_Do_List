@@ -6,6 +6,7 @@ import Layout from "./components/Layout";
 import TaskPage from "./components/TaskPage";
 import MorningPlanner from "./components/MorningPlanner";
 import ReportsPage from "./components/ReportsPage";
+import WorkProgressTracker from "./components/WorkProgressTracker";
 import SettingsPage from "./components/SettingsPage";
 import ProfilePage from "./components/ProfilePage";
 import MorningPopup from "./components/MorningPopup";
@@ -13,6 +14,7 @@ import NightPopup from "./components/NightPopup";
 import { TaskProvider, useTasks } from "./context/TaskContext";
 import { checkTaskReminders, sendBrowserNotification } from "./services/notification";
 import { format, addDays } from "date-fns";
+import { calculateDefaultDueTime } from "./utils/taskUtils";
 
 
 
@@ -55,7 +57,19 @@ function GlobalReminderEngine() {
   // Custom reschedule view state
   const [showRescheduleForm, setShowRescheduleForm] = useState(false);
   const [customDate, setCustomDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [customStartTime, setCustomStartTime] = useState(format(new Date(), "HH:mm"));
   const [customTime, setCustomTime] = useState("17:00");
+  const [isTimeManuallySet, setIsTimeManuallySet] = useState(false);
+
+  useEffect(() => {
+    if (activeReminder && !isTimeManuallySet) {
+      const dateStr = `${customDate}T${customStartTime}`;
+      const startObj = new Date(dateStr);
+      if (!isNaN(startObj)) {
+        setCustomTime(calculateDefaultDueTime(activeReminder.category, startObj));
+      }
+    }
+  }, [activeReminder, customDate, customStartTime, isTimeManuallySet]);
 
   useEffect(() => {
     // Check theme preference
@@ -83,6 +97,9 @@ function GlobalReminderEngine() {
 
         // Trigger in-app interactive overlay banner
         setActiveReminder(task);
+        setIsTimeManuallySet(false);
+        setCustomStartTime(format(new Date(), "HH:mm"));
+        setCustomDate(format(new Date(), "yyyy-MM-dd"));
         
         setNotifiedTaskIds(prev => {
           if (prev.includes(signature)) return prev;
@@ -285,21 +302,45 @@ function GlobalReminderEngine() {
                 </button>
               </div>
 
-              <div className="reminder-reschedule-box" style={{ marginTop: "8px" }}>
-                <input
-                  type="date"
-                  value={customDate}
-                  onChange={(e) => setCustomDate(e.target.value)}
-                  className="reminder-time-input"
-                  required
-                />
-                <input
-                  type="time"
-                  value={customTime}
-                  onChange={(e) => setCustomTime(e.target.value)}
-                  className="reminder-time-input"
-                  required
-                />
+              <div className="reminder-reschedule-box" style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "10px" }}>
+                <div>
+                  <label style={{ fontSize: "0.85rem", color: "#64748b", fontWeight: "600", display: "block", marginBottom: "4px" }}>New Date</label>
+                  <input
+                    type="date"
+                    value={customDate}
+                    onChange={(e) => setCustomDate(e.target.value)}
+                    className="reminder-time-input"
+                    style={{ width: "100%" }}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: "0.85rem", color: "#64748b", fontWeight: "600", display: "block", marginBottom: "4px" }}>Start Time</label>
+                  <input
+                    type="time"
+                    value={customStartTime}
+                    onChange={(e) => setCustomStartTime(e.target.value)}
+                    className="reminder-time-input"
+                    style={{ width: "100%" }}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: "0.85rem", color: "#64748b", fontWeight: "600", display: "block", marginBottom: "4px" }}>
+                    Suggested Due Time {!isTimeManuallySet && <span style={{ fontWeight: "normal", fontStyle: "italic", color: "#3b82f6" }}>(Automatically calculated)</span>}
+                  </label>
+                  <input
+                    type="time"
+                    value={customTime}
+                    onChange={(e) => {
+                      setCustomTime(e.target.value);
+                      setIsTimeManuallySet(true);
+                    }}
+                    className="reminder-time-input"
+                    style={{ width: "100%" }}
+                    required
+                  />
+                </div>
               </div>
 
               <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
@@ -364,6 +405,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <ReportsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/progress"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <WorkProgressTracker />
                 </Layout>
               </ProtectedRoute>
             }

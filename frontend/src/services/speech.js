@@ -1,4 +1,5 @@
 import { format, addDays, nextDay, parse, addHours } from "date-fns";
+import { calculateDefaultDueTime } from "../utils/taskUtils";
 
 /**
  * Custom Speech Recognition wrapper.
@@ -21,7 +22,13 @@ export function getSpeechRecognizer(onResult, onError, onEnd) {
   };
 
   recognition.onerror = (event) => {
-    if (onError) onError(event.error);
+    if (onError) {
+      if (event.error === 'not-allowed') {
+        onError("Microphone access is blocked. Please allow microphone permission in your browser settings and try again.");
+      } else {
+        onError(`Voice Error: ${event.error}`);
+      }
+    }
   };
 
   recognition.onend = () => {
@@ -41,7 +48,7 @@ export function parseSpeechToTask(text) {
   // Default values
   let title = text;
   let dueDate = format(new Date(), "yyyy-MM-dd");
-  let dueTime = format(addHours(new Date(), 1), "HH:mm");
+  let dueTime = null; // Will calculate at the end based on category if not explicitly found
   let priority = "Medium";
   let category = "General";
 
@@ -139,6 +146,10 @@ export function parseSpeechToTask(text) {
   // Capitalize first letter
   if (cleanTitle) {
     title = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
+  }
+
+  if (!dueTime) {
+    dueTime = calculateDefaultDueTime(category);
   }
 
   return {

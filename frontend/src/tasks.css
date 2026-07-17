@@ -7,6 +7,7 @@
   flex-direction: column;
   gap: 28px;
   animation: fadeIn 0.4s ease-out;
+  height: calc(100vh - 145px); /* Precise fit to prevent body overflow */
 }
 
 /* ── Tasks Hero ── */
@@ -175,11 +176,45 @@
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 
+/* ── Task List Container ── */
+.tasks-list-container {
+  background: rgba(241, 245, 249, 0.6); /* Distinct light lane */
+  border-radius: 24px;
+  padding: 16px 8px 16px 16px;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: inset 0 2px 10px rgba(0,0,0,0.02);
+  display: flex;
+  flex-direction: column;
+  flex: 1; /* Automatically occupy all remaining available space */
+  min-height: 0; /* Crucial: allows internal scrolling */
+}
+
 /* ── Task List ── */
 .tasks-list {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0; /* Crucial for nested flex scrolling */
+  padding-right: 8px; /* space for scrollbar */
+  scroll-snap-type: y proximity;
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar for tasks list */
+.tasks-list::-webkit-scrollbar {
+  width: 6px;
+}
+.tasks-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.tasks-list::-webkit-scrollbar-thumb {
+  background: rgba(203, 213, 225, 0.8);
+  border-radius: 4px;
+}
+.tasks-list::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .tasks-empty {
@@ -208,14 +243,45 @@
   box-shadow: 0 4px 16px rgba(0,0,0,0.03);
   transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
   position: relative;
-  overflow: hidden;
+  overflow: visible; /* Do not add internal scrolling inside task cards */
+  flex-shrink: 0; /* Ensure the card is never squished */
+  height: max-content; /* Automatically expand based on content */
+  scroll-snap-align: start;
 }
 
+/* Dynamic Left Borders */
 .task-card::before {
   content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 6px;
   background: linear-gradient(180deg, #6366f1, #a5b4fc);
   opacity: 0.9;
 }
+.task-card.status-red::before {
+  background: linear-gradient(180deg, #ef4444, #fca5a5);
+}
+.task-card.status-yellow::before {
+  background: linear-gradient(180deg, #eab308, #fef08a);
+}
+.task-card.status-blue::before {
+  background: linear-gradient(180deg, #3b82f6, #93c5fd);
+}
+.task-card.status-green::before {
+  background: linear-gradient(180deg, #22c55e, #86efac);
+}
+
+/* Dynamic Badges */
+.task-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+.task-badge.bg-red { background: #fee2e2; color: #ef4444; }
+.task-badge.bg-yellow { background: #fef9c3; color: #eab308; }
+.task-badge.bg-blue { background: #dbeafe; color: #3b82f6; }
+.task-badge.bg-green { background: #dcfce3; color: #22c55e; }
 
 .task-card:hover {
   transform: translateY(-4px);
@@ -429,4 +495,26 @@
 @media (max-width: 480px) {
   .tasks-hero-text h1 { font-size: 2rem; }
   .task-card { padding: 20px; }
+}
+
+/* Suggestion Chips */
+.suggestion-chip {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 6px 14px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+}
+
+.suggestion-chip:hover {
+  background: #6366f1;
+  color: white;
+  border-color: #6366f1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(99, 102, 241, 0.2);
 }
