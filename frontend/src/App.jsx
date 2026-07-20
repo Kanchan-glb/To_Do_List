@@ -262,6 +262,8 @@ function GlobalReminderEngine() {
   };
 
   return (
+  <>
+   <Toaster position="top-right" />
     <div className="reminder-modal-overlay">
       <div className="reminder-modal-card scale-in">
         <div className="reminder-modal-header">
@@ -355,6 +357,7 @@ function GlobalReminderEngine() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
@@ -367,6 +370,12 @@ function App() {
   return (
     <TaskProvider>
       <BrowserRouter>
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 2500,
+          }}
+        />
         <MorningPopup />
         <NightPopup />
         <Routes>

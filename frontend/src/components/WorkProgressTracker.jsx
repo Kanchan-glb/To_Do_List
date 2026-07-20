@@ -207,7 +207,7 @@ export default function WorkProgressTracker() {
       <div className="wpt-header">
         <div>
           <h2 className="wpt-title">Report Tracker</h2>
-          <p className="wpt-subtitle">Monitor productivity, track work, and review historical performance.</p>
+          {/* <p className="wpt-subtitle">Monitor productivity, track work, and review historical performance.</p> */}
         </div>
         <div className="wpt-filters">
           {["Today", "Yesterday", "Last 7 Days", "This Month"].map(f => (

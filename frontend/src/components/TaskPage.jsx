@@ -83,6 +83,18 @@ function TaskPage() {
       triggerElementRef.current?.focus();
     }
   }, [showAddModal, viewAllStatus]);
+  const addSubtaskItem = () => {
+    if (!newSubtaskTitle.trim()) return;
+
+    const newSubtask = {
+      id: Date.now().toString(),
+      title: newSubtaskTitle.trim(),
+      completed: false,
+    };
+
+    setSubtasksList((prev) => [...prev, newSubtask]);
+    setNewSubtaskTitle("");
+  };
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -169,6 +181,7 @@ function TaskPage() {
   const [suggestionError, setSuggestionError] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+
   const categoryName = useMemo(() => {
     if (isAddingCategory) return "";
     if (!category) return "";
@@ -186,7 +199,69 @@ function TaskPage() {
 
     return typeof resolvedName === 'string' ? resolvedName.trim() : "";
   }, [category, isAddingCategory, allCategories]);
+ const handleAIBreakdown = () => {
+  if (!title.trim()) {
+    alert("Enter task title first");
+    return;
+  }
 
+  const task = title.toLowerCase();
+  let aiSubtasks = [];
+
+  // Example breakdowns
+  if (task.includes("project")) {
+    aiSubtasks = [
+      "Understand requirements",
+      "Create project structure",
+      "Implement core features",
+      "Test functionality",
+      "Fix bugs",
+      "Deploy project",
+    ];
+  } else if (task.includes("assignment")) {
+    aiSubtasks = [
+      "Read assignment",
+      "Research the topic",
+      "Prepare outline",
+      "Write first draft",
+      "Review and edit",
+      "Submit assignment",
+    ];
+  } else if (task.includes("presentation")) {
+    aiSubtasks = [
+      "Research topic",
+      "Create slide outline",
+      "Design slides",
+      "Add visuals",
+      "Practice presentation",
+    ];
+  } else if (task.includes("react")) {
+    aiSubtasks = [
+      "Create components",
+      "Manage state",
+      "Connect API",
+      "Style UI",
+      "Test application",
+    ];
+  } else {
+    aiSubtasks = [
+      "Plan the task",
+      "Break into smaller steps",
+      "Start implementation",
+      "Review progress",
+      "Complete remaining work",
+      "Final review",
+    ];
+  }
+
+  const newSubtasks = aiSubtasks.map((item, index) => ({
+    id: `${Date.now()}-${index}`,
+    title: item,
+    completed: false,
+  }));
+
+  setSubtasksList(newSubtasks);
+};
   const selectedCategory = useMemo(() => {
     if (!categoryName) return null;
     return {
@@ -211,6 +286,7 @@ function TaskPage() {
 
     const cleanName = categoryName.trim();
     const cleanLower = cleanName.toLowerCase();
+
 
     const keywordMappings = {
       customer: [
@@ -1247,7 +1323,7 @@ function TaskPage() {
         <div className="tasks-hero-content">
           <p className="tasks-eyebrow">Task Management</p>
           <h1 className="tasks-title">Keep your work moving</h1>
-          <p className="tasks-sub">Organize priorities, break down large tasks, and stay on track with interactive check-offs.</p>
+          {/* <p className="tasks-sub">Organize priorities, break down large tasks, and stay on track with interactive check-offs.</p> */}
         </div>
         <button
           type="button"
@@ -1292,27 +1368,7 @@ function TaskPage() {
             <option value="Medium">Medium</option>
             <option value="Low">Low</option>
           </select>
-          <select
-            value={filterStatus}
-            onChange={(e) => handleStatusFilterChange(e.target.value)}
-            className="tasks-select"
-          >
-            <option value="All">All Tasks</option>
-            <option value="Pending">Pending Only</option>
-            <option value="Overdue">Overdue Only</option>
-            <option value="Completed">Completed Only</option>
-            <option value="Incoming">Incoming Only</option>
-          </select>
-          <input
-            type="number"
-            min="1"
-            placeholder="Count (e.g. 5)"
-            value={filterLimit === "All" ? "" : filterLimit}
-            onChange={(e) => setFilterLimit(e.target.value === "" ? "All" : e.target.value)}
-            className="tasks-select"
-            style={{ width: '130px', background: 'var(--bg-app)' }}
-            title="Leave empty to show all tasks"
-          />
+
         </div>
       </section>
 
@@ -1332,43 +1388,43 @@ function TaskPage() {
               <div className="status-card-empty">No pending tasks 🎉</div>
             ) : (
               pendingTasksList.slice(0, 3).map(task => (
-                <div key={task.id} className="task-preview-item" style={{ cursor: "default" }}>
-                  <h4 className="task-preview-title" style={{ fontSize: "0.95rem", fontWeight: "700", marginBottom: "6px" }}>
-                    {task.title}
+                <div key={task.id} className="task-preview-item">
+
+                  <h4 className="task-preview-title">
+                    📌 {task.title}
                   </h4>
-                  <div className="task-preview-due" style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
-                    📅 {task.dueDate}
+
+                  <div className="task-preview-date">
+                    📅 Due: {format(new Date(task.dueDate), "dd MMM yyyy")}
+
+                    {task.completedAt && (
+                      <>
+                        {"  |  "}
+                        ✅ Completed: {format(new Date(task.completedAt), "dd MMM yyyy, h:mm a")}
+                      </>
+                    )}
                   </div>
-                  {task.subtasks && task.subtasks.length > 0 && (
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginBottom: "8px" }}>
-                      📋 Subtasks: {task.subtasks.filter(s => s.completed).length} of {task.subtasks.length} completed
-                    </div>
-                  )}
-                  <div className="task-preview-meta" style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%", marginTop: "4px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
-                      <div className="task-preview-badges" style={{ display: "flex", gap: "8px" }}>
-                        <span className={`task-preview-badge priority ${task.priority.toLowerCase()}`} style={{ fontSize: "0.65rem", fontWeight: "800", padding: "2px 6px", borderRadius: "4px" }}>
-                          {task.priority}
-                        </span>
-                        {task.category && (
-                          <span className="task-preview-badge category" style={{ fontSize: "0.65rem", fontWeight: "800", padding: "2px 6px", borderRadius: "4px" }}>
-                            {task.category}
-                          </span>
-                        )}
-                      </div>
-                      <TaskStatusDropdown task={task} />
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "flex-end", width: "100%" }}>
+
+                  <div className="task-preview-actions">
+
+                    {task.subtasks?.length > 0 && (
                       <button
-                        type="button"
-                        className="status-card-viewall"
-                        onClick={() => navigate(`/tasks/${task.id || task._id}`)}
-                        style={{ fontSize: "0.75rem", padding: 0, background: "transparent", border: "none", color: "#6366f1", cursor: "pointer", fontWeight: "700" }}
+                        className="subtask-toggle-btn"
+                        onClick={() => toggleSubtasks(task.id)}
                       >
-                        View Details →
+                        Show Subtasks ▼
                       </button>
-                    </div>
+                    )}
+
+                    <button
+                      className="status-card-viewall"
+                      onClick={() => navigate(`/tasks/${task.id || task._id}`)}
+                    >
+                      View Details →
+                    </button>
+
                   </div>
+
                 </div>
               ))
             )}
@@ -1404,43 +1460,43 @@ function TaskPage() {
               <div className="status-card-empty">No overdue tasks</div>
             ) : (
               overdueTasksList.slice(0, 3).map(task => (
-                <div key={task.id} className="task-preview-item" style={{ cursor: "default" }}>
-                  <h4 className="task-preview-title" style={{ fontSize: "0.95rem", fontWeight: "700", marginBottom: "6px" }}>
-                    {task.title}
+                <div key={task.id} className="task-preview-item">
+
+                  <h4 className="task-preview-title">
+                    📌 {task.title}
                   </h4>
-                  <div className="task-preview-due" style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
-                    📅 {task.dueDate}
+
+                  <div className="task-preview-date">
+                    📅 Due: {format(new Date(task.dueDate), "dd MMM yyyy")}
+
+                    {task.completedAt && (
+                      <>
+                        {"  |  "}
+                        ✅ Completed: {format(new Date(task.completedAt), "dd MMM yyyy, h:mm a")}
+                      </>
+                    )}
                   </div>
-                  {task.subtasks && task.subtasks.length > 0 && (
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginBottom: "8px" }}>
-                      📋 Subtasks: {task.subtasks.filter(s => s.completed).length} of {task.subtasks.length} completed
-                    </div>
-                  )}
-                  <div className="task-preview-meta" style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%", marginTop: "4px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
-                      <div className="task-preview-badges" style={{ display: "flex", gap: "8px" }}>
-                        <span className={`task-preview-badge priority ${task.priority.toLowerCase()}`} style={{ fontSize: "0.65rem", fontWeight: "800", padding: "2px 6px", borderRadius: "4px" }}>
-                          {task.priority}
-                        </span>
-                        {task.category && (
-                          <span className="task-preview-badge category" style={{ fontSize: "0.65rem", fontWeight: "800", padding: "2px 6px", borderRadius: "4px" }}>
-                            {task.category}
-                          </span>
-                        )}
-                      </div>
-                      <TaskStatusDropdown task={task} />
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "flex-end", width: "100%" }}>
+
+                  <div className="task-preview-actions">
+
+                    {task.subtasks?.length > 0 && (
                       <button
-                        type="button"
-                        className="status-card-viewall"
-                        onClick={() => navigate(`/tasks/${task.id || task._id}`)}
-                        style={{ fontSize: "0.75rem", padding: 0, background: "transparent", border: "none", color: "#6366f1", cursor: "pointer", fontWeight: "700" }}
+                        className="subtask-toggle-btn"
+                        onClick={() => toggleSubtasks(task.id)}
                       >
-                        View Details →
+                        Show Subtasks ▼
                       </button>
-                    </div>
+                    )}
+
+                    <button
+                      className="status-card-viewall"
+                      onClick={() => navigate(`/tasks/${task.id || task._id}`)}
+                    >
+                      View Details →
+                    </button>
+
                   </div>
+
                 </div>
               ))
             )}
@@ -1476,43 +1532,43 @@ function TaskPage() {
               <div className="status-card-empty">No completed tasks yet</div>
             ) : (
               completedTasksList.slice(0, 3).map(task => (
-                <div key={task.id} className="task-preview-item" style={{ cursor: "default" }}>
-                  <h4 className="task-preview-title" style={{ fontSize: "0.95rem", fontWeight: "700", marginBottom: "6px" }}>
-                    {task.title}
+                <div key={task.id} className="task-preview-item">
+
+                  <h4 className="task-preview-title">
+                    📌 {task.title}
                   </h4>
-                  <div className="task-preview-due" style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
-                    📅 {task.dueDate}
+
+                  <div className="task-preview-date">
+                    📅 Due: {format(new Date(task.dueDate), "dd MMM yyyy")}
+
+                    {task.completedAt && (
+                      <>
+                        {"  |  "}
+                        ✅ Completed: {format(new Date(task.completedAt), "dd MMM yyyy, h:mm a")}
+                      </>
+                    )}
                   </div>
-                  {task.subtasks && task.subtasks.length > 0 && (
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginBottom: "8px" }}>
-                      📋 Subtasks: {task.subtasks.filter(s => s.completed).length} of {task.subtasks.length} completed
-                    </div>
-                  )}
-                  <div className="task-preview-meta" style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%", marginTop: "4px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
-                      <div className="task-preview-badges" style={{ display: "flex", gap: "8px" }}>
-                        <span className={`task-preview-badge priority ${task.priority.toLowerCase()}`} style={{ fontSize: "0.65rem", fontWeight: "800", padding: "2px 6px", borderRadius: "4px" }}>
-                          {task.priority}
-                        </span>
-                        {task.category && (
-                          <span className="task-preview-badge category" style={{ fontSize: "0.65rem", fontWeight: "800", padding: "2px 6px", borderRadius: "4px" }}>
-                            {task.category}
-                          </span>
-                        )}
-                      </div>
-                      <TaskStatusDropdown task={task} />
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "flex-end", width: "100%" }}>
+
+                  <div className="task-preview-actions">
+
+                    {task.subtasks?.length > 0 && (
                       <button
-                        type="button"
-                        className="status-card-viewall"
-                        onClick={() => navigate(`/tasks/${task.id || task._id}`)}
-                        style={{ fontSize: "0.75rem", padding: 0, background: "transparent", border: "none", color: "#6366f1", cursor: "pointer", fontWeight: "700" }}
+                        className="subtask-toggle-btn"
+                        onClick={() => toggleSubtasks(task.id)}
                       >
-                        View Details →
+                        Show Subtasks ▼
                       </button>
-                    </div>
+                    )}
+
+                    <button
+                      className="status-card-viewall"
+                      onClick={() => navigate(`/tasks/${task.id || task._id}`)}
+                    >
+                      View Details →
+                    </button>
+
                   </div>
+
                 </div>
               ))
             )}
@@ -1548,43 +1604,43 @@ function TaskPage() {
               <div className="status-card-empty">No incoming tasks</div>
             ) : (
               incomingTasksList.slice(0, 3).map(task => (
-                <div key={task.id} className="task-preview-item" style={{ cursor: "default" }}>
-                  <h4 className="task-preview-title" style={{ fontSize: "0.95rem", fontWeight: "700", marginBottom: "6px" }}>
-                    {task.title}
+                <div key={task.id} className="task-preview-item">
+
+                  <h4 className="task-preview-title">
+                    📌 {task.title}
                   </h4>
-                  <div className="task-preview-due" style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
-                    📅 {task.dueDate}
+
+                  <div className="task-preview-date">
+                    📅 Due: {format(new Date(task.dueDate), "dd MMM yyyy")}
+
+                    {task.completedAt && (
+                      <>
+                        {"  |  "}
+                        ✅ Completed: {format(new Date(task.completedAt), "dd MMM yyyy, h:mm a")}
+                      </>
+                    )}
                   </div>
-                  {task.subtasks && task.subtasks.length > 0 && (
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginBottom: "8px" }}>
-                      📋 Subtasks: {task.subtasks.filter(s => s.completed).length} of {task.subtasks.length} completed
-                    </div>
-                  )}
-                  <div className="task-preview-meta" style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%", marginTop: "4px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
-                      <div className="task-preview-badges" style={{ display: "flex", gap: "8px" }}>
-                        <span className={`task-preview-badge priority ${task.priority.toLowerCase()}`} style={{ fontSize: "0.65rem", fontWeight: "800", padding: "2px 6px", borderRadius: "4px" }}>
-                          {task.priority}
-                        </span>
-                        {task.category && (
-                          <span className="task-preview-badge category" style={{ fontSize: "0.65rem", fontWeight: "800", padding: "2px 6px", borderRadius: "4px" }}>
-                            {task.category}
-                          </span>
-                        )}
-                      </div>
-                      <TaskStatusDropdown task={task} />
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "flex-end", width: "100%" }}>
+
+                  <div className="task-preview-actions">
+
+                    {task.subtasks?.length > 0 && (
                       <button
-                        type="button"
-                        className="status-card-viewall"
-                        onClick={() => navigate(`/tasks/${task.id || task._id}`)}
-                        style={{ fontSize: "0.75rem", padding: 0, background: "transparent", border: "none", color: "#6366f1", cursor: "pointer", fontWeight: "700" }}
+                        className="subtask-toggle-btn"
+                        onClick={() => toggleSubtasks(task.id)}
                       >
-                        View Details →
+                        Show Subtasks ▼
                       </button>
-                    </div>
+                    )}
+
+                    <button
+                      className="status-card-viewall"
+                      onClick={() => navigate(`/tasks/${task.id || task._id}`)}
+                    >
+                      View Details →
+                    </button>
+
                   </div>
+
                 </div>
               ))
             )}

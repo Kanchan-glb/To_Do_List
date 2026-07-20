@@ -9,7 +9,7 @@
   height: auto;
   overflow: visible;
   animation: fadeIn 0.4s ease-out;
-  max-width: 1800px;
+  max-width: 1700px;
   margin: 0 auto;
   width: 100%;
   padding: 20px;
@@ -947,11 +947,10 @@
 }
 
 .tac-body {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  flex: 1;
-  min-height: 0;
+    display: grid;
+    grid-template-columns: 2fr 320px;
+    gap: 20px;
+    min-height: 0;
 }
 
 @media (min-width: 1024px) {
@@ -1037,7 +1036,7 @@
   flex-shrink: 0;
 }
 
-.tac-sum-card {
+/* .tac-sum-card {
   flex: 1;
   min-width: 80px;
   background: var(--bg-muted);
@@ -1049,6 +1048,14 @@
   justify-content: center;
   gap: 6px;
   border: var(--border-light);
+} */
+.tac-sum-card {
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 12px;
+  border: var(--border-light);
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
 }
 
 .tac-sum-card .val {
@@ -1475,7 +1482,7 @@
   width: 95vw;
   max-width: 1400px;
   height: 95vh;
-  max-height: 95vh;
+
   max-height: 90vh;
   border-radius: 20px;
   border: 1px solid rgba(226, 232, 240, 0.8);
@@ -2179,19 +2186,70 @@
     gap:16px;
   overflow: hidden;
 }
-
 .db-preview-section {
-  background: var(--card-bg, #ffffff);
-  border: 1px solid var(--border-light, #e2e8f0);
-  border-radius: 16px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  transition: box-shadow 0.2s ease;
+    background: var(--card-bg, #ffffff);
+
+    border: 1px solid rgba(203, 213, 225, 0.8);
+    border-radius: 18px;
+
+    display: flex;
+    flex-direction: column;
+    margin-top: 20px;
+
+    overflow: hidden;
+
+    padding: 20px;
+
+    position: relative;
+
+    box-shadow:
+        0 4px 16px rgba(15, 23, 42, 0.08);
+
+    transition:
+        transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 0.35s ease,
+        border-color 0.35s ease;
 }
 
+
+/* subtle top glow */
+.db-preview-section::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+
+    width: 100%;
+    height: 3px;
+
+    background: linear-gradient(
+        90deg,
+        #4f46e5,
+        #7c3aed,
+        #0ea5e9
+    );
+
+    opacity: 0;
+    transition: opacity .3s ease;
+}
+
+
+/* Hover */
 .db-preview-section:hover {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
+
+    transform: translateY(-6px);
+
+    border-color: rgba(79, 70, 229, 0.45);
+
+    box-shadow:
+        0 20px 45px rgba(79,70,229,0.18),
+        0 8px 20px rgba(15,23,42,0.10);
+
+}
+
+
+.db-preview-section:hover::before {
+    opacity: 1;
 }
 
 .db-preview-header {
@@ -2390,16 +2448,6 @@
   background: rgba(255, 255, 255, 0.06);
 }
 
-/* ── Task Activity Center Layout ── */
-.tac-body {
-  display: flex;
-  flex-direction: row;
-  gap: 24px;
-  flex-wrap: wrap;
-  display:grid;
-    grid-template-columns:2fr 320px;
-    gap:20px;
-}
 
 .tac-left {
   flex: 1 1 300px;
@@ -2423,14 +2471,7 @@
   margin-top: 16px;
 }
 
-.tac-sum-card {
-  background: var(--bg-card);
-  border-radius: 12px;
-  padding: 12px;
-  border: var(--border-light);
-  text-align: center;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
-}
+
 
 .tac-sum-card .val {
   font-size: 1.2rem;

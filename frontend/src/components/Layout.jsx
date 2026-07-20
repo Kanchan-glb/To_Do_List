@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useTasks } from "../context/TaskContext";
 import { useState, useRef, useEffect } from "react";
+import { toast,Toaster } from "react-hot-toast";
 
 /* ── SVG Icon Components ── */
 const Icon = ({
@@ -68,12 +69,27 @@ const MenuIcon = () => <Icon size={24}><line x1="3" y1="12" x2="21" y2="12" /><l
 const PlusIcon = () => <Icon size={16}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></Icon>;
 const CirclePlusIcon = () => <Icon><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></Icon>;
 const ProgressIcon = () => <Icon><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></Icon>;
-
+const ResetIcon = ({ size = 18 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M3 12a9 9 0 1 0 3-6.7" />
+    <polyline points="3 3 3 9 9 9" />
+  </svg>
+);
 function Layout({ children }) {
   const userName = localStorage.getItem("smartName") || "User";
   const {
     getDailyProgress,
     focusTimeLeft,
+    setFocusTimeLeft,
     isFocusRunning,
     setIsFocusRunning,
     focusMode,
@@ -86,6 +102,7 @@ function Layout({ children }) {
   const [profileEmail, setProfileEmail] = useState(
     localStorage.getItem("smartEmail") || ""
   );
+  const [timeLeft, setTimeLeft] = useState(25 * 60);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -105,6 +122,11 @@ function Layout({ children }) {
   });
   const dropdownRef = useRef(null);
   const timerDropdownRef = useRef(null);
+
+  const resetPomodoroTimer = () => {
+    setIsFocusRunning(false);
+    setFocusTimeLeft(pomodoroSettings[focusMode] * 60);
+  };
 
   // Persist sidebar state
   useEffect(() => {
@@ -143,56 +165,52 @@ function Layout({ children }) {
     localStorage.removeItem("smartEmail");
     window.location.href = "/login";
   };
-  const handleProfileUpdate = () => {
+const handleProfileUpdate = () => {
+  if (!profileName.trim()) {
+    toast.error("Please enter your name");
+    return;
+  }
 
-    if (!profileName.trim()) {
-      alert("Name is required");
-      return;
-    }
+  localStorage.setItem("smartName", profileName);
 
-    localStorage.setItem("smartName", profileName);
-    localStorage.setItem("smartEmail", profileEmail);
+  toast.success("Profile updated successfully!");
 
+  setTimeout(() => {
     setAccountModal(null);
+    navigate("/dashboard");
+  }, 1800); // 1.8 sec baad
+};;
+ const handlePasswordUpdate = () => {
+  const savedPassword = localStorage.getItem("smartPassword");
 
-    window.location.reload();
-  };
-  const handlePasswordUpdate = () => {
+  if (savedPassword && savedPassword !== currentPassword) {
+    toast.error("Current password is incorrect");
+    return;
+  }
 
-    const savedPassword = localStorage.getItem("smartPassword");
+  if (newPassword !== confirmPassword) {
+    toast.error("Passwords do not match");
+    return;
+  }
 
+  if (newPassword.length < 6) {
+    toast.error("Password must be at least 6 characters");
+    return;
+  }
 
-    if (savedPassword && savedPassword !== currentPassword) {
-      alert("Current password is incorrect");
-      return;
-    }
+  localStorage.setItem("smartPassword", newPassword);
 
+  toast.success("Password updated successfully!");
 
-    if (newPassword !== confirmPassword) {
-      alert("Password does not match");
-      return;
-    }
+  setCurrentPassword("");
+  setNewPassword("");
+  setConfirmPassword("");
 
-
-    if (newPassword.length < 6) {
-      alert("Password must be minimum 6 characters");
-      return;
-    }
-
-
-    localStorage.setItem("smartPassword", newPassword);
-
-
-    alert("Password updated successfully");
-
-
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-
+  setTimeout(() => {
     setAccountModal(null);
-
-  };
+    navigate("/dashboard");
+  }, 1800);
+};
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -214,7 +232,7 @@ function Layout({ children }) {
   const navItems = [
     { label: "Dashboard", path: "/dashboard", icon: <DashIcon /> },
     { label: "Tasks", path: "/tasks", icon: <TaskIcon /> },
-    { label: "Planner", path: "/planner", icon: <PlanIcon /> },
+    // { label: "Planner", path: "/planner", icon: <PlanIcon /> },
     // { label: "Reports", path: "/reports", icon: <ReportIcon /> },
     { label: "Reports", path: "/progress", icon: <ProgressIcon /> },
     // { label: "Settings", path: "/settings", icon: <SettingIcon /> },
@@ -225,6 +243,12 @@ function Layout({ children }) {
 
   return (
     <div className="app-shell">
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 2500,
+        }}
+      />
 
       {/* ═══════════════════ SIDEBAR & OVERLAY ═══════════════════ */}
       <div
@@ -482,12 +506,30 @@ function Layout({ children }) {
                           className={`timer-action-btn ${isFocusRunning ? "running" : ""}`}
                           onClick={() => setIsFocusRunning(!isFocusRunning)}
                           style={{
-                            background: isFocusRunning ? 'transparent' : getModeColor(focusMode),
-                            color: isFocusRunning ? getModeColor(focusMode) : '#fff',
-                            borderColor: isFocusRunning ? getModeColor(focusMode) : 'transparent'
+                            background: isFocusRunning ? "transparent" : getModeColor(focusMode),
+                            color: isFocusRunning ? getModeColor(focusMode) : "#fff",
+                            borderColor: isFocusRunning ? getModeColor(focusMode) : "transparent",
                           }}
                         >
-                          {isFocusRunning ? <><PauseIcon /> Pause</> : <><PlayIcon /> Start</>}
+                          {isFocusRunning ? (
+                            <>
+                              <PauseIcon /> Pause
+                            </>
+                          ) : (
+                            <>
+                              <PlayIcon /> Start
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          className="timer-reset-btn"
+                          onClick={resetPomodoroTimer}
+                          title="Reset Timer"
+                          aria-label="Reset Timer"
+                        >
+                          <ResetIcon />
                         </button>
                       </div>
                     </>
@@ -626,12 +668,7 @@ function Layout({ children }) {
                         />
 
 
-                        <input
-                          type="email"
-                          value={profileEmail}
-                          onChange={(e) => setProfileEmail(e.target.value)}
-                          placeholder="Email"
-                        />
+
 
                         <button
                           className="save-btn"
