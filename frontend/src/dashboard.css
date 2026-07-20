@@ -9,10 +9,10 @@
   height: auto;
   overflow: visible;
   animation: fadeIn 0.4s ease-out;
-  max-width: 1440px;
+  max-width: 1800px;
   margin: 0 auto;
   width: 100%;
-  padding: 16px 24px;
+  padding: 20px;
 }
 
 @keyframes fadeIn {
@@ -37,6 +37,8 @@
   border-radius: 12px;
   padding: 12px 24px;
   box-shadow: 0 4px 12px rgba(79, 70, 229, 0.05);
+  flex-wrap: wrap;
+  gap: 20px;
   position: relative;
   overflow: hidden;
   flex-shrink: 0;
@@ -240,9 +242,9 @@
 }
 
 .db-stats-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+   display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:14px;
 }
 
 .db-stat-card {
@@ -1848,9 +1850,9 @@
 }
 
 .pa-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 16px;
+  display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+    gap:16px;
   margin-top: 28px;
 }
 
@@ -2164,9 +2166,9 @@
 ═══════════════════════════════════════════════ */
 
 .db-task-preview-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+   display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+    gap:16px;
   overflow: hidden;
 }
 
@@ -2386,6 +2388,9 @@
   flex-direction: row;
   gap: 24px;
   flex-wrap: wrap;
+  display:grid;
+    grid-template-columns:2fr 320px;
+    gap:20px;
 }
 
 .tac-left {
@@ -2433,6 +2438,7 @@
 @media (max-width: 768px) {
   .tac-body {
     flex-direction: column;
+    grid-template-columns:1fr;
   }
 
   .tac-left,
