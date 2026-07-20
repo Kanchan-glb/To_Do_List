@@ -438,7 +438,7 @@ function MorningPlanner({ onClose }) {
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
                       <label style={{ fontSize: "0.85rem", color: "#64748b", fontWeight: "600" }}>Time</label>
-                      {!isTimeManuallySet && (
+                      {/* {!isTimeManuallySet && (
                         <span style={{
                           fontSize: "0.7rem",
                           background: "#eff6ff",
@@ -449,7 +449,7 @@ function MorningPlanner({ onClose }) {
                           fontWeight: "600",
                           letterSpacing: "0.02em"
                         }}>⏱ Auto-suggested</span>
-                      )}
+                      )} */}
                     </div>
                     <input
                       type="time"
@@ -480,7 +480,7 @@ function MorningPlanner({ onClose }) {
                       style={{ width: "100%", padding: "10px 14px" }}
                       required
                     />
-                    {!isTimeManuallySet && (() => {
+                    {/* {!isTimeManuallySet && (() => {
                       const activeCat = isAddingCategory ? (newCustomCategory || "Other") : newCategory;
                       const duration = CATEGORY_DEFAULT_DURATION[activeCat] || CATEGORY_DEFAULT_DURATION.Other;
                       return (
@@ -491,7 +491,7 @@ function MorningPlanner({ onClose }) {
                           </span>
                         </div>
                       );
-                    })()}
+                    })()} */}
                     {timeError && (
                       <div style={{ color: "#ef4444", fontSize: "0.8rem", marginTop: "4px" }}>
                         {timeError}

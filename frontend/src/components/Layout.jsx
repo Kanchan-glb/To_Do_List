@@ -3,18 +3,57 @@ import { useTasks } from "../context/TaskContext";
 import { useState, useRef, useEffect } from "react";
 
 /* ── SVG Icon Components ── */
-const Icon = ({ d, size = 18, stroke = "currentColor", fill = "none", strokeWidth = 1.75, children, viewBox = "0 0 24 24" }) => (
-  <svg width={size} height={size} viewBox={viewBox} fill={fill} stroke={stroke} strokeWidth={strokeWidth}
-    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+const Icon = ({
+  d,
+  size = 24,
+  stroke = "currentColor",
+  fill = "none",
+  strokeWidth = 2.4,
+  children,
+  viewBox = "0 0 24 24"
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox={viewBox}
+    fill={fill}
+    stroke={stroke}
+    strokeWidth={strokeWidth}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    style={{
+      flexShrink: 0,
+      display: "block",
+    }}
+  >
     {d ? <path d={d} /> : children}
   </svg>
 );
+const DashIcon = () => (
+  <Icon d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" />
+);
 
-const DashIcon = () => <Icon><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></Icon>;
-const TaskIcon = () => <Icon><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" /></Icon>;
-const PlanIcon = () => <Icon><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></Icon>;
-const ReportIcon = () => <Icon><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></Icon>;
-const SettingIcon = () => <Icon><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" /></Icon>;
+const TaskIcon = () => (
+  <Icon d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+);
+
+const PlanIcon = () => (
+  <Icon d="M8 7V3m8 4V3M4 11h16M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z" />
+);
+
+const ReportIcon = () => (
+  <Icon d="M3 3v18h18M7 16l4-5 3 3 5-7" />
+);
+
+const SettingIcon = () => (
+  <Icon d="M12 15.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1.08-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1.08 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33h.08a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v.08a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+);
+// const DashIcon = () => <Icon><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></Icon>;
+// const TaskIcon = () => <Icon><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" /></Icon>;
+// const PlanIcon = () => <Icon><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></Icon>;
+// const ReportIcon = () => <Icon><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></Icon>;
+// const SettingIcon = () => <Icon><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" /></Icon>;
 const BellIcon = () => <Icon size={24}><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></Icon>;
 const LogoutIcon = () => <Icon><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></Icon>;
 const TimerIcon = () => <Icon><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 15" /></Icon>;
@@ -42,6 +81,15 @@ function Layout({ children }) {
     pomodoroSettings,
     updatePomodoroSettings
   } = useTasks();
+  const [accountModal, setAccountModal] = useState(null);
+  const [profileName, setProfileName] = useState(userName);
+  const [profileEmail, setProfileEmail] = useState(
+    localStorage.getItem("smartEmail") || ""
+  );
+
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const { completionRate, todayCompleted, todayCount } = getDailyProgress();
 
@@ -95,7 +143,56 @@ function Layout({ children }) {
     localStorage.removeItem("smartEmail");
     window.location.href = "/login";
   };
+  const handleProfileUpdate = () => {
 
+    if (!profileName.trim()) {
+      alert("Name is required");
+      return;
+    }
+
+    localStorage.setItem("smartName", profileName);
+    localStorage.setItem("smartEmail", profileEmail);
+
+    setAccountModal(null);
+
+    window.location.reload();
+  };
+  const handlePasswordUpdate = () => {
+
+    const savedPassword = localStorage.getItem("smartPassword");
+
+
+    if (savedPassword && savedPassword !== currentPassword) {
+      alert("Current password is incorrect");
+      return;
+    }
+
+
+    if (newPassword !== confirmPassword) {
+      alert("Password does not match");
+      return;
+    }
+
+
+    if (newPassword.length < 6) {
+      alert("Password must be minimum 6 characters");
+      return;
+    }
+
+
+    localStorage.setItem("smartPassword", newPassword);
+
+
+    alert("Password updated successfully");
+
+
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+
+    setAccountModal(null);
+
+  };
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -121,7 +218,7 @@ function Layout({ children }) {
     // { label: "Reports", path: "/reports", icon: <ReportIcon /> },
     { label: "Reports", path: "/progress", icon: <ProgressIcon /> },
     // { label: "Settings", path: "/settings", icon: <SettingIcon /> },
-    { label: "Profile", path: "/profile", icon: <UserIcon /> },
+    // { label: "Profile", path: "/profile", icon: <UserIcon /> },
   ];
 
   const progressDeg = Math.round((completionRate / 100) * 360);
@@ -235,29 +332,29 @@ function Layout({ children }) {
           </div>
 
           <button
-  type="button"
-  className="topbar-add-task-btn"
-  style={{
-    background: "linear-gradient(135deg, #4f46e5, #7c3aed)",
-    color: "#fff",
-    border: "none",
-    borderRadius: "10px",
-    padding: "10px 18px",
-    fontWeight: "600",
-    boxShadow: "0 6px 18px rgba(79, 70, 229, 0.28)",
-  }}
-  onClick={() =>
-    navigate("/tasks", {
-      state: {
-        openAddTaskModal: true,
-        timestamp: Date.now(),
-      },
-    })
-  }
->
-  <CirclePlusIcon />
-  <span>Add Task</span>
-</button>
+            type="button"
+            className="topbar-add-task-btn"
+            style={{
+              background: "linear-gradient(135deg, #4f46e5, #7c3aed)",
+              color: "#fff",
+              border: "none",
+              borderRadius: "10px",
+              padding: "10px 18px",
+              fontWeight: "600",
+              boxShadow: "0 6px 18px rgba(79, 70, 229, 0.28)",
+            }}
+            onClick={() =>
+              navigate("/tasks", {
+                state: {
+                  openAddTaskModal: true,
+                  timestamp: Date.now(),
+                },
+              })
+            }
+          >
+            <CirclePlusIcon />
+            <span>Add Task</span>
+          </button>
           {/* Right: Actions */}
           <div className="topbar-actions">
             {/* Pomodoro Timer Dropdown */}
@@ -266,11 +363,38 @@ function Layout({ children }) {
                 type="button"
                 className={`topbar-icon-btn timer-btn ${timerDropdownOpen ? "open" : ""}`}
                 onClick={() => setTimerDropdownOpen(!timerDropdownOpen)}
-                style={{ borderColor: isFocusRunning ? getModeColor(focusMode) : '' }}
+                style={{
+                  background: "linear-gradient(135deg, #4f46e5, #7c3aed)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "14px",
+                  padding: "10px 18px",
+                  minHeight: "42px",
+                  minWidth: "110px",
+                  fontWeight: "700",
+                  fontSize: "14px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  boxShadow: "0 8px 24px rgba(79, 70, 229, 0.35)",
+                  cursor: "pointer",
+                  transition: "all 0.25s ease",
+                }}
                 aria-label="Pomodoro Timer"
               >
-                <TimerIcon />
-                {isFocusRunning && <span className="timer-active-dot" style={{ background: getModeColor(focusMode) }} />}
+                <span className="timer-btn-icon">
+                  <TimerIcon />
+                </span>
+
+                Timer
+
+                {isFocusRunning && (
+                  <span
+                    className="timer-active-dot"
+                    style={{ background: getModeColor(focusMode) }}
+                  />
+                )}
               </button>
 
               {timerDropdownOpen && (
@@ -415,33 +539,52 @@ function Layout({ children }) {
 
                   <div className="dropdown-divider" />
 
-                  {/* <button className="dropdown-item" role="menuitem"
-                    onClick={() => { setDropdownOpen(false); navigate("/settings"); }}>
-                    <div className="dropdown-item-icon indigo"><UserIcon /></div>
-                    <div className="dropdown-item-text">
-                      <span className="dropdown-item-label">My Profile</span>
-                      <span className="dropdown-item-sub">Account settings</span>
+                  <button
+                    className="dropdown-item"
+                    role="menuitem"
+                    onClick={() => {
+                      setDropdownOpen(false);
+                      setAccountModal("profile");
+                    }}
+                  >
+                    <div className="dropdown-item-icon indigo">
+                      <UserIcon />
                     </div>
-                  </button> */}
 
-                  {/* <button className="dropdown-item" role="menuitem"
-                    onClick={() => { setDropdownOpen(false); navigate("/settings"); }}>
-                    <div className="dropdown-item-icon teal"><KeyIcon /></div>
                     <div className="dropdown-item-text">
-                      <span className="dropdown-item-label">Security</span>
-                      <span className="dropdown-item-sub">Change password</span>
-                    </div>
-                  </button> */}
+                      <span className="dropdown-item-label">
+                        Update Profile
+                      </span>
 
-                  {/* <button className="dropdown-item" role="menuitem"
-                    onClick={() => { setDropdownOpen(false); navigate("/settings"); }}>
-                    <div className="dropdown-item-icon violet"><SettingIcon /></div>
+                      <span className="dropdown-item-sub">
+                        Edit your account details
+                      </span>
+                    </div>
+                  </button>
+
+
+                  <button
+                    className="dropdown-item"
+                    role="menuitem"
+                    onClick={() => {
+                      setDropdownOpen(false);
+                      setAccountModal("password");
+                    }}
+                  >
+                    <div className="dropdown-item-icon violet">
+                      <KeyIcon />
+                    </div>
+
                     <div className="dropdown-item-text">
-                      <span className="dropdown-item-label">Preferences</span>
-                      <span className="dropdown-item-sub">App settings</span>
-                    </div>
-                  </button> */}
+                      <span className="dropdown-item-label">
+                        Change Password
+                      </span>
 
+                      <span className="dropdown-item-sub">
+                        Update your security
+                      </span>
+                    </div>
+                  </button>
                   <div className="dropdown-divider" />
 
                   <button className="dropdown-item danger" role="menuitem"
@@ -454,7 +597,95 @@ function Layout({ children }) {
                   </button>
                 </div>
               )}
+
+
+
+              {/* MODAL YAHAN ADD KARO */}
+              {accountModal && (
+                <div className="account-overlay">
+
+                  <div className="account-modal">
+
+                    <button
+                      className="modal-close"
+                      onClick={() => setAccountModal(null)}
+                    >
+                      ✕
+                    </button>
+
+
+                    {accountModal === "profile" && (
+                      <>
+                        <h2>Update Profile</h2>
+
+                        <input
+                          type="text"
+                          value={profileName}
+                          onChange={(e) => setProfileName(e.target.value)}
+                          placeholder="Full Name"
+                        />
+
+
+                        <input
+                          type="email"
+                          value={profileEmail}
+                          onChange={(e) => setProfileEmail(e.target.value)}
+                          placeholder="Email"
+                        />
+
+                        <button
+                          className="save-btn"
+                          onClick={handleProfileUpdate}
+                        >
+                          Save Profile
+                        </button>
+                      </>
+                    )}
+
+
+                    {accountModal === "password" && (
+                      <>
+                        <h2>Change Password</h2>
+
+                        <input
+                          type="password"
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          placeholder="Current Password"
+                        />
+
+
+                        <input
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="New Password"
+                        />
+
+
+                        <input
+                          type="password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          placeholder="Confirm Password"
+                        />
+
+                        <button
+                          className="save-btn"
+                          onClick={handlePasswordUpdate}
+                        >
+                          Update Password
+                        </button>
+
+                      </>
+                    )}
+
+                  </div>
+
+                </div>
+              )}
             </div>
+
 
           </div>
         </header>

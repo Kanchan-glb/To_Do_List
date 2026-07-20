@@ -8,12 +8,40 @@ import { useNavigate } from "react-router-dom";
 import "../dashboard.css";
 
 /* ── Micro SVG Icons ── */
-const Ico = ({ children, size = 18 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
+const Ico = ({ children, size = 24 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.4"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    style={{
+      flexShrink: 0,
+      display: "block"
+    }}
+  >
+    {children}
+  </svg>
 );
 const IcoTarget = () => <Ico><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></Ico>;
-const IcoClock = () => <Ico><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></Ico>;
+const IcoClock = () => (
+  <svg
+    width="22"
+    height="22"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 2" />
+  </svg>
+);
 const IcoAlert = () => <Ico><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></Ico>;
 const IcoZap = () => <Ico><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></Ico>;
 const IcoCheck = () => <Ico><polyline points="20 6 9 17 4 12" /></Ico>;
@@ -367,67 +395,67 @@ function DashboardPage() {
   return (
     <div className="page-fade-in dashboard-page">
       <div className="dashboard-summary-buttons">
-      {/* Today's Summary */}
-      <div className="today-summary-trigger" onMouseEnter={handleTodayEnter} onMouseLeave={handleTodayLeave} onClick={e => e.stopPropagation()}>
-        <button type="button" className={`db-summary-trigger-btn ${todayOpen ? "active" : ""}`} onClick={handleTodayClick} aria-label="View Today's Summary" title="View Today's Summary">
-          <IcoCalendarCheck />
-          <span className="db-summary-trigger-label">Today</span>
-        </button>
-        {todayOpen && (
-          <div className="db-hover-panel-dropdown" onMouseEnter={handleTodayPanelEnter} onMouseLeave={handleTodayLeave}>
-            <h3 className="db-summary-title" style={{ marginBottom: "16px", fontSize: "1.1rem", borderBottom: "1px solid var(--border-light)", paddingBottom: "8px" }}>Today's Summary</h3>
-            <section className="db-stats-row compact panel-layout">
-              {[
-                { icon: <IcoTasks />, label: "Total Work Today", value: totalWorkToday, color: "#6366f1", bg: "#e0e7ff" },
-                { icon: <IcoCheck />, label: "Completed Today", value: completedToday, color: "#10b981", bg: "#d1fae5" },
-                { icon: <IcoClock />, label: "Pending Today", value: pendingToday, color: "#f59e0b", bg: "#fef3c7" },
-                { icon: <IcoAlert />, label: "Carry Forward", value: carryForward, color: "#ef4444", bg: "#fef2f2" },
-                { icon: <IcoZap />, label: "Remaining Today", value: remainingToday, color: "#d97706", bg: "#ffedd5" },
-                { icon: <IcoRepeat />, label: "Rescheduled Today", value: rescheduledToday, color: "#3b82f6", bg: "#eff6ff" },
-              ].map(({ icon, label, value, color, bg }) => (
-                <div className="db-stat-card" key={label}>
-                  <div className="db-stat-icon" style={{ background: bg, color }}>{icon}</div>
-                  <div className="db-stat-body">
-                    <p className="db-stat-value" style={{ color }}>{value}</p>
-                    <p className="db-stat-label">{label}</p>
+        {/* Today's Summary */}
+        <div className="today-summary-trigger" onMouseEnter={handleTodayEnter} onMouseLeave={handleTodayLeave} onClick={e => e.stopPropagation()}>
+          <button type="button" className={`db-summary-trigger-btn ${todayOpen ? "active" : ""}`} onClick={handleTodayClick} aria-label="View Today's Summary" title="View Today's Summary">
+            <IcoCalendarCheck />
+            <span className="db-summary-trigger-label">Today</span>
+          </button>
+          {todayOpen && (
+            <div className="db-hover-panel-dropdown" onMouseEnter={handleTodayPanelEnter} onMouseLeave={handleTodayLeave}>
+              <h3 className="db-summary-title" style={{ marginBottom: "16px", fontSize: "1.1rem", borderBottom: "1px solid var(--border-light)", paddingBottom: "8px" }}>Today's Summary</h3>
+              <section className="db-stats-row compact panel-layout">
+                {[
+                  { icon: <IcoTasks />, label: "Total Work Today", value: totalWorkToday, color: "#6366f1", bg: "#e0e7ff" },
+                  { icon: <IcoCheck />, label: "Completed Today", value: completedToday, color: "#10b981", bg: "#d1fae5" },
+                  { icon: <IcoClock />, label: "Pending Today", value: pendingToday, color: "#f59e0b", bg: "#fef3c7" },
+                  { icon: <IcoAlert />, label: "Carry Forward", value: carryForward, color: "#ef4444", bg: "#fef2f2" },
+                  { icon: <IcoZap />, label: "Remaining Today", value: remainingToday, color: "#d97706", bg: "#ffedd5" },
+                  { icon: <IcoRepeat />, label: "Rescheduled Today", value: rescheduledToday, color: "#3b82f6", bg: "#eff6ff" },
+                ].map(({ icon, label, value, color, bg }) => (
+                  <div className="db-stat-card" key={label}>
+                    <div className="db-stat-icon" style={{ background: bg, color }}>{icon}</div>
+                    <div className="db-stat-body">
+                      <p className="db-stat-value" style={{ color }}>{value}</p>
+                      <p className="db-stat-label">{label}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </section>
-          </div>
-        )}
-      </div>
+                ))}
+              </section>
+            </div>
+          )}
+        </div>
 
-      {/* Week's Summary */}
-      <div className="week-summary-trigger" onMouseEnter={handleWeekEnter} onMouseLeave={handleWeekLeave} onClick={e => e.stopPropagation()}>
-        <button type="button" className={`db-summary-trigger-btn ${weekOpen ? "active" : ""}`} onClick={handleWeekClick} aria-label="View This Week Summary" title="View This Week Summary">
-          <IcoCalendarRange />
-          <span className="db-summary-trigger-label">Week</span>
-        </button>
-        {weekOpen && (
-          <div className="db-hover-panel-dropdown" onMouseEnter={handleWeekPanelEnter} onMouseLeave={handleWeekLeave}>
-            <h3 className="db-summary-title" style={{ marginBottom: "16px", fontSize: "1.1rem", borderBottom: "1px solid var(--border-light)", paddingBottom: "8px" }}>This Week Summary</h3>
-            <section className="db-stats-row compact panel-layout">
-              {[
-                { icon: <IcoCalendar />, label: "Total This Week", value: totalThisWeek, color: "#3b82f6", bg: "#eff6ff" },
-                { icon: <IcoCheck />, label: "Completed This Week", value: completedThisWeek, color: "#10b981", bg: "#d1fae5" },
-                { icon: <IcoClock />, label: "Remaining This Week", value: remainingThisWeek, color: "#f59e0b", bg: "#fef3c7" },
-                { icon: <IcoAlert />, label: "Overdue This Week", value: overdueThisWeek, color: "#ef4444", bg: "#fef2f2" },
-                { icon: <IcoTarget />, label: "Weekly Completion", value: `${weeklyCompletionPct}%`, color: "#a855f7", bg: "#faf5ff" },
-                { icon: <IcoStar />, label: "Most Productive Day", value: mostProductiveDay, color: "#0ea5e9", bg: "#e0f2fe" },
-              ].map(({ icon, label, value, color, bg }) => (
-                <div className="db-stat-card" key={label}>
-                  <div className="db-stat-icon" style={{ background: bg, color }}>{icon}</div>
-                  <div className="db-stat-body">
-                    <p className="db-stat-value" style={{ color }}>{value}</p>
-                    <p className="db-stat-label">{label}</p>
+        {/* Week's Summary */}
+        <div className="week-summary-trigger" onMouseEnter={handleWeekEnter} onMouseLeave={handleWeekLeave} onClick={e => e.stopPropagation()}>
+          <button type="button" className={`db-summary-trigger-btn ${weekOpen ? "active" : ""}`} onClick={handleWeekClick} aria-label="View This Week Summary" title="View This Week Summary">
+            <IcoCalendarRange />
+            <span className="db-summary-trigger-label">Week</span>
+          </button>
+          {weekOpen && (
+            <div className="db-hover-panel-dropdown" onMouseEnter={handleWeekPanelEnter} onMouseLeave={handleWeekLeave}>
+              <h3 className="db-summary-title" style={{ marginBottom: "16px", fontSize: "1.1rem", borderBottom: "1px solid var(--border-light)", paddingBottom: "8px" }}>This Week Summary</h3>
+              <section className="db-stats-row compact panel-layout">
+                {[
+                  { icon: <IcoCalendar />, label: "Total This Week", value: totalThisWeek, color: "#3b82f6", bg: "#eff6ff" },
+                  { icon: <IcoCheck />, label: "Completed This Week", value: completedThisWeek, color: "#10b981", bg: "#d1fae5" },
+                  { icon: <IcoClock />, label: "Remaining This Week", value: remainingThisWeek, color: "#f59e0b", bg: "#fef3c7" },
+                  { icon: <IcoAlert />, label: "Overdue This Week", value: overdueThisWeek, color: "#ef4444", bg: "#fef2f2" },
+                  { icon: <IcoTarget />, label: "Weekly Completion", value: `${weeklyCompletionPct}%`, color: "#a855f7", bg: "#faf5ff" },
+                  { icon: <IcoStar />, label: "Most Productive Day", value: mostProductiveDay, color: "#0ea5e9", bg: "#e0f2fe" },
+                ].map(({ icon, label, value, color, bg }) => (
+                  <div className="db-stat-card" key={label}>
+                    <div className="db-stat-icon" style={{ background: bg, color }}>{icon}</div>
+                    <div className="db-stat-body">
+                      <p className="db-stat-value" style={{ color }}>{value}</p>
+                      <p className="db-stat-label">{label}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </section>
-          </div>
-        )}
-      </div>
+                ))}
+              </section>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Notification banners ── */}
