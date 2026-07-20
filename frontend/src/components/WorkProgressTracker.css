@@ -8,14 +8,22 @@
   max-width: 1440px;
   margin: 0 auto;
   margin-top: 2.5vh;
-  overflow: hidden;
+  overflow: visible;
   animation: fadeIn 0.4s ease-out;
 }
+.wpt-header{
+    display:grid;
+    grid-template-columns:280px 1fr;
+    align-items:start;
+    gap:24px;
+    margin-bottom:24px;
+}
 
-.wpt-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
+@media(max-width:992px){
+    .wpt-header{
+        grid-template-columns:1fr;
+        gap:16px;
+    }
 }
 
 .wpt-title {
@@ -32,46 +40,72 @@
 }
 
 /* Filters */
-.wpt-filters {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  background: var(--bg-card);
-  padding: 8px;
-  border-radius: 12px;
-  border: var(--border-light);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+/* ===========================
+   Filters
+=========================== */
+.wpt-filters{
+    display:flex;
+    align-items:center;
+    gap:14px;
+
+    /* width:100%; */
+
+    padding:12px 14px;
+
+    border-radius:16px;
+    background:var(--bg-card);
+    border:var(--border-light);
+    box-shadow:0 8px 20px rgba(0,0,0,.05);
 }
 
-.wpt-filter-btn {
-  padding: 8px 16px;
-  border-radius: 8px;
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.2s;
+.wpt-filter-group{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    flex:1;
 }
 
-.wpt-filter-btn:hover {
-  background: var(--bg-muted);
+.wpt-filter-btn{
+    padding:10px 18px;
+    border:none;
+    border-radius:999px;
+    min-width:120px;
+
+    background:#f4f6fb;
+    color:var(--text-secondary);
+
+    font-size:.9rem;
+    font-weight:700;
+
+    cursor:pointer;
+    transition:.25s ease;
+
+    white-space:nowrap;
 }
 
-.wpt-filter-btn.active {
-  background: var(--color-primary);
-  color: white;
+.wpt-filter-btn:hover{
+    background:#e9eefb;
+    transform:translateY(-2px);
 }
 
-.wpt-date-picker {
-  padding: 6px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border-color, #e2e8f0);
-  background: var(--bg-body);
-  color: var(--text-primary);
-  font-family: inherit;
-  font-size: 0.9rem;
+.wpt-filter-btn.active{
+    background:linear-gradient(135deg,#4f46e5,#6366f1);
+    color:#fff;
+    box-shadow:0 8px 18px rgba(79,70,229,.28);
+}
+
+.wpt-date-picker{
+    min-width:170px;
+    padding:10px 14px;
+
+    border-radius:10px;
+    border:1px solid #dbe2ea;
+
+    background:white;
+    font-size:.9rem;
+     width:220px;
+    flex-shrink:0;
+
 }
 
 /* Top Summary */
@@ -282,9 +316,9 @@
 .wpt-insights {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  overflow-y: auto;
+  gap: 8px;
   flex: 1;
+  overflow: visible;
 }
 
 .wpt-insight-row {
@@ -312,4 +346,125 @@
   font-size: 1rem;
   font-weight: 800;
   color: var(--text-primary);
+}
+/* ===========================
+   RESPONSIVE
+=========================== */
+
+@media (max-width:1200px){
+
+    .wpt-main-grid{
+        grid-template-columns:1fr;
+    }
+
+    .wpt-main-grid > div{
+        width:100%;
+        min-width:0;
+    }
+
+}
+
+
+@media (max-width:992px){
+
+    .wpt-header{
+        flex-direction:column;
+        align-items:stretch;
+        gap:16px;
+    }
+
+    .wpt-filters{
+        flex-wrap:wrap;
+        width:100%;
+    }
+
+    .wpt-filter-btn{
+        flex:1 1 calc(50% - 8px);
+    }
+
+    .wpt-date-picker{
+        width:100%;
+    }
+
+    .wpt-summary-grid{
+        grid-template-columns:repeat(3,1fr);
+    }
+
+}
+
+
+@media (max-width:768px){
+
+    .wpt-container{
+        padding:16px;
+    }
+
+    .wpt-summary-grid{
+        grid-template-columns:repeat(2,1fr);
+    }
+
+    .wpt-card-header{
+        flex-direction:column;
+        align-items:flex-start;
+        gap:8px;
+    }
+
+    .wpt-weekly-row{
+        display:grid;
+        grid-template-columns:repeat(2,1fr);
+        overflow:visible;
+    }
+
+    .wpt-day-card{
+        min-width:0;
+    }
+
+}
+
+
+@media (max-width:576px){
+
+    .wpt-title{
+        font-size:1.5rem;
+    }
+
+    .wpt-summary-grid{
+        grid-template-columns:1fr;
+    }
+
+    .wpt-weekly-row{
+        grid-template-columns:1fr;
+    }
+
+    .wpt-filter-btn{
+        flex:1 1 100%;
+    }
+
+    .wpt-card{
+        padding:14px;
+    }
+
+    .wpt-insight-row{
+        flex-direction:column;
+        align-items:flex-start;
+        gap:6px;
+    }
+
+    .wpt-insight-value{
+        margin-left:26px;
+    }
+
+}
+.wpt-chart-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:24px;
+}
+
+@media(max-width:768px){
+
+    .wpt-chart-grid{
+        grid-template-columns:1fr;
+    }
+
 }

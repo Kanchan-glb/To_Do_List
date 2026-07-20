@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useTasks } from "../context/TaskContext";
 import { useState, useRef, useEffect } from "react";
-import { toast,Toaster } from "react-hot-toast";
+import { toast, Toaster } from "react-hot-toast";
 
 /* ── SVG Icon Components ── */
 const Icon = ({
@@ -55,7 +55,9 @@ const SettingIcon = () => (
 // const PlanIcon = () => <Icon><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></Icon>;
 // const ReportIcon = () => <Icon><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></Icon>;
 // const SettingIcon = () => <Icon><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" /></Icon>;
-const BellIcon = () => <Icon size={24}><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></Icon>;
+const BellIcon = () => (
+  <span style={{ fontSize: "22px", lineHeight: 1 }}>🔔</span>
+);
 const LogoutIcon = () => <Icon><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></Icon>;
 const TimerIcon = () => <Icon><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 15" /></Icon>;
 const PlayIcon = () => <Icon d="M5 3l14 9-14 9V3z" fill="currentColor" stroke="none" />;
@@ -65,7 +67,21 @@ const SearchIcon = () => <Icon><circle cx="11" cy="11" r="8" /><line x1="21" y1=
 const UserIcon = () => <Icon size={16}><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></Icon>;
 const KeyIcon = () => <Icon size={16}><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></Icon>;
 const ChevronIcon = () => <Icon size={14} strokeWidth={2.5}><polyline points="6 9 12 15 18 9" /></Icon>;
-const MenuIcon = () => <Icon size={24}><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></Icon>;
+const MenuIcon = () => (
+  <svg
+    width="26"
+    height="26"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    strokeLinecap="round"
+  >
+    <line x1="3" y1="6" x2="21" y2="6" />
+    <line x1="3" y1="12" x2="21" y2="12" />
+    <line x1="3" y1="18" x2="21" y2="18" />
+  </svg>
+);
 const PlusIcon = () => <Icon size={16}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></Icon>;
 const CirclePlusIcon = () => <Icon><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></Icon>;
 const ProgressIcon = () => <Icon><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></Icon>;
@@ -116,10 +132,8 @@ function Layout({ children }) {
   const [showTimerSettings, setShowTimerSettings] = useState(false);
   const [tempSettings, setTempSettings] = useState(pomodoroSettings || { work: 25, shortBreak: 5, longBreak: 15 });
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
-    const saved = localStorage.getItem("sidebarOpen");
-    if (saved !== null) return JSON.parse(saved);
-    return window.innerWidth > 900;
-  });
+  return window.innerWidth > 1199;
+});
   const dropdownRef = useRef(null);
   const timerDropdownRef = useRef(null);
 
@@ -129,10 +143,12 @@ function Layout({ children }) {
   };
 
   // Persist sidebar state
-  useEffect(() => {
-    localStorage.setItem("sidebarOpen", JSON.stringify(isSidebarOpen));
-  }, [isSidebarOpen]);
-
+ useEffect(() => {
+  localStorage.setItem(
+    "sidebarOpen",
+    JSON.stringify(isSidebarOpen)
+  );
+}, [isSidebarOpen]);
   // Handle escape key to close sidebar on mobile
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -158,59 +174,77 @@ function Layout({ children }) {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+  const [notificationStatus, setNotificationStatus] = useState(
+    "Notification" in window ? Notification.permission : "unsupported"
+  );
+  const handleRequestPermission = async () => {
+    if (!("Notification" in window)) {
+      toast.error("This browser doesn't support notifications.");
+      return;
+    }
 
+    const permission = await Notification.requestPermission();
+
+    setNotificationStatus(permission);
+
+    if (permission === "granted") {
+      toast.success("Notifications Enabled");
+    } else if (permission === "denied") {
+      toast.error("Notifications Blocked");
+    }
+  };
   const handleLogout = () => {
     localStorage.removeItem("smartAuth");
     localStorage.removeItem("smartName");
     localStorage.removeItem("smartEmail");
     window.location.href = "/login";
   };
-const handleProfileUpdate = () => {
-  if (!profileName.trim()) {
-    toast.error("Please enter your name");
-    return;
-  }
+  const handleProfileUpdate = () => {
+    if (!profileName.trim()) {
+      toast.error("Please enter your name");
+      return;
+    }
 
-  localStorage.setItem("smartName", profileName);
+    localStorage.setItem("smartName", profileName);
 
-  toast.success("Profile updated successfully!");
+    toast.success("Profile updated successfully!");
 
-  setTimeout(() => {
-    setAccountModal(null);
-    navigate("/dashboard");
-  }, 1800); // 1.8 sec baad
-};;
- const handlePasswordUpdate = () => {
-  const savedPassword = localStorage.getItem("smartPassword");
+    setTimeout(() => {
+      setAccountModal(null);
+      navigate("/dashboard");
+    }, 1800); // 1.8 sec baad
+  };;
+  const handlePasswordUpdate = () => {
+    const savedPassword = localStorage.getItem("smartPassword");
 
-  if (savedPassword && savedPassword !== currentPassword) {
-    toast.error("Current password is incorrect");
-    return;
-  }
+    if (savedPassword && savedPassword !== currentPassword) {
+      toast.error("Current password is incorrect");
+      return;
+    }
 
-  if (newPassword !== confirmPassword) {
-    toast.error("Passwords do not match");
-    return;
-  }
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
 
-  if (newPassword.length < 6) {
-    toast.error("Password must be at least 6 characters");
-    return;
-  }
+    if (newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
 
-  localStorage.setItem("smartPassword", newPassword);
+    localStorage.setItem("smartPassword", newPassword);
 
-  toast.success("Password updated successfully!");
+    toast.success("Password updated successfully!");
 
-  setCurrentPassword("");
-  setNewPassword("");
-  setConfirmPassword("");
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
 
-  setTimeout(() => {
-    setAccountModal(null);
-    navigate("/dashboard");
-  }, 1800);
-};
+    setTimeout(() => {
+      setAccountModal(null);
+      navigate("/dashboard");
+    }, 1800);
+  };
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -258,6 +292,16 @@ const handleProfileUpdate = () => {
 
       <aside className={`sidebar ${isSidebarOpen ? "open" : ""}`}>
 
+        {isSidebarOpen && (
+          <button
+            className="sidebar-menu-btn"
+            onClick={() => setIsSidebarOpen(false)}
+            aria-label="Close Sidebar"
+          >
+            <MenuIcon />
+          </button>
+        )}
+
         {/* Brand */}
         <div className="brand-block">
           <div className="brand-icon">
@@ -283,10 +327,8 @@ const handleProfileUpdate = () => {
               to={item.path}
               className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
               onClick={() => {
-                if (window.innerWidth <= 900) {
-                  setIsSidebarOpen(false);
-                }
-              }}
+  setIsSidebarOpen(false);
+}}
             >
               <span className="nav-icon">{item.icon}</span>
               <span className="nav-label">{item.label}</span>
@@ -339,14 +381,15 @@ const handleProfileUpdate = () => {
 
           {/* Left: Page greeting */}
           <div className="topbar-left" style={{ display: "flex", alignItems: "center" }}>
-            <button
-              className="menu-toggle-btn"
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              aria-label="Toggle sidebar"
-              aria-expanded={isSidebarOpen}
-            >
-              <MenuIcon />
-            </button>
+            {!isSidebarOpen && (
+              <button
+                className="menu-toggle-btn"
+                onClick={() => setIsSidebarOpen(true)}
+                aria-label="Open Sidebar"
+              >
+                <MenuIcon />
+              </button>
+            )}
             <div>
               <p className="topbar-eyebrow">Welcome back</p>
               <h3 className="topbar-title">
@@ -355,32 +398,33 @@ const handleProfileUpdate = () => {
             </div>
           </div>
 
-          <button
-            type="button"
-            className="topbar-add-task-btn"
-            style={{
-              background: "linear-gradient(135deg, #4f46e5, #7c3aed)",
-              color: "#fff",
-              border: "none",
-              borderRadius: "10px",
-              padding: "10px 18px",
-              fontWeight: "600",
-              boxShadow: "0 6px 18px rgba(79, 70, 229, 0.28)",
-            }}
-            onClick={() =>
-              navigate("/tasks", {
-                state: {
-                  openAddTaskModal: true,
-                  timestamp: Date.now(),
-                },
-              })
-            }
-          >
-            <CirclePlusIcon />
-            <span>Add Task</span>
-          </button>
+
           {/* Right: Actions */}
           <div className="topbar-actions">
+            <button
+              type="button"
+              className="topbar-add-task-btn"
+              style={{
+                background: "linear-gradient(135deg, #4f46e5, #7c3aed)",
+                color: "#fff",
+                border: "none",
+                borderRadius: "10px",
+                padding: "10px 18px",
+                fontWeight: "600",
+                boxShadow: "0 6px 18px rgba(79, 70, 229, 0.28)",
+              }}
+              onClick={() =>
+                navigate("/tasks", {
+                  state: {
+                    openAddTaskModal: true,
+                    timestamp: Date.now(),
+                  },
+                })
+              }
+            >
+              <CirclePlusIcon />
+              <span>Add Task</span>
+            </button>
             {/* Pomodoro Timer Dropdown */}
             <div className="timer-menu-wrap" ref={timerDropdownRef}>
               <button
@@ -537,7 +581,23 @@ const handleProfileUpdate = () => {
                 </div>
               )}
             </div>
+            {/* Notification Button */}
+            <button
+              type="button"
+              className="topbar-icon-btn notification-btn"
+              onClick={handleRequestPermission}
+              title={
+                notificationStatus === "granted"
+                  ? "Notifications Enabled"
+                  : "Enable Notifications"
+              }
+            >
+              <BellIcon />
 
+              {notificationStatus !== "granted" && (
+                <span className="notification-dot"></span>
+              )}
+            </button>
             {/* Quick Add Task Button */}
             {/* Quick Add Task Button */}
 

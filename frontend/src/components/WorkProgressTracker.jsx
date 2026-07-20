@@ -40,7 +40,7 @@ export default function WorkProgressTracker() {
       const taskDue = t.dueDate || t.createdDate || "2099-01-01";
       const wasCompletedBeforeDate = t.completed && t.completedDate && t.completedDate < dateStr;
       const wasCompletedOnOrBeforeDate = t.completed && t.completedDate && t.completedDate <= dateStr;
-      
+
       const isDueToday = taskDue === dateStr;
       const isCarryForward = taskDue < dateStr && !wasCompletedBeforeDate;
 
@@ -77,7 +77,7 @@ export default function WorkProgressTracker() {
     tasks.forEach(t => {
       let taskDateObj;
       try { taskDateObj = parseISO(t.dueDate || t.createdDate || "2099-01-01"); } catch (e) { taskDateObj = new Date(); }
-      
+
       let include = false;
       if (activeFilter === "Last 7 Days") {
         include = differenceInDays(new Date(), taskDateObj) <= 7 && differenceInDays(new Date(), taskDateObj) >= 0;
@@ -96,9 +96,9 @@ export default function WorkProgressTracker() {
       let hasRescheduled = false;
       if (activeFilter === "Last 7 Days") {
         hasRescheduled = t.rescheduleHistory?.some(h => {
-          try { 
+          try {
             const d = differenceInDays(new Date(), parseISO(h.rescheduledAtDate));
-            return d <= 7 && d >= 0; 
+            return d <= 7 && d >= 0;
           } catch (e) { return false; }
         });
       } else if (activeFilter === "This Month") {
@@ -135,11 +135,11 @@ export default function WorkProgressTracker() {
     const start = startOfMonth(calendarMonth);
     const end = endOfMonth(calendarMonth);
     const daysInMonth = eachDayOfInterval({ start, end });
-    
+
     // pad start
-    const startPadding = start.getDay(); 
+    const startPadding = start.getDay();
     const paddedDays = Array(startPadding).fill(null).concat(daysInMonth);
-    
+
     return paddedDays.map(date => {
       if (!date) return null;
       const dStr = format(date, "yyyy-MM-dd");
@@ -171,7 +171,7 @@ export default function WorkProgressTracker() {
     });
 
     const avgDaily = totalWork > 0 ? Math.round(totalComp / 7) : 0;
-    
+
     // Improvement / Decline (Last 7 days vs Prev 7 days)
     let prev7Comp = 0, prev7Work = 0;
     for (let i = 13; i >= 7; i--) {
@@ -179,8 +179,8 @@ export default function WorkProgressTracker() {
       prev7Comp += st.completed;
       prev7Work += st.total;
     }
-    const currPct = totalWork > 0 ? (totalComp/totalWork)*100 : 0;
-    const prevPct = prev7Work > 0 ? (prev7Comp/prev7Work)*100 : 0;
+    const currPct = totalWork > 0 ? (totalComp / totalWork) * 100 : 0;
+    const prevPct = prev7Work > 0 ? (prev7Comp / prev7Work) * 100 : 0;
     const trendDiff = Math.round(currPct - prevPct);
 
     return {
@@ -202,25 +202,39 @@ export default function WorkProgressTracker() {
 
   return (
     <div className="page-fade-in wpt-container">
-      
+
       {/* ── Header & Filters ── */}
       <div className="wpt-header">
         <div>
           <h2 className="wpt-title">Report Tracker</h2>
-          {/* <p className="wpt-subtitle">Monitor productivity, track work, and review historical performance.</p> */}
+          <p className="wpt-subtitle">Monitor productivity, track work, and review historical performance.</p>
         </div>
         <div className="wpt-filters">
-          {["Today", "Yesterday", "Last 7 Days", "This Month"].map(f => (
-            <button key={f} className={`wpt-filter-btn ${activeFilter === f ? "active" : ""}`} onClick={() => setActiveFilter(f)}>
-              {f}
-            </button>
-          ))}
-          <input 
-            type="date" 
+
+          <div className="wpt-filter-group">
+
+            {["Today", "Yesterday", "Tomorrow","Last 7 Days", "This Month"].map(f => (
+              <button
+                key={f}
+                className={`wpt-filter-btn ${activeFilter === f ? "active" : ""}`}
+                onClick={() => setActiveFilter(f)}
+              >
+                {f}
+              </button>
+            ))}
+
+          </div>
+
+          <input
+            type="date"
             className="wpt-date-picker"
             value={customDate}
-            onChange={(e) => { setCustomDate(e.target.value); setActiveFilter("Custom Date"); }}
+            onChange={(e) => {
+              setCustomDate(e.target.value);
+              setActiveFilter("Custom Date");
+            }}
           />
+
         </div>
       </div>
 
@@ -228,39 +242,39 @@ export default function WorkProgressTracker() {
       <div className="wpt-summary-grid">
         <div className="wpt-sum-card">
           <span className="wpt-sum-title">Total Tasks</span>
-          <span className="wpt-sum-value" style={{color: "#6366f1"}}>{summaryStats.total}</span>
+          <span className="wpt-sum-value" style={{ color: "#6366f1" }}>{summaryStats.total}</span>
         </div>
         <div className="wpt-sum-card">
           <span className="wpt-sum-title">Completed</span>
-          <span className="wpt-sum-value" style={{color: "#10b981"}}>{summaryStats.completed}</span>
+          <span className="wpt-sum-value" style={{ color: "#10b981" }}>{summaryStats.completed}</span>
         </div>
         <div className="wpt-sum-card">
           <span className="wpt-sum-title">Pending</span>
-          <span className="wpt-sum-value" style={{color: "#f59e0b"}}>{summaryStats.pending}</span>
+          <span className="wpt-sum-value" style={{ color: "#f59e0b" }}>{summaryStats.pending}</span>
         </div>
         <div className="wpt-sum-card">
           <span className="wpt-sum-title">Overdue</span>
-          <span className="wpt-sum-value" style={{color: "#ef4444"}}>{summaryStats.overdue}</span>
+          <span className="wpt-sum-value" style={{ color: "#ef4444" }}>{summaryStats.overdue}</span>
         </div>
         <div className="wpt-sum-card">
           <span className="wpt-sum-title">Rescheduled</span>
-          <span className="wpt-sum-value" style={{color: "#3b82f6"}}>{summaryStats.rescheduled}</span>
+          <span className="wpt-sum-value" style={{ color: "#3b82f6" }}>{summaryStats.rescheduled}</span>
         </div>
         <div className="wpt-sum-card">
           <span className="wpt-sum-title">Completion %</span>
-          <span className="wpt-sum-value" style={{color: "#a855f7"}}>{summaryStats.completionPct}%</span>
+          <span className="wpt-sum-value" style={{ color: "#a855f7" }}>{summaryStats.completionPct}%</span>
         </div>
       </div>
 
       <div className="wpt-main-grid">
         {/* LEFT COLUMN */}
         <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-          
+
           {/* Daily Progress */}
           <div className="wpt-card">
             <div className="wpt-card-header">
               <span>{activeFilter} Progress</span>
-              <span style={{color: "var(--color-primary)"}}>{summaryStats.completed} / {summaryStats.total} Tasks Completed</span>
+              <span style={{ color: "var(--color-primary)" }}>{summaryStats.completed} / {summaryStats.total} Tasks Completed</span>
             </div>
             <div className="wpt-progress-wrapper">
               <div className="wpt-progress-fill" style={{ width: `${summaryStats.completionPct}%` }}>
@@ -276,7 +290,7 @@ export default function WorkProgressTracker() {
               {last7DaysData.map(d => (
                 <div key={d.dateStr} className="wpt-day-card">
                   <span className="wpt-day-name">{d.displayDay}</span>
-                  <span className="wpt-day-stats">{d.completed} <span style={{fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: 500}}>/ {d.total}</span></span>
+                  <span className="wpt-day-stats">{d.completed} <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: 500 }}>/ {d.total}</span></span>
                   <span className="wpt-day-pct">{d.completionPct}%</span>
                   <div style={{ width: "100%", height: "4px", background: "var(--border-light)", borderRadius: "4px", overflow: "hidden", marginTop: "4px" }}>
                     <div style={{ width: `${d.completionPct}%`, height: "100%", background: "var(--color-primary)", borderRadius: "4px" }} />
@@ -287,17 +301,17 @@ export default function WorkProgressTracker() {
           </div>
 
           {/* Charts Row */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+          <div className="wpt-chart-grid">
             <div className="wpt-card" style={{ padding: "16px" }}>
               <div className="wpt-card-header" style={{ marginBottom: "8px", fontSize: "1rem" }}>Weekly Completion </div>
               <div style={{ height: "180px", width: "100%" }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={last7DaysData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                    <XAxis dataKey="displayDay" tick={{fontSize: 10}} axisLine={false} tickLine={false} />
-                    <YAxis tick={{fontSize: 10}} axisLine={false} tickLine={false} width={30} />
+                    <XAxis dataKey="displayDay" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} width={30} />
                     <RechartsTooltip contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
-                    <Line type="monotone" dataKey="completionPct" stroke="#4f46e5" strokeWidth={3} dot={{r: 4, fill: "#4f46e5"}} />
+                    <Line type="monotone" dataKey="completionPct" stroke="#4f46e5" strokeWidth={3} dot={{ r: 4, fill: "#4f46e5" }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -325,13 +339,13 @@ export default function WorkProgressTracker() {
 
         {/* RIGHT COLUMN */}
         <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-          
+
           {/* Historical Progress Date Picker */}
           <div className="wpt-card">
             <div className="wpt-card-header">View Previous Progress</div>
-            <input 
-              type="date" 
-              className="wpt-date-picker" 
+            <input
+              type="date"
+              className="wpt-date-picker"
               style={{ width: "100%", marginBottom: "16px" }}
               value={historicalDate}
               onChange={(e) => setHistoricalDate(e.target.value)}
@@ -398,24 +412,24 @@ export default function WorkProgressTracker() {
             <div className="wpt-card-header" style={{ marginBottom: "16px" }}>Performance Insights</div>
             <div className="wpt-insights">
               <div className="wpt-insight-row">
-                <span className="wpt-insight-label"><IcoStar size={16}/> Best Performing Day</span>
+                <span className="wpt-insight-label"><IcoStar size={16} /> Best Performing Day</span>
                 <span className="wpt-insight-value">{insights.bestDay}</span>
               </div>
               <div className="wpt-insight-row">
-                <span className="wpt-insight-label"><IcoFire size={16}/> Current Streak</span>
+                <span className="wpt-insight-label"><IcoFire size={16} /> Current Streak</span>
                 <span className="wpt-insight-value">{insights.streak} Days</span>
               </div>
               <div className="wpt-insight-row">
-                <span className="wpt-insight-label"><IcoTarget size={16}/> Highest Completion %</span>
+                <span className="wpt-insight-label"><IcoTarget size={16} /> Highest Completion %</span>
                 <span className="wpt-insight-value">{insights.highestPct}%</span>
               </div>
               <div className="wpt-insight-row">
-                <span className="wpt-insight-label"><IcoZap size={16}/> Avg Daily Completion</span>
+                <span className="wpt-insight-label"><IcoZap size={16} /> Avg Daily Completion</span>
                 <span className="wpt-insight-value">{insights.avgDaily} Tasks</span>
               </div>
               <div className="wpt-insight-row">
                 <span className="wpt-insight-label">
-                  {insights.trendDiff >= 0 ? <IcoTrendingUp size={16}/> : <IcoTrendingDown size={16}/>} 
+                  {insights.trendDiff >= 0 ? <IcoTrendingUp size={16} /> : <IcoTrendingDown size={16} />}
                   Weekly Trend
                 </span>
                 <span className="wpt-insight-value" style={{ color: insights.trendDiff >= 0 ? "#10b981" : "#ef4444" }}>
