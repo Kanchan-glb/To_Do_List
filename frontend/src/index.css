@@ -457,14 +457,16 @@ textarea:focus {
   display: flex;
   min-height: 100vh;
   background: var(--bg-app);
+  margin:0;
+  padding:0;
 }
 
 /* ───────────────────────────────────────────────
    SIDEBAR
 ─────────────────────────────────────────────── */
 .sidebar {
-  width: 272px;
-  margin-left: -272px; /* Collapsed by default without .open */
+  width: 260px;
+  margin-left: -260px; /* Collapsed by default without .open */
   flex-shrink: 0;
   background: linear-gradient(175deg, #0b1220 0%, #0f1e35 55%, #111c2e 100%);
   color: white;
@@ -795,6 +797,9 @@ textarea:focus {
 ─────────────────────────────────────────────── */
 .main-container {
   flex: 1;
+  margin:0;
+  padding: 0;
+ 
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -1512,11 +1517,11 @@ textarea:focus {
 
 .main-area {
   flex: 1;
-  padding: 36px 40px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 28px;
-  max-width: 1320px;
+  max-width: 100%;
   width: 100%;
   margin: 0 auto;
 }

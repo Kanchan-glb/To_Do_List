@@ -130,21 +130,26 @@ export default function ProductivityAnalytics() {
 
       const isDueOnDay = taskDue === dateStr;
 
-      const isCarryForward =
-        taskDue < dateStr &&
-        (!isCompletedOnOrBefore || isCompletedOnDay);
+      const isOverdueOnDay =
+  !task.completed &&
+  task.dueDate === dateStr;
 
-      if (isDueOnDay || isCarryForward) {
-        totalCount += 1;
+      if (task.completed && task.completedDate === dateStr) {
+    completedCount++;
+}
+else if (isOverdueOnDay) {
+    overdueCount++;
+}
+else if (task.dueDate === dateStr) {
+    pendingCount++;
+}
 
-        if (isCompletedOnDay) {
-          completedCount += 1;
-        } else if (taskDue < dateStr) {
-          overdueCount += 1;
-        } else {
-          pendingCount += 1;
-        }
-      }
+if (
+    task.createdDate <= dateStr &&
+    (!task.completed || task.completedDate >= dateStr)
+) {
+    totalCount++;
+}
 
       const wasRescheduledOnDate = task.rescheduleHistory?.some(
         (item) => item.rescheduledAtDate === dateStr
@@ -225,27 +230,50 @@ export default function ProductivityAnalytics() {
   }, [dateRange, tasks, history, mode]);
 
   const aggregateStats = useMemo(() => {
-    const rawData = dateRange.map((date) => getStatsForDate(date));
+  const today = format(new Date(), "yyyy-MM-dd");
 
-    return rawData.reduce(
-      (summary, current) => {
-        summary.total += current.total;
-        summary.completed += current.completed;
-        summary.pending += current.pending;
-        summary.overdue += current.overdue;
-        summary.rescheduled += current.rescheduled;
+  const uniqueTasks = new Map();
 
-        return summary;
-      },
-      {
-        total: 0,
-        completed: 0,
-        pending: 0,
-        overdue: 0,
-        rescheduled: 0
-      }
-    );
-  }, [dateRange, tasks, history, mode]);
+  tasks.forEach(task => {
+    uniqueTasks.set(task.id, task);
+  });
+
+  let total = 0;
+  let completed = 0;
+  let pending = 0;
+  let overdue = 0;
+  let rescheduled = 0;
+
+  uniqueTasks.forEach(task => {
+    total++;
+
+    if (task.completed) {
+      completed++;
+      return;
+    }
+
+    if (task.dueDate < today) {
+      overdue++;
+    } else {
+      pending++;
+    }
+
+    if (
+      task.rescheduleHistory &&
+      task.rescheduleHistory.length > 0
+    ) {
+      rescheduled++;
+    }
+  });
+
+  return {
+    total,
+    completed,
+    pending,
+    overdue,
+    rescheduled
+  };
+}, [tasks]);
 
   const aggregateCompPct =
     aggregateStats.total > 0

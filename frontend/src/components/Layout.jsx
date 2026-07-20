@@ -234,6 +234,30 @@ function Layout({ children }) {
             </div>
           </div>
 
+          <button
+  type="button"
+  className="topbar-add-task-btn"
+  style={{
+    background: "linear-gradient(135deg, #4f46e5, #7c3aed)",
+    color: "#fff",
+    border: "none",
+    borderRadius: "10px",
+    padding: "10px 18px",
+    fontWeight: "600",
+    boxShadow: "0 6px 18px rgba(79, 70, 229, 0.28)",
+  }}
+  onClick={() =>
+    navigate("/tasks", {
+      state: {
+        openAddTaskModal: true,
+        timestamp: Date.now(),
+      },
+    })
+  }
+>
+  <CirclePlusIcon />
+  <span>Add Task</span>
+</button>
           {/* Right: Actions */}
           <div className="topbar-actions">
             {/* Pomodoro Timer Dropdown */}
@@ -349,15 +373,8 @@ function Layout({ children }) {
             </div>
 
             {/* Quick Add Task Button */}
-            <button
-              type="button"
-              className="topbar-icon-btn add-task-topbar-btn"
-              onClick={() => navigate("/tasks", { state: { openAddTaskModal: true, timestamp: Date.now() } })}
-              aria-label="Add Task"
-              title="Add Task"
-            >
-              <CirclePlusIcon />
-            </button>
+            {/* Quick Add Task Button */}
+
 
             {/* Bell notification button */}
             {/* <button type="button" className="topbar-icon-btn bell-btn" aria-label="Notifications"

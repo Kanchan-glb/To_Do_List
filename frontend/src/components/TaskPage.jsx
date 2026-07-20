@@ -1092,7 +1092,7 @@ function TaskPage() {
 
             try {
               await updateTask(task.id, { completed: true, status: "completed" });
-            } catch (err) {}
+            } catch (err) { }
           }}
           style={{
             width: "16px",

@@ -1994,33 +1994,26 @@
 }
 
 /* ── Independent Floating Summary Widgets ── */
-.today-summary-trigger {
-  position: fixed !important;
-  top: 180px !important;
-  right: 24px !important;
-  z-index: 9999 !important;
-  overflow: visible !important;
-  background: var(--bg-card);
-  border: var(--border-light);
-  border-radius: var(--border-radius-md);
-  box-shadow: var(--shadow-sm);
-  transition: all 0.2s ease;
-}
-
+.today-summary-trigger,
 .week-summary-trigger {
-  position: fixed !important;
-  top: 232px !important;
-  /* 180px + 36px (approx height) + 16px gap */
-  right: 24px !important;
-  z-index: 9999 !important;
-  overflow: visible !important;
-  background: var(--bg-card);
-  border: var(--border-light);
-  border-radius: var(--border-radius-md);
-  box-shadow: var(--shadow-sm);
-  transition: all 0.2s ease;
+    position: relative;
+    top: auto;
+    right: auto;
+    z-index: 10;
+    overflow: visible;
+    background: var(--bg-card);
+    border: var(--border-light);
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s ease;
 }
-
+.dashboard-summary-buttons{
+    display:flex;
+    justify-content:flex-end;
+    align-items:center;
+    gap:12px;
+    margin:16px 0 20px;
+}
 .today-summary-trigger:hover,
 .week-summary-trigger:hover {
   border-color: var(--color-primary);
