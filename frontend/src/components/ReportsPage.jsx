@@ -89,6 +89,7 @@ function ReportsPage() {
   };
 
   return (
+    <div className="reports-page">
     <div className="reports-page printable-reports">
       {/* <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
         <button className="export-btn no-print" onClick={handleExportPDF} style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', border: 'none', boxShadow: '0 8px 20px rgba(139, 92, 246, 0.3)' }}>
@@ -121,7 +122,7 @@ function ReportsPage() {
         {/* Progress chart */}
         <div className="report-card">
           <h3>📈 Task Completions (Last 7 Days)</h3>
-          <div style={{ width: "100%", height: 260 }}>
+        <div className="chart-container">
             <ResponsiveContainer>
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                 <defs>
@@ -246,6 +247,7 @@ function ReportsPage() {
           </div>
         </div> */}
       </div>
+    </div>
     </div>
   );
 }

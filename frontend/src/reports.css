@@ -285,6 +285,22 @@
   pointer-events: none;
   z-index: 1;
 }
+.chart-container{
+    width:100%;
+    height:260px;
+}
+
+@media (max-width:768px){
+    .chart-container{
+        height:220px;
+    }
+}
+
+@media (max-width:480px){
+    .chart-container{
+        height:190px;
+    }
+}
 
 /* HISTORY CARDS */
 .history-card {
@@ -400,7 +416,237 @@
     padding: 20px;
   }
 }
+/* =====================================================
+   RESPONSIVE DESIGN
+===================================================== */
 
+/* Large Laptop */
+@media (max-width: 1200px) {
+
+    .reports-page{
+        padding:28px;
+        max-width:100%;
+    }
+
+    .reports-hero{
+        padding:40px 32px;
+    }
+
+    .reports-hero-text h1{
+        font-size:2.6rem;
+    }
+
+    .stat-card h3{
+        font-size:2.6rem;
+    }
+
+    .report-card{
+        padding:28px;
+    }
+
+}
+
+
+/* Tablet */
+@media (max-width:992px){
+
+    .reports-page{
+        padding:20px;
+    }
+
+    .reports-hero{
+        flex-direction:column;
+        text-align:center;
+        gap:28px;
+        padding:32px 24px;
+    }
+
+    .reports-hero-text h1{
+        font-size:2.2rem;
+    }
+
+    .reports-hero-text p{
+        max-width:100%;
+        font-size:1rem;
+    }
+
+    .stats-grid{
+        grid-template-columns:repeat(2,1fr);
+        gap:18px;
+    }
+
+    .reports-grid{
+        grid-template-columns:1fr;
+        gap:20px;
+    }
+
+    .report-card{
+        padding:24px;
+    }
+
+}
+
+
+/* Mobile */
+@media (max-width:768px){
+
+    .reports-page{
+        padding:16px;
+    }
+
+    .reports-hero{
+        border-radius:22px;
+        padding:24px 18px;
+        margin-bottom:24px;
+    }
+
+    .reports-hero-text h1{
+        font-size:1.9rem;
+    }
+
+    .reports-hero-text p{
+        font-size:.95rem;
+    }
+
+    .export-btn{
+        width:100%;
+        justify-content:center;
+        padding:14px 18px;
+    }
+
+    .stats-grid{
+        grid-template-columns:1fr;
+        gap:16px;
+    }
+
+    .stat-card{
+        padding:22px 18px;
+        border-radius:20px;
+    }
+
+    .stat-card h3{
+        font-size:2.1rem;
+    }
+
+    .report-card{
+        padding:18px;
+        border-radius:20px;
+    }
+
+    .report-card h2{
+        font-size:1.3rem;
+    }
+
+    .report-card h3{
+        font-size:1.1rem;
+    }
+
+    .ai-review-box{
+        padding:20px;
+        border-radius:18px;
+    }
+
+    .ai-review-box::before{
+        font-size:70px;
+    }
+
+    .history-card{
+        padding:16px;
+    }
+
+    .history-header{
+        flex-direction:column;
+        align-items:flex-start;
+        gap:8px;
+    }
+
+    .history-card-grid{
+        grid-template-columns:1fr;
+        gap:8px;
+    }
+
+    .recharts-wrapper text{
+        font-size:11px !important;
+    }
+
+}
+
+
+/* Small Mobile */
+@media (max-width:480px){
+
+    .reports-page{
+        padding:12px;
+    }
+
+    .reports-hero{
+        padding:20px 16px;
+        border-radius:18px;
+    }
+
+    .reports-hero-text .eyebrow{
+        font-size:.72rem;
+    }
+
+    .reports-hero-text h1{
+        font-size:1.55rem;
+        line-height:1.3;
+    }
+
+    .reports-hero-text p{
+        font-size:.9rem;
+    }
+
+    .stat-card{
+        padding:18px 14px;
+    }
+
+    .stat-card h3{
+        font-size:1.8rem;
+    }
+
+    .stat-card p{
+        font-size:.82rem;
+    }
+
+    .stat-card span{
+        font-size:.8rem;
+    }
+
+    .report-card{
+        padding:14px;
+    }
+
+    .report-card h2{
+        font-size:1.15rem;
+    }
+
+    .report-card h3{
+        font-size:1rem;
+    }
+
+    .ai-review-box{
+        padding:16px;
+    }
+
+    .ai-review-box p{
+        font-size:.92rem;
+        line-height:1.6;
+    }
+
+    .history-card{
+        padding:14px;
+    }
+
+    .history-header strong{
+        font-size:1rem;
+    }
+
+    .history-header span{
+        font-size:.75rem;
+    }
+
+}
 @media print {
   .no-print {
     display: none !important;
