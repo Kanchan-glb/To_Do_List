@@ -130,26 +130,36 @@ export default function ProductivityAnalytics() {
 
       const isDueOnDay = taskDue === dateStr;
 
+      const todayStr = format(new Date(), "yyyy-MM-dd");
+
+      const isPendingOnDay =
+        !task.completed &&
+        task.dueDate === dateStr &&
+        dateStr >= todayStr;
+
       const isOverdueOnDay =
-  !task.completed &&
-  task.dueDate === dateStr;
+        !task.completed &&
+        task.dueDate < dateStr;
 
-      if (task.completed && task.completedDate === dateStr) {
-    completedCount++;
-}
-else if (isOverdueOnDay) {
-    overdueCount++;
-}
-else if (task.dueDate === dateStr) {
-    pendingCount++;
-}
+      if (
+        task.completed &&
+        task.completedDate === dateStr
+      ) {
+        completedCount++;
+      }
+      else if (isOverdueOnDay) {
+        overdueCount++;
+      }
+      else if (isPendingOnDay) {
+        pendingCount++;
+      }
 
-if (
-    task.createdDate <= dateStr &&
-    (!task.completed || task.completedDate >= dateStr)
-) {
-    totalCount++;
-}
+      if (
+        task.createdDate <= dateStr &&
+        (!task.completed || task.completedDate >= dateStr)
+      ) {
+        totalCount++;
+      }
 
       const wasRescheduledOnDate = task.rescheduleHistory?.some(
         (item) => item.rescheduledAtDate === dateStr
@@ -230,50 +240,50 @@ if (
   }, [dateRange, tasks, history, mode]);
 
   const aggregateStats = useMemo(() => {
-  const today = format(new Date(), "yyyy-MM-dd");
+    const today = format(new Date(), "yyyy-MM-dd");
 
-  const uniqueTasks = new Map();
+    const uniqueTasks = new Map();
 
-  tasks.forEach(task => {
-    uniqueTasks.set(task.id, task);
-  });
+    tasks.forEach(task => {
+      uniqueTasks.set(task.id, task);
+    });
 
-  let total = 0;
-  let completed = 0;
-  let pending = 0;
-  let overdue = 0;
-  let rescheduled = 0;
+    let total = 0;
+    let completed = 0;
+    let pending = 0;
+    let overdue = 0;
+    let rescheduled = 0;
 
-  uniqueTasks.forEach(task => {
-    total++;
+    uniqueTasks.forEach(task => {
+      total++;
 
-    if (task.completed) {
-      completed++;
-      return;
-    }
+      if (task.completed) {
+        completed++;
+        return;
+      }
 
-    if (task.dueDate < today) {
-      overdue++;
-    } else {
-      pending++;
-    }
+      if (task.dueDate < today) {
+        overdue++;
+      } else {
+        pending++;
+      }
 
-    if (
-      task.rescheduleHistory &&
-      task.rescheduleHistory.length > 0
-    ) {
-      rescheduled++;
-    }
-  });
+      if (
+        task.rescheduleHistory &&
+        task.rescheduleHistory.length > 0
+      ) {
+        rescheduled++;
+      }
+    });
 
-  return {
-    total,
-    completed,
-    pending,
-    overdue,
-    rescheduled
-  };
-}, [tasks]);
+    return {
+      total,
+      completed,
+      pending,
+      overdue,
+      rescheduled
+    };
+  }, [tasks]);
 
   const aggregateCompPct =
     aggregateStats.total > 0

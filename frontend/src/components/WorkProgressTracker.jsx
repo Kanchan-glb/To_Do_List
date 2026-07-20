@@ -207,7 +207,7 @@ export default function WorkProgressTracker() {
       <div className="wpt-header">
         <div>
           <h2 className="wpt-title">Report Tracker</h2>
-          <p className="wpt-subtitle">Monitor productivity, track work, and review historical performance.</p>
+          {/* <p className="wpt-subtitle">Monitor productivity, track work, and review historical performance.</p> */}
         </div>
         <div className="wpt-filters">
 
@@ -225,7 +225,7 @@ export default function WorkProgressTracker() {
 
           </div>
 
-          <input
+          {/* <input
             type="date"
             className="wpt-date-picker"
             value={customDate}
@@ -233,7 +233,7 @@ export default function WorkProgressTracker() {
               setCustomDate(e.target.value);
               setActiveFilter("Custom Date");
             }}
-          />
+          /> */}
 
         </div>
       </div>

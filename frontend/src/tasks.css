@@ -465,6 +465,292 @@
 }
 
 /* ── Subtasks ── */
+/* =========================================
+   SUBTASK CENTER POPUP
+========================================= */
+
+.subtask-popup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.58);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+
+  overflow-y: auto;
+}
+
+.subtask-popup {
+  position: relative;
+
+  width: min(520px, 95vw);
+  max-height: 85vh;
+
+  padding: 22px;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.3);
+
+  overflow-y: auto;
+  animation: openSubtaskPopup 0.2s ease-out;
+}
+
+@keyframes openSubtaskPopup {
+  from {
+    opacity: 0;
+    transform: translateY(15px) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.subtask-popup-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 15px;
+
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.subtask-popup-label {
+  margin: 0 0 4px;
+
+  color: #6366f1;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.subtask-popup-header h3 {
+  margin: 0;
+
+  color: #0f172a;
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.subtask-popup-close {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+
+  border: none;
+  border-radius: 10px;
+
+  background: #f1f5f9;
+  color: #475569;
+
+  font-size: 1.05rem;
+  cursor: pointer;
+}
+
+.subtask-popup-close:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.subtask-popup-progress {
+  margin-top: 16px;
+  padding: 11px 13px;
+
+  border-radius: 11px;
+  background: #f8fafc;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.complete-all-subtasks-btn {
+  padding: 8px 13px;
+
+  border: none;
+  border-radius: 9px;
+
+  background: #4f46e5;
+  color: #ffffff;
+
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.complete-all-subtasks-btn:hover {
+  background: #4338ca;
+}
+
+.subtask-popup-list {
+  margin-top: 15px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.subtask-popup-item {
+  width: 100%;
+  min-width: 0;
+
+  padding: 12px 13px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 11px;
+  background: #ffffff;
+
+  display: flex;
+  align-items: center;
+  gap: 11px;
+
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.subtask-popup-item:hover {
+  border-color: #a5b4fc;
+  background: #f8faff;
+}
+
+.subtask-popup-item input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+
+  opacity: 0;
+  pointer-events: none;
+}
+
+.subtask-popup-checkmark {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+
+  border: 2px solid #94a3b8;
+  border-radius: 6px;
+
+  display: grid;
+  place-items: center;
+
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 900;
+}
+
+.subtask-popup-item.is-completed
+.subtask-popup-checkmark {
+  border-color: #10b981;
+  background: #10b981;
+}
+
+.subtask-popup-title {
+  min-width: 0;
+  flex: 1;
+
+  color: #334155;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.4;
+
+  overflow-wrap: anywhere;
+}
+
+.subtask-popup-item.is-completed
+.subtask-popup-title {
+  color: #94a3b8;
+  text-decoration: line-through;
+}
+
+.complete-main-task-btn {
+  width: 100%;
+  min-height: 46px;
+
+  margin-top: 17px;
+  padding: 11px 14px;
+
+  border: none;
+  border-radius: 11px;
+
+  background: linear-gradient(
+    135deg,
+    #4f46e5,
+    #7c3aed
+  );
+
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 800;
+
+  cursor: pointer;
+}
+
+.complete-main-task-btn:disabled {
+  background: #cbd5e1;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.subtask-popup-empty {
+  padding: 24px;
+
+  border-radius: 11px;
+  background: #f8fafc;
+
+  color: #64748b;
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .subtask-popup-overlay {
+    padding: 12px;
+    align-items: center;
+  }
+
+  .subtask-popup {
+    width: 100%;
+    max-height: 88vh;
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .subtask-popup-header h3 {
+    font-size: 1rem;
+  }
+
+  .subtask-popup-progress {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .complete-all-subtasks-btn {
+    width: 100%;
+  }
+
+  .subtask-popup-item {
+    padding: 11px;
+  }
+}
+
 .task-subtasks {
   margin-top: 24px;
   padding-top: 24px;

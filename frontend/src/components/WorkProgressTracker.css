@@ -31,7 +31,10 @@
   font-size: 1.8rem;
   font-weight: 800;
   color: var(--text-primary);
-  margin: 0 0 4px 0;
+  margin-top: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .wpt-subtitle {
@@ -45,57 +48,88 @@
    Filters
 =========================== */
 .wpt-filters{
-    display:flex;
-    align-items:center;
-    gap:14px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
 
-    /* width:100%; */
+    width: 90%;
+    margin-left: auto;   
 
-    padding:12px 14px;
+    padding: 16px 18px;
 
-    border-radius:16px;
-    background:var(--bg-card);
-    border:var(--border-light);
-    box-shadow:0 8px 20px rgba(0,0,0,.05);
+    border-radius: 16px;
+    background: var(--bg-card);
+    border: var(--border-light);
+    box-shadow: 0 8px 20px rgba(0,0,0,.05);
 }
 
 .wpt-filter-group{
-    display:flex;
-    gap:10px;
-    flex-wrap:wrap;
-    flex:1;
+    display: flex;
+    justify-content: center;   /* Buttons center */
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 25px;
+
+    width: 100%;
 }
 
 .wpt-filter-btn{
-    padding:10px 18px;
-    border:none;
-    border-radius:999px;
-    min-width:120px;
+    min-width: 140px;
+    height: 44px;
 
-    background:#f4f6fb;
-    color:var(--text-secondary);
+    padding: 0 20px;
 
-    font-size:.9rem;
-    font-weight:700;
+    border: none;
+    border-radius: 999px;
 
-    cursor:pointer;
-    transition:.25s ease;
+    background: #f4f6fb;
+    color: var(--text-secondary);
 
-    white-space:nowrap;
+    font-size: .9rem;
+    font-weight: 700;
+
+    cursor: pointer;
+    transition: all .25s ease;
 }
 
 .wpt-filter-btn:hover{
-    background:#e9eefb;
-    transform:translateY(-2px);
+    background: #e9eefb;
+    transform: translateY(-2px);
 }
 
 .wpt-filter-btn.active{
-    background:linear-gradient(135deg,#4f46e5,#6366f1);
-    color:#fff;
-    box-shadow:0 8px 18px rgba(79,70,229,.28);
+    background: linear-gradient(135deg,#4f46e5,#6366f1);
+    color: #fff;
+    box-shadow: 0 8px 18px rgba(79,70,229,.28);
 }
 
-.wpt-date-picker{
+@media (max-width:768px){
+
+    .wpt-filters{
+        padding:14px;
+    }
+
+    .wpt-filter-group{
+        justify-content:center;
+        gap:10px;
+    }
+
+    .wpt-filter-btn{
+        min-width:120px;
+        flex:1 1 140px;
+    }
+
+}
+
+@media (max-width:480px){
+
+    .wpt-filter-btn{
+        width:100%;
+        min-width:unset;
+    }
+
+}
+/* .wpt-date-picker{
     min-width:170px;
     padding:10px 14px;
 
@@ -107,7 +141,7 @@
      width:220px;
     flex-shrink:0;
 
-}
+} */
 
 /* Top Summary */
 .wpt-summary-grid {
