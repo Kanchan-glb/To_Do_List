@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap");
 
 :root {
   --font-heading: 'Outfit', sans-serif;
@@ -461,9 +461,6 @@ textarea:focus {
   padding:0;
 }
 
-/* ───────────────────────────────────────────────
-   SIDEBAR
-─────────────────────────────────────────────── */
 .sidebar {
   width: 260px;
   margin-left: -260px; /* Collapsed by default without .open */
@@ -802,9 +799,11 @@ textarea:focus {
  
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+    min-width:0;
+    width:100%;
+    overflow-x:hidden;
   background: var(--bg-app);
-  min-width: 0; /* Ensures content flexes correctly when sidebar opens */
+ 
 }
 
 /* ── Global Toggle Button ── */
@@ -1222,6 +1221,14 @@ textarea:focus {
 }
 
 .avatar-btn {
+ 
+    min-width:44px;
+    min-height:44px;
+    flex-shrink:0;
+    
+    margin:0;
+    border-radius:50%;
+    box-sizing:border-box;
   position: relative;
   width: 40px;
   height: 40px;
@@ -1549,6 +1556,7 @@ textarea:focus {
   .sidebar {
     position: fixed;
     top: 0;
+     flex-shrink:0;
     left: -280px;
     margin-left: 0;
     bottom: 0;
