@@ -22,7 +22,7 @@ const IcoStar = () => <Ico><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.
 const IcoZap = () => <Ico><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></Ico>;
 
 export default function WorkProgressTracker() {
-  const { tasks } = useTasks();
+  const { tasks, streak, longestStreak } = useTasks();
   const [activeFilter, setActiveFilter] = useState("Today");
   const [customDate, setCustomDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [historicalDate, setHistoricalDate] = useState(format(subDays(new Date(), 1), "yyyy-MM-dd"));
@@ -160,15 +160,6 @@ export default function WorkProgressTracker() {
     let highestPct = 0;
     let totalComp = 0;
     let totalWork = 0;
-    let streak = 0;
-
-    // Calculate streak (consecutive days with 100% completion)
-    for (let i = 0; i < 365; i++) {
-      const dStr = format(subDays(new Date(), i), "yyyy-MM-dd");
-      const st = getStatsForDate(dStr);
-      if (st.total > 0 && st.completionPct === 100) streak++;
-      else if (st.total > 0 && st.completionPct < 100) break; // Streak broken
-    }
 
     last7DaysData.forEach(d => {
       totalComp += d.completed;
@@ -199,7 +190,7 @@ export default function WorkProgressTracker() {
       avgDaily,
       trendDiff
     };
-  }, [tasks, last7DaysData]);
+  }, [tasks, last7DaysData, streak]);
 
   // Charts Data
   const pieData = [

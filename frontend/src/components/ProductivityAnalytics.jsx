@@ -1,18 +1,46 @@
 import { useState, useMemo } from 'react';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  LabelList
 } from 'recharts';
 import {
-  format, subDays, addDays, startOfWeek, endOfWeek, eachDayOfInterval,
-  startOfMonth, endOfMonth, isAfter, isToday, parseISO
+  format,
+  subDays,
+  addDays,
+  subMonths,
+  addMonths,
+  eachDayOfInterval,
+  startOfMonth,
+  endOfMonth,
+  isAfter,
+  isToday,
+  isSameMonth,
+  parseISO
 } from 'date-fns';
 import { useTasks } from '../context/TaskContext';
 
 const renderCustomizedLabel = (props) => {
   const { x, y, width, height, value } = props;
+
   if (!value || value === 0 || height < 12) return null;
+
   return (
-    <text x={x + width / 2} y={y + height / 2} fill="#ffffff" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight="bold">
+    <text
+      x={x + width / 2}
+      y={y + height / 2}
+      fill="#ffffff"
+      textAnchor="middle"
+      dominantBaseline="central"
+      fontSize={11}
+      fontWeight="bold"
+    >
       {value}
     </text>
   );
@@ -21,86 +49,117 @@ const renderCustomizedLabel = (props) => {
 export default function ProductivityAnalytics() {
   const { tasks, history } = useTasks();
 
-  const [mode, setMode] = useState('Weekly'); // 'Weekly', 'Monthly', 'Custom'
+  // Modes:
+  // Weekly       = Last 7 Days
+  // ThisMonth    = Current month only
+  // PreviousMonth = Previous and older months with arrow navigation
+  const [mode, setMode] = useState('Weekly');
   const [anchorDate, setAnchorDate] = useState(new Date());
-  const [customStart, setCustomStart] = useState(format(subDays(new Date(), 6), "yyyy-MM-dd"));
-  const [customEnd, setCustomEnd] = useState(format(new Date(), "yyyy-MM-dd"));
 
-  // Generate Date Range Array
+  const latestAllowedPreviousMonth = useMemo(
+    () => subMonths(startOfMonth(new Date()), 1),
+    []
+  );
+
   const dateRange = useMemo(() => {
-    let start, end;
+    let start;
+    let end;
 
-    if (mode === 'Weekly') {
-      start = subDays(anchorDate, 6);
-      end = anchorDate;
-    } else if (mode === 'Monthly') {
+    if (mode === 'ThisMonth') {
+      start = startOfMonth(new Date());
+      end = new Date();
+    } else if (mode === 'PreviousMonth') {
       start = startOfMonth(anchorDate);
       end = endOfMonth(anchorDate);
-      if (isAfter(end, new Date())) {
-        end = new Date();
-      }
     } else {
-      start = parseISO(customStart);
-      end = parseISO(customEnd);
-      // Failsafe
-      if (isNaN(start.getTime())) start = new Date();
-      if (isNaN(end.getTime())) end = new Date();
+      start = subDays(anchorDate, 6);
+      end = anchorDate;
     }
 
     try {
       return eachDayOfInterval({ start, end });
-    } catch (e) {
+    } catch (error) {
+      console.error('Unable to generate productivity date range:', error);
       return [new Date()];
     }
-  }, [mode, anchorDate, customStart, customEnd]);
+  }, [mode, anchorDate]);
 
-  // Compute stats for a specific date (combines immutable history & retro-calculation fallback)
   const getStatsForDate = (dateObj) => {
-    const dateStr = format(dateObj, "yyyy-MM-dd");
+    const dateStr = format(dateObj, 'yyyy-MM-dd');
     const isTodayFlag = isToday(dateObj);
 
     if (!isTodayFlag) {
-      const snapshot = history.find(h => h.type === 'daily' && h.date === dateStr);
+      const snapshot = history.find(
+        (item) => item.type === 'daily' && item.date === dateStr
+      );
+
       if (snapshot) {
         return {
-          date: format(dateObj, mode === 'Monthly' ? "MMM d" : "EEE, MMM d"),
+          date: format(
+            dateObj,
+            mode === 'Weekly' ? 'EEE, MMM d' : 'MMM d'
+          ),
           fullDate: dateStr,
           completed: snapshot.completedCount || 0,
           pending: snapshot.pendingCount || 0,
           overdue: snapshot.overdueCount || 0,
           rescheduled: snapshot.rescheduledCount || 0,
-          total: snapshot.totalTasks || 0,
+          total: snapshot.totalTasks || 0
         };
       }
     }
 
-    let completedCount = 0, pendingCount = 0, overdueCount = 0, totalCount = 0, rescheduledCount = 0;
+    let completedCount = 0;
+    let pendingCount = 0;
+    let overdueCount = 0;
+    let totalCount = 0;
+    let rescheduledCount = 0;
 
-    tasks.forEach(t => {
-      const taskDue = t.dueDate || t.createdDate || "2099-01-01";
-      const isCompletedOnOrBefore = t.completed && t.completedDate && t.completedDate <= dateStr;
-      const isCompletedOnDay = t.completed && t.completedDate === dateStr;
+    tasks.forEach((task) => {
+      const taskDue =
+        task.dueDate || task.createdDate || '2099-01-01';
+
+      const isCompletedOnOrBefore =
+        Boolean(task.completed) &&
+        Boolean(task.completedDate) &&
+        task.completedDate <= dateStr;
+
+      const isCompletedOnDay =
+        Boolean(task.completed) &&
+        task.completedDate === dateStr;
+
       const isDueOnDay = taskDue === dateStr;
-      const isCarryForward = taskDue < dateStr && (!isCompletedOnOrBefore || isCompletedOnDay);
+
+      const isCarryForward =
+        taskDue < dateStr &&
+        (!isCompletedOnOrBefore || isCompletedOnDay);
 
       if (isDueOnDay || isCarryForward) {
-        totalCount++;
+        totalCount += 1;
+
         if (isCompletedOnDay) {
-          completedCount++;
+          completedCount += 1;
         } else if (taskDue < dateStr) {
-          overdueCount++;
+          overdueCount += 1;
         } else {
-          pendingCount++;
+          pendingCount += 1;
         }
       }
 
-      if (t.rescheduleHistory?.some(h => h.rescheduledAtDate === dateStr)) {
-        rescheduledCount++;
+      const wasRescheduledOnDate = task.rescheduleHistory?.some(
+        (item) => item.rescheduledAtDate === dateStr
+      );
+
+      if (wasRescheduledOnDate) {
+        rescheduledCount += 1;
       }
     });
 
     return {
-      date: format(dateObj, mode === 'Monthly' ? "MMM d" : "EEE, MMM d"),
+      date: format(
+        dateObj,
+        mode === 'Weekly' ? 'EEE, MMM d' : 'MMM d'
+      ),
       fullDate: dateStr,
       completed: completedCount,
       pending: pendingCount,
@@ -111,237 +170,500 @@ export default function ProductivityAnalytics() {
   };
 
   const chartData = useMemo(() => {
-    const rawData = dateRange.map(d => getStatsForDate(d));
+    const rawData = dateRange.map((date) => getStatsForDate(date));
 
-    if (mode === 'Monthly') {
-      const weeklyAgg = [];
-      let currentWeek = { weekStr: "", total: 0, completed: 0, pending: 0, overdue: 0, rescheduled: 0, count: 0 };
-
-      rawData.forEach((day, index) => {
-        if (index === 0 || parseISO(day.fullDate).getDay() === 1) { // 1 = Monday
-          if (currentWeek.count > 0) {
-            currentWeek.date = `Week ${weeklyAgg.length + 1}`;
-            weeklyAgg.push(currentWeek);
-          }
-          currentWeek = { weekStr: "", total: 0, completed: 0, pending: 0, overdue: 0, rescheduled: 0, count: 0 };
-        }
-        currentWeek.total += day.total;
-        currentWeek.completed += day.completed;
-        currentWeek.pending += day.pending;
-        currentWeek.overdue += day.overdue;
-        currentWeek.rescheduled += day.rescheduled;
-        currentWeek.count++;
-      });
-      if (currentWeek.count > 0) {
-        currentWeek.date = `Week ${weeklyAgg.length + 1}`;
-        weeklyAgg.push(currentWeek);
-      }
-      return weeklyAgg;
+    if (mode === 'Weekly') {
+      return rawData;
     }
 
-    return rawData;
+    const weeklyAggregate = [];
+
+    let currentWeek = {
+      date: '',
+      total: 0,
+      completed: 0,
+      pending: 0,
+      overdue: 0,
+      rescheduled: 0,
+      count: 0
+    };
+
+    rawData.forEach((day, index) => {
+      const currentDate = parseISO(day.fullDate);
+      const startsNewWeek =
+        index === 0 || currentDate.getDay() === 1;
+
+      if (startsNewWeek && currentWeek.count > 0) {
+        currentWeek.date = `Week ${weeklyAggregate.length + 1}`;
+        weeklyAggregate.push(currentWeek);
+
+        currentWeek = {
+          date: '',
+          total: 0,
+          completed: 0,
+          pending: 0,
+          overdue: 0,
+          rescheduled: 0,
+          count: 0
+        };
+      }
+
+      currentWeek.total += day.total;
+      currentWeek.completed += day.completed;
+      currentWeek.pending += day.pending;
+      currentWeek.overdue += day.overdue;
+      currentWeek.rescheduled += day.rescheduled;
+      currentWeek.count += 1;
+    });
+
+    if (currentWeek.count > 0) {
+      currentWeek.date = `Week ${weeklyAggregate.length + 1}`;
+      weeklyAggregate.push(currentWeek);
+    }
+
+    return weeklyAggregate;
   }, [dateRange, tasks, history, mode]);
 
   const aggregateStats = useMemo(() => {
-    const rawData = dateRange.map(d => getStatsForDate(d));
-    return rawData.reduce((acc, curr) => {
-      acc.total += curr.total;
-      acc.completed += curr.completed;
-      acc.pending += curr.pending;
-      acc.overdue += curr.overdue;
-      acc.rescheduled += curr.rescheduled;
-      return acc;
-    }, { total: 0, completed: 0, pending: 0, overdue: 0, rescheduled: 0 });
-  }, [dateRange, tasks, history]);
+    const rawData = dateRange.map((date) => getStatsForDate(date));
 
-  const aggregateCompPct = aggregateStats.total > 0
-    ? Math.round((aggregateStats.completed / aggregateStats.total) * 100)
-    : 0;
+    return rawData.reduce(
+      (summary, current) => {
+        summary.total += current.total;
+        summary.completed += current.completed;
+        summary.pending += current.pending;
+        summary.overdue += current.overdue;
+        summary.rescheduled += current.rescheduled;
+
+        return summary;
+      },
+      {
+        total: 0,
+        completed: 0,
+        pending: 0,
+        overdue: 0,
+        rescheduled: 0
+      }
+    );
+  }, [dateRange, tasks, history, mode]);
+
+  const aggregateCompPct =
+    aggregateStats.total > 0
+      ? Math.round(
+        (aggregateStats.completed / aggregateStats.total) * 100
+      )
+      : 0;
 
   const maxStat = useMemo(() => {
     if (!chartData || chartData.length === 0) return 0;
-    return Math.max(...chartData.map(d => (d.completed || 0) + (d.pending || 0) + (d.overdue || 0) + (d.rescheduled || 0)));
+
+    return Math.max(
+      ...chartData.map(
+        (item) =>
+          (item.completed || 0) +
+          (item.pending || 0) +
+          (item.overdue || 0) +
+          (item.rescheduled || 0)
+      )
+    );
   }, [chartData]);
+
   const yDomain = maxStat === 0 ? [0, 5] : [0, 'auto'];
 
   const handlePrev = () => {
     if (mode === 'Weekly') {
-      setAnchorDate(prev => subDays(prev, 7));
-    } else if (mode === 'Monthly') {
-      setAnchorDate(prev => subDays(startOfMonth(prev), 1));
+      setAnchorDate((previousDate) =>
+        subDays(previousDate, 7)
+      );
+      return;
+    }
+
+    if (mode === 'PreviousMonth') {
+      setAnchorDate((previousDate) =>
+        subMonths(previousDate, 1)
+      );
     }
   };
 
   const handleNext = () => {
     if (mode === 'Weekly') {
       const nextDate = addDays(anchorDate, 7);
+
       if (!isAfter(nextDate, new Date())) {
         setAnchorDate(nextDate);
       } else {
         setAnchorDate(new Date());
       }
-    } else if (mode === 'Monthly') {
-      const nextDate = addDays(endOfMonth(anchorDate), 1);
-      if (!isAfter(startOfMonth(nextDate), new Date())) {
-        setAnchorDate(nextDate);
+
+      return;
+    }
+
+    if (mode === 'PreviousMonth') {
+      const nextMonth = addMonths(anchorDate, 1);
+
+      // Do not allow navigation into the current month.
+      if (
+        !isAfter(
+          startOfMonth(nextMonth),
+          startOfMonth(latestAllowedPreviousMonth)
+        )
+      ) {
+        setAnchorDate(nextMonth);
       }
     }
   };
 
   const isNextDisabled = () => {
-    if (mode === 'Custom') return true;
     if (mode === 'Weekly') {
-      return isToday(anchorDate) || isAfter(anchorDate, new Date());
+      return (
+        isToday(anchorDate) ||
+        isAfter(anchorDate, new Date())
+      );
     }
-    if (mode === 'Monthly') {
-      return isToday(anchorDate) || isAfter(anchorDate, new Date()) || (anchorDate.getMonth() === new Date().getMonth() && anchorDate.getFullYear() === new Date().getFullYear());
+
+    if (mode === 'PreviousMonth') {
+      return isSameMonth(
+        anchorDate,
+        latestAllowedPreviousMonth
+      );
     }
-    return false;
+
+    return true;
   };
 
   const applyFilter = (filterName) => {
     if (filterName === 'Last 7 Days') {
       setMode('Weekly');
       setAnchorDate(new Date());
-    } else if (filterName === 'Last 30 Days') {
-      setMode('Custom');
-      setCustomStart(format(subDays(new Date(), 29), "yyyy-MM-dd"));
-      setCustomEnd(format(new Date(), "yyyy-MM-dd"));
-    } else if (filterName === 'This Month') {
-      setMode('Monthly');
+      return;
+    }
+
+    if (filterName === 'This Month') {
+      setMode('ThisMonth');
       setAnchorDate(new Date());
-    } else if (filterName === 'Previous Month') {
-      setMode('Monthly');
-      setAnchorDate(subDays(startOfMonth(new Date()), 1));
+      return;
+    }
+
+    if (filterName === 'Previous Month') {
+      setMode('PreviousMonth');
+      setAnchorDate(latestAllowedPreviousMonth);
     }
   };
+
+  const selectedRangeLabel = useMemo(() => {
+    if (mode === 'ThisMonth') {
+      return `${format(
+        startOfMonth(new Date()),
+        'MMM d, yyyy'
+      )} - ${format(new Date(), 'MMM d, yyyy')}`;
+    }
+
+    if (mode === 'PreviousMonth') {
+      return `${format(
+        startOfMonth(anchorDate),
+        'MMM d, yyyy'
+      )} - ${format(
+        endOfMonth(anchorDate),
+        'MMM d, yyyy'
+      )}`;
+    }
+
+    return `${format(
+      dateRange[0],
+      'MMM d, yyyy'
+    )} - ${format(
+      dateRange[dateRange.length - 1],
+      'MMM d, yyyy'
+    )}`;
+  }, [mode, anchorDate, dateRange]);
 
   return (
     <div className="pa-container">
       <div className="pa-header">
         <h2>Productivity Analytics</h2>
-        <p>Deep dive into your historical performance and task trends.</p>
+        <p>
+          Deep dive into your historical performance and task trends.
+        </p>
       </div>
 
-      {/* ── FILTER SECTION ── */}
+      {/* FILTER SECTION */}
       <div className="pa-card">
         <div className="pa-filters-stack">
-          {/* 1. Time Filter Buttons */}
           <div className="pa-quick-filters">
             <button
+              type="button"
               onClick={() => applyFilter('Last 7 Days')}
-              className={mode === 'Weekly' && isToday(anchorDate) ? 'active' : ''}
-            >Last 7 Days</button>
+              className={mode === 'Weekly' ? 'active' : ''}
+            >
+              Last 7 Days
+            </button>
+
             <button
-              onClick={() => applyFilter('Last 30 Days')}
-              className={mode === 'Custom' && customStart === format(subDays(new Date(), 29), "yyyy-MM-dd") ? 'active' : ''}
-            >Last 30 Days</button>
-            <button
+              type="button"
               onClick={() => applyFilter('This Month')}
-              className={mode === 'Monthly' && anchorDate.getMonth() === new Date().getMonth() ? 'active' : ''}
-            >This Month</button>
+              className={mode === 'ThisMonth' ? 'active' : ''}
+            >
+              This Month
+            </button>
+
             <button
+              type="button"
               onClick={() => applyFilter('Previous Month')}
-              className={mode === 'Monthly' && anchorDate.getMonth() !== new Date().getMonth() ? 'active' : ''}
-            >Prev Month</button>
+              className={mode === 'PreviousMonth' ? 'active' : ''}
+            >
+              Previous Month
+            </button>
           </div>
 
-          {/* Removed View Selector to simplify interface and match user's numbered list */}
-
-          {/* 3. Date Range */}
           <div className="pa-nav-group">
-            {mode !== 'Custom' ? (
+            {mode === 'ThisMonth' ? (
+              <span className="pa-date-range">
+                {selectedRangeLabel}
+              </span>
+            ) : (
               <>
-                <button onClick={handlePrev} className="pa-nav-btn">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                <button
+                  type="button"
+                  onClick={handlePrev}
+                  className="pa-nav-btn"
+                  aria-label={
+                    mode === 'Weekly'
+                      ? 'View previous seven days'
+                      : 'View previous month'
+                  }
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <polyline points="15 18 9 12 15 6" />
+                  </svg>
                 </button>
+
                 <span className="pa-date-range">
-                  {format(dateRange[0], "MMM d, yyyy")} - {format(dateRange[dateRange.length - 1], "MMM d, yyyy")}
+                  {selectedRangeLabel}
                 </span>
-                <button onClick={handleNext} disabled={isNextDisabled()} className="pa-nav-btn">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  disabled={isNextDisabled()}
+                  className="pa-nav-btn"
+                  aria-label={
+                    mode === 'Weekly'
+                      ? 'View next seven days'
+                      : 'View next month'
+                  }
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
                 </button>
               </>
-            ) : (
-              <div className="pa-custom-dates">
-                <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} max={customEnd} className="pa-date-input" />
-                <span>to</span>
-                <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} min={customStart} max={format(new Date(), "yyyy-MM-dd")} className="pa-date-input" />
-              </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* ── AGGREGATE SUMMARY SECTION ── */}
+      {/* AGGREGATE SUMMARY SECTION */}
       <div className="pa-card">
         <div className="pa-stats-grid">
           <div className="pa-stat-card total">
-            <span className="pa-stat-val">{aggregateStats.total}</span>
-            <span className="pa-stat-label">Total Work</span>
+            <span className="pa-stat-val">
+              {aggregateStats.total}
+            </span>
+            <span className="pa-stat-label">
+              Total Work
+            </span>
           </div>
+
           <div className="pa-stat-card completed">
-            <span className="pa-stat-val">{aggregateStats.completed}</span>
-            <span className="pa-stat-label">Completed</span>
+            <span className="pa-stat-val">
+              {aggregateStats.completed}
+            </span>
+            <span className="pa-stat-label">
+              Completed
+            </span>
           </div>
+
           <div className="pa-stat-card pending">
-            <span className="pa-stat-val">{aggregateStats.pending}</span>
-            <span className="pa-stat-label">Pending</span>
+            <span className="pa-stat-val">
+              {aggregateStats.pending}
+            </span>
+            <span className="pa-stat-label">
+              Pending
+            </span>
           </div>
+
           <div className="pa-stat-card overdue">
-            <span className="pa-stat-val">{aggregateStats.overdue}</span>
-            <span className="pa-stat-label">Overdue</span>
+            <span className="pa-stat-val">
+              {aggregateStats.overdue}
+            </span>
+            <span className="pa-stat-label">
+              Overdue
+            </span>
           </div>
+
           <div className="pa-stat-card rescheduled">
-            <span className="pa-stat-val">{aggregateStats.rescheduled}</span>
-            <span className="pa-stat-label">Rescheduled</span>
+            <span className="pa-stat-val">
+              {aggregateStats.rescheduled}
+            </span>
+            <span className="pa-stat-label">
+              Rescheduled
+            </span>
           </div>
+
           <div className="pa-stat-card done">
-            <span className="pa-stat-val">{aggregateCompPct}%</span>
-            <span className="pa-stat-label">Done Rate</span>
+            <span className="pa-stat-val">
+              {aggregateCompPct}%
+            </span>
+            <span className="pa-stat-label">
+              Done Rate
+            </span>
           </div>
         </div>
       </div>
 
-      {/* ── CHART SECTION ── */}
-      <div className="pa-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      {/* CHART SECTION */}
+      <div
+        className="pa-card"
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 0
+        }}
+      >
         <div className="pa-chart-wrapper">
-          {aggregateStats.total === 0 && aggregateStats.rescheduled === 0 && (
-            <div className="pa-empty-overlay">
-              <div className="pa-empty-msg">
-                No productivity data available for the selected period.
+          {aggregateStats.total === 0 &&
+            aggregateStats.rescheduled === 0 && (
+              <div className="pa-empty-overlay">
+                <div className="pa-empty-msg">
+                  No productivity data available for the selected period.
+                </div>
               </div>
-            </div>
-          )}
+            )}
+
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-              <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#6b7280' }} tickMargin={10} axisLine={false} tickLine={false} />
+            <BarChart
+              data={chartData}
+              margin={{
+                top: 10,
+                right: 10,
+                left: -20,
+                bottom: 0
+              }}
+            >
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="#e5e7eb"
+              />
+
+              <XAxis
+                dataKey="date"
+                tick={{
+                  fontSize: 12,
+                  fill: '#6b7280'
+                }}
+                tickMargin={10}
+                axisLine={false}
+                tickLine={false}
+              />
+
               <YAxis
-                tick={{ fontSize: 12, fill: '#6b7280' }}
+                tick={{
+                  fontSize: 12,
+                  fill: '#6b7280'
+                }}
                 axisLine={false}
                 tickLine={false}
                 allowDecimals={false}
                 domain={yDomain}
               />
+
               <Tooltip
-                cursor={{ fill: 'rgba(0,0,0,0.04)' }}
-                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                cursor={{
+                  fill: 'rgba(0,0,0,0.04)'
+                }}
+                contentStyle={{
+                  borderRadius: '8px',
+                  border: 'none',
+                  boxShadow:
+                    '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                }}
               />
-              <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '20px' }} />
 
-              <Bar dataKey="overdue" name="Overdue" stackId="a" fill="#ef4444">
-                <LabelList dataKey="overdue" content={renderCustomizedLabel} />
-              </Bar>
-              <Bar dataKey="pending" name="Pending" stackId="a" fill="#f59e0b">
-                <LabelList dataKey="pending" content={renderCustomizedLabel} />
-              </Bar>
-              <Bar dataKey="completed" name="Completed" stackId="a" fill="#10b981">
-                <LabelList dataKey="completed" content={renderCustomizedLabel} />
+              <Legend
+                wrapperStyle={{
+                  fontSize: '12px',
+                  paddingTop: '20px'
+                }}
+              />
+
+              <Bar
+                dataKey="overdue"
+                name="Overdue"
+                stackId="a"
+                fill="#ef4444"
+              >
+                <LabelList
+                  dataKey="overdue"
+                  content={renderCustomizedLabel}
+                />
               </Bar>
 
-              <Bar dataKey="rescheduled" name="Rescheduled" fill="#3b82f6" radius={4}>
-                <LabelList dataKey="rescheduled" content={renderCustomizedLabel} />
+              <Bar
+                dataKey="pending"
+                name="Pending"
+                stackId="a"
+                fill="#f59e0b"
+              >
+                <LabelList
+                  dataKey="pending"
+                  content={renderCustomizedLabel}
+                />
+              </Bar>
+
+              <Bar
+                dataKey="completed"
+                name="Completed"
+                stackId="a"
+                fill="#10b981"
+              >
+                <LabelList
+                  dataKey="completed"
+                  content={renderCustomizedLabel}
+                />
+              </Bar>
+
+              <Bar
+                dataKey="rescheduled"
+                name="Rescheduled"
+                fill="#3b82f6"
+                radius={4}
+              >
+                <LabelList
+                  dataKey="rescheduled"
+                  content={renderCustomizedLabel}
+                />
               </Bar>
             </BarChart>
           </ResponsiveContainer>

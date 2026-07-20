@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 import LoginPage from "./components/LoginPage";
 import DashboardPage from "./components/DashboardPage";
 import Layout from "./components/Layout";
@@ -224,12 +225,14 @@ function GlobalReminderEngine() {
 
   if (!activeReminder) return null;
 
-  const handleMarkComplete = (e) => {
+  const handleMarkComplete = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    updateTask(activeReminder.id, { completed: true });
-    setActiveReminder(null);
-    setShowRescheduleForm(false);
+    try {
+      await updateTask(activeReminder.id, { completed: true });
+      setActiveReminder(null);
+      setShowRescheduleForm(false);
+    } catch (err) {}
   };
 
   const handleQuickReschedule = (e, type) => {
@@ -390,6 +393,16 @@ function App() {
             }
           />
           <Route
+            path="/tasks/:statusOrId"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <TaskPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/planner"
             element={
               <ProtectedRoute>
@@ -442,6 +455,7 @@ function App() {
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
         <GlobalReminderEngine />
+        <Toaster position="top-right" reverseOrder={false} />
       </BrowserRouter>
     </TaskProvider>
   );

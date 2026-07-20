@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef } from "react";
-import { format, isToday, isYesterday, differenceInDays, addHours } from "date-fns";
+import { format, isToday, isYesterday, differenceInDays, addHours, subDays } from "date-fns";
 import { calculateDefaultDueTime } from "../utils/taskUtils";
 
 const TaskContext = createContext();
@@ -46,7 +46,8 @@ export function TaskProvider({ children }) {
     }));
   });
   const [geminiApiKey, setGeminiApiKey] = useState(() => getScopedData("smartGeminiKey", ""));
-  const [streak, setStreak] = useState(() => parseInt(getScopedData("smartStreak", "1"), 10));
+  const [streak, setStreak] = useState(0);
+  const [longestStreak, setLongestStreak] = useState(() => parseInt(getScopedData("smartLongestStreak", "0"), 10));
   const [lastActiveDate, setLastActiveDate] = useState(() => getScopedData("smartLastActiveDate", format(new Date(), "yyyy-MM-dd")));
 
   const [morningPlannerCompleted, setMorningPlannerCompleted] = useState(() => {
@@ -117,29 +118,88 @@ export function TaskProvider({ children }) {
   // Cleaned up duplicate state here.
 
 
-  // Handle Streak & Daily resets
+  // Dynamic Streak & Longest Streak Calculation from Completed Task Dates
+  useEffect(() => {
+    const completedTasks = tasks.filter(t => t.completed && t.completedDate);
+    const uniqueDates = [...new Set(completedTasks.map(t => t.completedDate))];
+    const sortedDates = uniqueDates.sort();
+
+    if (sortedDates.length === 0) {
+      setStreak(0);
+      setLongestStreak(0);
+      localStorage.setItem(`smartStreak_${userEmail}`, "0");
+      localStorage.setItem(`smartLongestStreak_${userEmail}`, "0");
+      return;
+    }
+
+    // Calculate maximum consecutive streak in history
+    let maxStreak = 0;
+    let tempStreak = 0;
+    let lastDate = null;
+
+    for (let i = 0; i < sortedDates.length; i++) {
+      const currentDate = new Date(sortedDates[i] + "T12:00:00");
+      if (lastDate === null) {
+        tempStreak = 1;
+      } else {
+        const diff = differenceInDays(currentDate, lastDate);
+        if (diff === 1) {
+          tempStreak += 1;
+        } else if (diff > 1) {
+          if (tempStreak > maxStreak) {
+            maxStreak = tempStreak;
+          }
+          tempStreak = 1;
+        }
+      }
+      lastDate = currentDate;
+    }
+    if (tempStreak > maxStreak) {
+      maxStreak = tempStreak;
+    }
+
+    // Calculate active streak ending today or yesterday
+    const todayStr = format(new Date(), "yyyy-MM-dd");
+    const yesterdayStr = format(subDays(new Date(), 1), "yyyy-MM-dd");
+
+    let currentStreak = 0;
+    if (sortedDates.includes(todayStr)) {
+      let checkDate = new Date(todayStr + "T12:00:00");
+      while (sortedDates.includes(format(checkDate, "yyyy-MM-dd"))) {
+        currentStreak++;
+        checkDate = subDays(checkDate, 1);
+      }
+    } else if (sortedDates.includes(yesterdayStr)) {
+      let checkDate = new Date(yesterdayStr + "T12:00:00");
+      while (sortedDates.includes(format(checkDate, "yyyy-MM-dd"))) {
+        currentStreak++;
+        checkDate = subDays(checkDate, 1);
+      }
+    } else {
+      currentStreak = 0;
+    }
+
+    const finalLongest = Math.max(maxStreak, currentStreak);
+    setStreak(currentStreak);
+    setLongestStreak(finalLongest);
+    localStorage.setItem(`smartStreak_${userEmail}`, currentStreak.toString());
+    localStorage.setItem(`smartLongestStreak_${userEmail}`, finalLongest.toString());
+  }, [tasks, userEmail]);
+
+  // Handle Daily resets & Auto-History logs
   useEffect(() => {
     const todayStr = format(new Date(), "yyyy-MM-dd");
     if (lastActiveDate !== todayStr) {
-      const daysDiff = differenceInDays(new Date(todayStr), new Date(lastActiveDate));
-      let nextStreak = streak;
-
-      if (daysDiff === 1) {
-        nextStreak += 1;
-      } else if (daysDiff > 1) {
-        nextStreak = 1;
-      }
-
       // Automatically save history for the lastActiveDate
       let completedCount = 0, pendingCount = 0, overdueCount = 0, totalCount = 0, rescheduledCount = 0;
-      
+
       tasks.forEach(t => {
         const taskDue = t.dueDate || t.createdDate || "2099-01-01";
         const isCompletedOnOrBefore = t.completed && t.completedDate && t.completedDate <= lastActiveDate;
         const isCompletedOnDay = t.completed && t.completedDate === lastActiveDate;
         const isDueOnDay = taskDue === lastActiveDate;
         const isCarryForward = taskDue < lastActiveDate && (!isCompletedOnOrBefore || isCompletedOnDay);
-        
+
         if (isDueOnDay || isCarryForward) {
           totalCount++;
           if (isCompletedOnDay) {
@@ -150,14 +210,14 @@ export function TaskProvider({ children }) {
             pendingCount++;
           }
         }
-        
+
         if (t.rescheduleHistory?.some(h => h.rescheduledAtDate === lastActiveDate)) {
           rescheduledCount++;
         }
       });
 
       const rateForLastActive = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
-      const prodScore = Math.min(100, rateForLastActive + (nextStreak > 3 ? 5 : 0) + (completedCount > 5 ? 10 : 0));
+      const prodScore = Math.min(100, rateForLastActive + (streak > 3 ? 5 : 0) + (completedCount > 5 ? 10 : 0));
 
       setHistory((prev) => {
         if (prev.some((h) => h.date === lastActiveDate && h.type === "daily")) {
@@ -180,8 +240,6 @@ export function TaskProvider({ children }) {
         ];
       });
 
-      setStreak(nextStreak);
-      localStorage.setItem(`smartStreak_${userEmail}`, nextStreak.toString());
       setLastActiveDate(todayStr);
       localStorage.setItem(`smartLastActiveDate_${userEmail}`, todayStr);
 
@@ -272,7 +330,18 @@ export function TaskProvider({ children }) {
       rescheduleCount: 0,
       rescheduleHistory: [],
       createdDate: format(new Date(), "yyyy-MM-dd"),
-      createdTime: format(new Date(), "HH:mm:ss")
+      createdTime: format(new Date(), "HH:mm:ss"),
+      // Extra Voice / Offline Extracted Details
+      startTime: taskData.startTime || null,
+      endTime: taskData.endTime || null,
+      reminder: taskData.reminder || null,
+      person: taskData.person || null,
+      location: taskData.location || null,
+      tags: taskData.tags || [],
+      recurrence: taskData.recurrence || null,
+      notes: taskData.notes || null,
+      originalTranscript: taskData.originalTranscript || null,
+      translatedTranscript: taskData.translatedTranscript || null
     };
 
     console.log(`[Reminder System] Reminder scheduled for task: "${newTask.title}" at ${newTask.dueDate} ${newTask.dueTime}`);
@@ -288,8 +357,8 @@ export function TaskProvider({ children }) {
       prev.map((t) => {
         if (t.id === taskId) {
           let rescheduleUpdates = {};
-          if ((updatedData.dueDate && updatedData.dueDate !== t.dueDate) || 
-              (updatedData.dueTime && updatedData.dueTime !== t.dueTime)) {
+          if ((updatedData.dueDate && updatedData.dueDate !== t.dueDate) ||
+            (updatedData.dueTime && updatedData.dueTime !== t.dueTime)) {
             const historyItem = {
               previousDate: t.dueDate,
               previousTime: t.dueTime,
@@ -378,7 +447,7 @@ export function TaskProvider({ children }) {
       prev.map((t) => {
         if (t.id === taskId) {
           console.log(`[Reminder System] Reminder rescheduled for task: "${t.title}" to ${newDate} ${newTime || t.dueTime}`);
-          
+
           const historyItem = {
             previousDate: t.dueDate,
             previousTime: t.dueTime,
@@ -473,6 +542,7 @@ export function TaskProvider({ children }) {
         geminiApiKey,
         setGeminiApiKey,
         streak,
+        longestStreak,
         morningPlannerCompleted,
         nightReviewCompleted,
         completeMorningPlanning,

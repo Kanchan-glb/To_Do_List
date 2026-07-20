@@ -464,6 +464,7 @@ textarea:focus {
 ─────────────────────────────────────────────── */
 .sidebar {
   width: 272px;
+  margin-left: -272px; /* Collapsed by default without .open */
   flex-shrink: 0;
   background: linear-gradient(175deg, #0b1220 0%, #0f1e35 55%, #111c2e 100%);
   color: white;
@@ -479,6 +480,11 @@ textarea:focus {
   overflow-y: auto;
   scrollbar-width: none;
   z-index: 20;
+  transition: margin-left 0.3s cubic-bezier(0.16, 1, 0.3, 1), left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sidebar.open {
+  margin-left: 0;
 }
 
 .sidebar::-webkit-scrollbar {
@@ -793,6 +799,26 @@ textarea:focus {
   flex-direction: column;
   min-height: 100vh;
   background: var(--bg-app);
+  min-width: 0; /* Ensures content flexes correctly when sidebar opens */
+}
+
+/* ── Global Toggle Button ── */
+.menu-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 8px;
+  margin-right: 20px;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+}
+
+.menu-toggle-btn:hover {
+  background: var(--bg-muted);
 }
 
 .topbar {
@@ -817,8 +843,9 @@ textarea:focus {
 /* Topbar: Left */
 .topbar-left {
   display: flex;
-  flex-direction: column;
-  gap: 1px;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
 }
 
 .topbar-eyebrow {
@@ -1499,28 +1526,26 @@ textarea:focus {
     flex-direction: column;
   }
 
-  /* Hamburger Menu Button (added in Layout) */
-  .mobile-menu-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: none;
-    color: var(--text-primary);
-    cursor: pointer;
-    padding: 8px;
+  /* Hamburger Menu Button */
+  .menu-toggle-btn {
+    padding: 6px;
     margin-right: 12px;
+    margin-left: 0;
+    background: var(--bg-muted);
+    border: var(--border-light);
     border-radius: 8px;
+    color: var(--color-primary);
   }
 
-  .mobile-menu-btn:hover {
-    background: var(--bg-hover);
+  .menu-toggle-btn:hover {
+    background: #e2e8f0;
   }
 
   .sidebar {
     position: fixed;
     top: 0;
     left: -280px;
+    margin-left: 0;
     bottom: 0;
     height: 100vh;
     width: 260px;
@@ -1531,6 +1556,7 @@ textarea:focus {
 
   .sidebar.open {
     left: 0;
+    margin-left: 0;
   }
 
   .sidebar-overlay {
@@ -1577,18 +1603,7 @@ textarea:focus {
     display: none;
   }
 
-  .mobile-menu-btn {
-    padding: 6px;
-    margin: 0;
-    background: var(--bg-muted);
-    border: var(--border-light);
-    border-radius: 8px;
-    color: var(--color-primary);
-  }
-
-  .mobile-menu-btn:hover {
-    background: #e2e8f0;
-  }
+  /* Hidden redundant declarations */
 
   .main-area {
     padding: 24px 16px;
@@ -1645,9 +1660,10 @@ textarea:focus {
 
 .dashboard-bottom-grid {
   display: grid;
-  grid-template-columns: 45fr 55fr;
+  grid-template-columns: 1fr 1fr;
   gap: 24px;
   min-height: 0;
+  align-items: stretch;
 }
 
 @media (max-width: 1199px) {

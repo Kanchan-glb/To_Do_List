@@ -27,6 +27,7 @@ const KeyIcon = () => <Icon size={16}><rect x="3" y="11" width="18" height="11" 
 const ChevronIcon = () => <Icon size={14} strokeWidth={2.5}><polyline points="6 9 12 15 18 9" /></Icon>;
 const MenuIcon = () => <Icon size={24}><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></Icon>;
 const PlusIcon = () => <Icon size={16}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></Icon>;
+const CirclePlusIcon = () => <Icon><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></Icon>;
 const ProgressIcon = () => <Icon><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></Icon>;
 
 function Layout({ children }) {
@@ -49,9 +50,29 @@ function Layout({ children }) {
   const [timerDropdownOpen, setTimerDropdownOpen] = useState(false);
   const [showTimerSettings, setShowTimerSettings] = useState(false);
   const [tempSettings, setTempSettings] = useState(pomodoroSettings || { work: 25, shortBreak: 5, longBreak: 15 });
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    const saved = localStorage.getItem("sidebarOpen");
+    if (saved !== null) return JSON.parse(saved);
+    return window.innerWidth > 900;
+  });
   const dropdownRef = useRef(null);
   const timerDropdownRef = useRef(null);
+
+  // Persist sidebar state
+  useEffect(() => {
+    localStorage.setItem("sidebarOpen", JSON.stringify(isSidebarOpen));
+  }, [isSidebarOpen]);
+
+  // Handle escape key to close sidebar on mobile
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && window.innerWidth <= 900 && isSidebarOpen) {
+        setIsSidebarOpen(false);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isSidebarOpen]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -140,7 +161,11 @@ function Layout({ children }) {
               key={item.path}
               to={item.path}
               className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
-              onClick={() => setIsSidebarOpen(false)}
+              onClick={() => {
+                if (window.innerWidth <= 900) {
+                  setIsSidebarOpen(false);
+                }
+              }}
             >
               <span className="nav-icon">{item.icon}</span>
               <span className="nav-label">{item.label}</span>
@@ -194,9 +219,10 @@ function Layout({ children }) {
           {/* Left: Page greeting */}
           <div className="topbar-left" style={{ display: "flex", alignItems: "center" }}>
             <button
-              className="mobile-menu-btn"
-              onClick={() => setIsSidebarOpen(true)}
-              aria-label="Open Menu"
+              className="menu-toggle-btn"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              aria-label="Toggle sidebar"
+              aria-expanded={isSidebarOpen}
             >
               <MenuIcon />
             </button>
@@ -228,9 +254,9 @@ function Layout({ children }) {
                   <div className="timer-dropdown-header">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <h4 className="timer-dropdown-title" style={{ margin: 0 }}>Pomodoro Timer</h4>
-                      <button 
+                      <button
                         type="button"
-                        className="timer-settings-btn" 
+                        className="timer-settings-btn"
                         onClick={() => {
                           if (!showTimerSettings) setTempSettings(pomodoroSettings);
                           setShowTimerSettings(!showTimerSettings);
@@ -243,43 +269,43 @@ function Layout({ children }) {
                     </div>
                     {!showTimerSettings && (
                       <div className="timer-mode-tabs">
-                        <button 
+                        <button
                           className={`timer-tab ${focusMode === "work" ? "active" : ""}`}
                           onClick={() => switchFocusMode("work")}
                         >Focus</button>
-                        <button 
+                        <button
                           className={`timer-tab ${focusMode === "shortBreak" ? "active" : ""}`}
                           onClick={() => switchFocusMode("shortBreak")}
                         >Short Break</button>
-                        <button 
+                        <button
                           className={`timer-tab ${focusMode === "longBreak" ? "active" : ""}`}
                           onClick={() => switchFocusMode("longBreak")}
                         >Long Break</button>
                       </div>
                     )}
                   </div>
-                  
+
                   {showTimerSettings ? (
                     <div className="timer-settings-view">
                       {focusMode === "work" && (
                         <div className="timer-setting-row">
                           <label>Focus (min)</label>
-                          <input type="number" min="1" max="90" value={tempSettings.work} onChange={(e) => setTempSettings({...tempSettings, work: Number(e.target.value)})} />
+                          <input type="number" min="1" max="90" value={tempSettings.work} onChange={(e) => setTempSettings({ ...tempSettings, work: Number(e.target.value) })} />
                         </div>
                       )}
                       {focusMode === "shortBreak" && (
                         <div className="timer-setting-row">
                           <label>Short Break (min)</label>
-                          <input type="number" min="1" max="30" value={tempSettings.shortBreak} onChange={(e) => setTempSettings({...tempSettings, shortBreak: Number(e.target.value)})} />
+                          <input type="number" min="1" max="30" value={tempSettings.shortBreak} onChange={(e) => setTempSettings({ ...tempSettings, shortBreak: Number(e.target.value) })} />
                         </div>
                       )}
                       {focusMode === "longBreak" && (
                         <div className="timer-setting-row">
                           <label>Long Break (min)</label>
-                          <input type="number" min="1" max="60" value={tempSettings.longBreak} onChange={(e) => setTempSettings({...tempSettings, longBreak: Number(e.target.value)})} />
+                          <input type="number" min="1" max="60" value={tempSettings.longBreak} onChange={(e) => setTempSettings({ ...tempSettings, longBreak: Number(e.target.value) })} />
                         </div>
                       )}
-                      <button 
+                      <button
                         type="button"
                         className="timer-save-btn"
                         onClick={() => {
@@ -293,9 +319,9 @@ function Layout({ children }) {
                   ) : (
                     <>
                       <div className="timer-dropdown-body">
-                        <div className="timer-display-circle" style={{ 
+                        <div className="timer-display-circle" style={{
                           borderColor: `${getModeColor(focusMode)}30`,
-                          background: `radial-gradient(circle, ${getModeColor(focusMode)}10 0%, transparent 70%)` 
+                          background: `radial-gradient(circle, ${getModeColor(focusMode)}10 0%, transparent 70%)`
                         }}>
                           <span className="timer-time" style={{ color: getModeColor(focusMode) }}>{formatTime(focusTimeLeft)}</span>
                           <span className="timer-label">{getModeLabel(focusMode)}</span>
@@ -307,8 +333,8 @@ function Layout({ children }) {
                           type="button"
                           className={`timer-action-btn ${isFocusRunning ? "running" : ""}`}
                           onClick={() => setIsFocusRunning(!isFocusRunning)}
-                          style={{ 
-                            background: isFocusRunning ? 'transparent' : getModeColor(focusMode), 
+                          style={{
+                            background: isFocusRunning ? 'transparent' : getModeColor(focusMode),
                             color: isFocusRunning ? getModeColor(focusMode) : '#fff',
                             borderColor: isFocusRunning ? getModeColor(focusMode) : 'transparent'
                           }}
@@ -321,6 +347,17 @@ function Layout({ children }) {
                 </div>
               )}
             </div>
+
+            {/* Quick Add Task Button */}
+            <button
+              type="button"
+              className="topbar-icon-btn add-task-topbar-btn"
+              onClick={() => navigate("/tasks", { state: { openAddTaskModal: true, timestamp: Date.now() } })}
+              aria-label="Add Task"
+              title="Add Task"
+            >
+              <CirclePlusIcon />
+            </button>
 
             {/* Bell notification button */}
             {/* <button type="button" className="topbar-icon-btn bell-btn" aria-label="Notifications"

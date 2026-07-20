@@ -101,23 +101,38 @@ export function parseSpeechToTask(text) {
   }
   dueDate = format(dateObj, "yyyy-MM-dd");
 
-  // 4. Time Parsing (e.g. "at 5 pm", "at 11:30 am", "this evening")
-  // Match "at XX:XX pm/am" or "at XX pm/am"
-  const timeRegex = /at\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i;
+  // 4. Time Parsing (e.g. "at 5 pm", "at 11:30 am", "at 8 o'clock", "this evening")
+  // Match "at XX:XX pm/am", "at XX pm/am", or "at XX o'clock"
+  const timeRegex = /at\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm|o'clock)?/i;
   const match = text.match(timeRegex);
 
   if (match) {
     let hour = parseInt(match[1], 10);
     const minute = match[2] ? match[2] : "00";
-    const ampm = match[3] ? match[3].toLowerCase() : null;
+    const ampmRaw = match[3] ? match[3].toLowerCase() : null;
+    const ampm = (ampmRaw === "o'clock") ? null : ampmRaw;
 
     if (ampm === "pm" && hour < 12) {
       hour += 12;
     } else if (ampm === "am" && hour === 12) {
       hour = 0;
     } else if (!ampm) {
-      // Default guess: if hour is 1-7, assume PM, else AM
-      if (hour >= 1 && hour <= 7) hour += 12;
+      // Use context clues: morning → AM, evening/night/tonight → PM
+      const isMorningCtx = textLower.includes("morning") || textLower.includes("subah");
+      const isEveningCtx = textLower.includes("evening") || textLower.includes("shyam") || textLower.includes("tonight") || textLower.includes("night");
+      if (isMorningCtx && hour <= 12) {
+        // Keep as AM (no change needed)
+      } else if (isEveningCtx && hour < 12) {
+        hour += 12;
+      } else if (hour >= 1 && hour <= 7) {
+        // Default guess: ambiguous small hours assume PM
+        hour += 12;
+      }
+    }
+
+    // Safety: never produce "00:00" from a valid match — treat as midnight only if truly 12 AM
+    if (hour === 0 && ampm !== "am") {
+      hour = 8; // fallback to 8 AM if something went wrong
     }
 
     dueTime = `${hour.toString().padStart(2, "0")}:${minute}`;
@@ -125,7 +140,7 @@ export function parseSpeechToTask(text) {
     dueTime = "19:00";
   } else if (textLower.includes("this afternoon")) {
     dueTime = "15:00";
-  } else if (textLower.includes("morning")) {
+  } else if (textLower.includes("morning") || textLower.includes("subah")) {
     dueTime = "09:00";
   }
 

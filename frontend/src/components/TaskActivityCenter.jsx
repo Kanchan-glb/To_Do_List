@@ -36,8 +36,19 @@ export default function TaskActivityCenter() {
   const [sortBy, setSortBy] = useState("Due Time"); // Newest, Oldest, Due Time, Priority, Alphabetical
 
   const allCategories = useMemo(() => {
-    const cats = new Set(tasks.map((t) => t.category));
-    return ["All", ...Array.from(cats).filter(Boolean)];
+    const defaultCategories = [
+      "Work", "Personal", "Study", "Health",
+      "Meeting", "Shopping", "Other"
+    ];
+
+    const taskCategories = tasks
+      .map((task) => task.category?.trim())
+      .filter(Boolean);
+
+    return [
+      "All",
+      ...Array.from(new Set([...defaultCategories, ...taskCategories]))
+    ];
   }, [tasks]);
 
   // Derived Data
@@ -129,7 +140,7 @@ export default function TaskActivityCenter() {
     let totalWork = 0;
     const todayStr = format(new Date(), "yyyy-MM-dd");
 
-    dateOnlyTasks.forEach((t) => {
+    filteredTasks.forEach((t) => {
       const taskDue = t.dueDate || t.createdDate || "2099-01-01";
       const isCompletedToday = t.completedDate === todayStr;
       const isDueToday = taskDue === todayStr;
@@ -177,10 +188,63 @@ export default function TaskActivityCenter() {
 
     const compPercent = totalWork === 0 ? 0 : Math.round((completed / totalWork) * 100);
     return { total: totalWork, completed, pending, overdue, rescheduled, compPercent };
-  }, [dateOnlyTasks, quickFilter]);
+  }, [filteredTasks, quickFilter, customDate]);
 
   return (
     <div className="tac-container">
+      <style>{`
+        .task-activity-top {
+          display: grid;
+          grid-template-columns: minmax(220px, 45%) minmax(260px, 55%);
+          gap: 20px;
+          align-items: stretch;
+        }
+        .tac-left, .tac-right { min-width: 0; }
+        .tac-filter-row {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          width: 100%;
+        }
+        .tac-filter-row select, .tac-date-picker {
+          width: 100%;
+          min-height: 42px;
+          box-sizing: border-box;
+        }
+        .tac-right, .tac-side-card { height: 100%; }
+        .tac-side-card {
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          margin-bottom: 0 !important;
+          box-sizing: border-box;
+        }
+        .task-summary-wrapper {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          width: 100%;
+          margin-top: 28px;
+        }
+        .task-summary-row {
+          display: grid;
+          gap: 16px;
+          width: 100%;
+        }
+        .task-summary-row.row-top {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .task-summary-row.row-bottom {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .tac-sum-card { min-width: 0; }
+        .view-all-tasks-button { margin-top: 14px; width: 100%; }
+        @media (max-width: 900px) {
+          .task-activity-top { grid-template-columns: 1fr; }
+          .task-summary-row.row-top { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .task-summary-row.row-bottom { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+      `}</style>
       {/* ── HEADER ── */}
       <div className="tac-header">
         <div>
@@ -190,7 +254,7 @@ export default function TaskActivityCenter() {
       </div>
 
       {/* ── MAIN LAYOUT SPLIT ── */}
-      <div className="tac-body">
+      <div className="task-activity-top">
 
         {/* LEFT COLUMN: Filters + Summary */}
         <div className="tac-left">
@@ -247,7 +311,7 @@ export default function TaskActivityCenter() {
               </select>
 
               <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-                {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                {allCategories.map(c => <option key={c} value={c}>{c === 'All' ? 'All Categories' : c}</option>)}
               </select>
 
               <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
@@ -260,15 +324,7 @@ export default function TaskActivityCenter() {
             </div>
           </div>
 
-          {/* Inline Summary */}
-          <div className="tac-summary-row">
-            <div className="tac-sum-card"><span className="val" style={{ color: '#6366f1' }}>{stats.total}</span> <span className="lbl">Total</span></div>
-            <div className="tac-sum-card"><span className="val" style={{ color: '#10b981' }}>{stats.completed}</span> <span className="lbl">Completed</span></div>
-            <div className="tac-sum-card"><span className="val" style={{ color: '#f59e0b' }}>{stats.pending}</span> <span className="lbl">Pending</span></div>
-            <div className="tac-sum-card"><span className="val" style={{ color: '#ef4444' }}>{stats.overdue}</span> <span className="lbl">Overdue</span></div>
-            <div className="tac-sum-card"><span className="val" style={{ color: '#3b82f6' }}>{stats.rescheduled}</span> <span className="lbl">Rescheduled</span></div>
-            {/* <div className="tac-sum-card"><span className="val" style={{ color: '#a855f7' }}>{stats.compPercent}%</span> <span className="lbl">Done</span></div> */}
-          </div>
+
 
         </div>
 
@@ -288,21 +344,36 @@ export default function TaskActivityCenter() {
             <p className="score-desc">Based on filtered tasks completion</p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setHistoryModalDate(quickFilter === "Custom Date" ? customDate : quickFilter)}
-            style={{
-              padding: '16px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', border: 'none',
-              borderRadius: '16px', fontSize: '1rem', fontWeight: 800, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: '8px', color: 'white',
-              boxShadow: '0 8px 20px rgba(79, 70, 229, 0.3)', width: '100%', justifyContent: 'center',
-              textAlign: 'center'
-            }}
-          >
-            📋 View All Tasks for {quickFilter === "Custom Date" ? format(parseISO(customDate), "MMMM d, yyyy") : quickFilter}
-          </button>
+
         </div>
       </div>
+      {/* Summary Cards - Two Levels */}
+      <div className="task-summary-wrapper">
+        <div className="task-summary-row row-top">
+          <div className="tac-sum-card"><span className="val" style={{ color: '#6366f1' }}>{stats.total}</span> <span className="lbl">Total</span></div>
+          <div className="tac-sum-card"><span className="val" style={{ color: '#10b981' }}>{stats.completed}</span> <span className="lbl">Completed</span></div>
+          <div className="tac-sum-card"><span className="val" style={{ color: '#f59e0b' }}>{stats.pending}</span> <span className="lbl">Pending</span></div>
+        </div>
+        <div className="task-summary-row row-bottom">
+          <div className="tac-sum-card"><span className="val" style={{ color: '#ef4444' }}>{stats.overdue}</span> <span className="lbl">Overdue</span></div>
+          <div className="tac-sum-card"><span className="val" style={{ color: '#3b82f6' }}>{stats.rescheduled}</span> <span className="lbl">Rescheduled</span></div>
+        </div>
+      </div>
+      {/* View All Tasks Button */}
+      <button
+        type="button"
+        className="view-all-tasks-button"
+        onClick={() => setHistoryModalDate(quickFilter === "Custom Date" ? customDate : quickFilter)}
+        style={{
+          padding: '16px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', border: 'none',
+          borderRadius: '16px', fontSize: '1rem', fontWeight: 800, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: '8px', color: 'white',
+          boxShadow: '0 8px 20px rgba(79, 70, 229, 0.3)', width: '100%', justifyContent: 'center',
+          textAlign: 'center'
+        }}
+      >
+        📋 View All Tasks for {quickFilter === "Custom Date" ? format(parseISO(customDate), "MMMM d, yyyy") : quickFilter}
+      </button>
 
       {selectedTask && <TaskDetailsModal task={selectedTask} onClose={() => setSelectedTask(null)} />}
 

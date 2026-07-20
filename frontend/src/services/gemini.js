@@ -162,3 +162,22 @@ export async function generateWeeklyReview(completedTasks, pendingTasks, apiKey)
   const shuffled = [...FALLBACK_WEEKLY_SUGGESTIONS].sort(() => 0.5 - Math.random());
   return shuffled.slice(0, 3).map(s => `• ${s}`).join("\n");
 }
+
+export async function generateCategoryTitleSuggestions(category, apiKey, existingTitles = []) {
+  if (apiKey) {
+    const prompt = `You are a productivity assistant. Generate a list of 6 to 8 short, practical, and highly relevant task title suggestions for the category: "${category}".
+    ${existingTitles.length > 0 ? `Here are some previously created task titles for this category by the user for context: ${JSON.stringify(existingTitles.slice(0, 10))}. Use these to learn the user's style, but do not repeat them exactly.` : ""}
+    Provide ONLY a valid JSON array of strings, like this: ["suggestion 1", "suggestion 2", "suggestion 3"]. Do not include any explanations, markdown format tags like \`\`\`json, conversational text, or generic work-related recommendations. Return different suggestions for different categories.`;
+    try {
+      const text = await callGemini(prompt, apiKey);
+      const cleanJson = text.replace(/```json/i, "").replace(/```/g, "").trim();
+      const parsed = JSON.parse(cleanJson);
+      if (Array.isArray(parsed)) {
+        return [...new Set(parsed.map(item => String(item).trim()).filter(item => item && item.length <= 50))].slice(0, 8);
+      }
+    } catch (e) {
+      console.warn("Gemini category title suggestions failed", e);
+    }
+  }
+  throw new Error("Failed to generate suggestions via Gemini");
+}
