@@ -474,7 +474,7 @@ textarea:focus {
 }
 
 .sidebar {
-    /* width: 260px; */
+  /* width: 260px; */
   /* height: 100vh; */
 
   position: fixed;
@@ -1833,13 +1833,13 @@ textarea:focus {
 }
 
 @media(min-width:1200px) {
-.sidebar {
-  transform: translateX(-100%);
-}
+  .sidebar {
+    transform: translateX(-100%);
+  }
 
-.sidebar.open {
-  transform: translateX(0);
-}
+  .sidebar.open {
+    transform: translateX(0);
+  }
 
   .main-container {
     /* margin-left: 260px; */

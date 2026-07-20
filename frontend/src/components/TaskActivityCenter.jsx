@@ -193,58 +193,755 @@ export default function TaskActivityCenter() {
   return (
     <div className="tac-container">
       <style>{`
-        .task-activity-top {
-          display: grid;
-          grid-template-columns: minmax(220px, 45%) minmax(260px, 55%);
-          gap: 20px;
-          align-items: stretch;
-        }
-        .tac-left, .tac-right { min-width: 0; }
-        .tac-filter-row {
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-          width: 100%;
-        }
-        .tac-filter-row select, .tac-date-picker {
-          width: 100%;
-          min-height: 42px;
-          box-sizing: border-box;
-        }
-        .tac-right, .tac-side-card { height: 100%; }
-        .tac-side-card {
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          margin-bottom: 0 !important;
-          box-sizing: border-box;
-        }
-        .task-summary-wrapper {
-          display: flex;
-          flex-direction: column;
-          gap: 14px;
-          width: 100%;
-          margin-top: 28px;
-        }
-        .task-summary-row {
-          display: grid;
-          gap: 16px;
-          width: 100%;
-        }
-        .task-summary-row.row-top {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-        }
-        .task-summary-row.row-bottom {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-        .tac-sum-card { min-width: 0; }
-        .view-all-tasks-button { margin-top: 14px; width: 100%; }
-        @media (max-width: 900px) {
-          .task-activity-top { grid-template-columns: 1fr; }
-          .task-summary-row.row-top { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-          .task-summary-row.row-bottom { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        }
-      `}</style>
+/* =================================================
+   TASK ACTIVITY CENTER — COMPLETE RESPONSIVE CSS
+================================================= */
+
+.tac-container {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+
+  display: flex;
+  flex-direction: column;
+}
+
+/* Prevent children from causing horizontal overflow */
+.tac-container,
+.tac-container *,
+.tac-container *::before,
+.tac-container *::after {
+  box-sizing: border-box;
+}
+
+/* =================================================
+   HEADER
+================================================= */
+
+.tac-header {
+  width: 100%;
+  min-width: 0;
+  margin-bottom: clamp(12px, 1.5vw, 20px);
+}
+
+.tac-header > div {
+  width: 100%;
+  min-width: 0;
+}
+
+.tac-title {
+  margin: 0 0 4px;
+  font-size: clamp(1rem, 1.15vw, 1.35rem);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.tac-sub {
+  margin: 0;
+  max-width: 100%;
+  font-size: clamp(0.75rem, 0.8vw, 0.88rem);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* =================================================
+   FILTERS + PRODUCTIVITY SCORE
+================================================= */
+
+.task-activity-top {
+  width: 100%;
+  min-width: 0;
+
+  display: grid;
+  grid-template-columns:
+    minmax(260px, 1fr)
+    minmax(260px, 1fr);
+
+  gap: clamp(12px, 1.4vw, 22px);
+  align-items: stretch;
+}
+
+/* Both columns always take equal available height */
+.task-activity-top .tac-left,
+.task-activity-top .tac-right {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+
+  flex: none;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Remove old spacing conflicts */
+.task-activity-top .tac-left,
+.task-activity-top .tac-right {
+  gap: 0;
+}
+
+/* Left filter container */
+.task-activity-top .tac-left .tac-filters {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Filters fill the complete left-side height */
+.task-activity-top .tac-filter-row {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: repeat(5, minmax(44px, 1fr));
+  gap: clamp(8px, 0.8vw, 11px);
+}
+
+/* Six rows when Custom Date is visible */
+.task-activity-top .tac-filter-row:has(.tac-date-picker) {
+  grid-template-rows: repeat(6, minmax(44px, 1fr));
+}
+
+/* Form controls */
+.task-activity-top .tac-filter-row select,
+.task-activity-top .tac-date-picker {
+  display: block;
+
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+
+  height: 100%;
+  min-height: 44px;
+
+  padding: 10px 36px 10px 12px;
+
+  border-radius: 10px;
+  box-sizing: border-box;
+
+  font-family: inherit;
+  font-size: clamp(0.78rem, 0.72vw, 0.88rem);
+  line-height: 1.3;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* Date input does not need large right padding */
+.task-activity-top .tac-date-picker {
+  padding-right: 10px;
+}
+
+/* Right productivity score card */
+.task-activity-top .tac-right .tac-side-card {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+
+  height: 100%;
+  min-height: 100%;
+
+  flex: 1;
+  margin: 0 !important;
+
+  padding: clamp(16px, 2vw, 30px);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  text-align: center;
+  overflow: hidden;
+}
+
+/* Productivity heading */
+.tac-side-card h4 {
+  width: 100%;
+  margin: 0 0 clamp(10px, 1vw, 16px);
+
+  font-size: clamp(0.9rem, 0.95vw, 1.1rem);
+  line-height: 1.35;
+
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+/* Score circle */
+.tac-score-circle {
+  position: relative;
+
+  width: clamp(88px, 7.5vw, 120px);
+  height: clamp(88px, 7.5vw, 120px);
+
+  flex: 0 0 auto;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tac-score-circle svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+}
+
+.score-val {
+  position: absolute;
+  inset: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: clamp(1rem, 1.2vw, 1.35rem);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.score-desc {
+  width: 100%;
+  max-width: 280px;
+
+  margin: clamp(10px, 1vw, 15px) 0 0;
+
+  font-size: clamp(0.72rem, 0.75vw, 0.86rem);
+  line-height: 1.45;
+  text-align: center;
+
+  overflow-wrap: anywhere;
+}
+
+/* =================================================
+   SUMMARY CARDS
+================================================= */
+
+.task-summary-wrapper {
+  width: 100%;
+  min-width: 0;
+
+  margin-top: clamp(12px, 1.4vw, 18px);
+
+  display: flex;
+  flex-direction: column;
+  gap: clamp(9px, 0.9vw, 14px);
+}
+
+.task-summary-row {
+  width: 100%;
+  min-width: 0;
+
+  display: grid;
+  gap: clamp(9px, 1vw, 16px);
+}
+
+.task-summary-row.row-top {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.task-summary-row.row-bottom {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Summary card */
+.tac-sum-card {
+  width: 100%;
+  min-width: 0;
+  min-height: clamp(58px, 5vw, 76px);
+
+  padding: clamp(8px, 1vw, 14px);
+
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+
+  gap: clamp(4px, 0.5vw, 7px);
+
+  text-align: center;
+  overflow: hidden;
+}
+
+.tac-sum-card .val {
+  display: inline-block;
+
+  font-size: clamp(0.95rem, 1.15vw, 1.25rem);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.tac-sum-card .lbl {
+  display: inline-block;
+
+  min-width: 0;
+
+  font-size: clamp(0.68rem, 0.72vw, 0.85rem);
+  line-height: 1.25;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* =================================================
+   VIEW ALL BUTTON
+================================================= */
+
+.view-all-tasks-button {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0;
+
+  min-height: clamp(46px, 4vw, 54px);
+
+  margin-top: clamp(11px, 1.2vw, 16px) !important;
+  padding: clamp(11px, 1.2vw, 16px) !important;
+
+  box-sizing: border-box;
+
+  font-size: clamp(0.76rem, 0.85vw, 1rem) !important;
+  line-height: 1.4;
+
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* =================================================
+   EXTRA LARGE DESKTOP — 1800px+
+================================================= */
+
+@media (min-width: 1800px) {
+  .task-activity-top {
+    grid-template-columns:
+      minmax(360px, 1fr)
+      minmax(360px, 1fr);
+
+    gap: 24px;
+  }
+
+  .task-activity-top .tac-filter-row {
+    gap: 12px;
+  }
+
+  .task-activity-top .tac-filter-row select,
+  .task-activity-top .tac-date-picker {
+    min-height: 50px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  .task-activity-top .tac-right .tac-side-card {
+    padding: 34px;
+  }
+
+  .tac-score-circle {
+    width: 124px;
+    height: 124px;
+  }
+
+  .tac-sum-card {
+    min-height: 80px;
+  }
+}
+
+/* =================================================
+   LARGE DESKTOP — 1400px to 1799px
+================================================= */
+
+@media (min-width: 1400px) and (max-width: 1799px) {
+  .task-activity-top {
+    gap: 20px;
+  }
+
+  .task-activity-top .tac-filter-row select,
+  .task-activity-top .tac-date-picker {
+    min-height: 46px;
+  }
+}
+
+/* =================================================
+   LAPTOP — 1100px to 1399px
+================================================= */
+
+@media (min-width: 1100px) and (max-width: 1399px) {
+  .task-activity-top {
+    grid-template-columns:
+      minmax(240px, 1fr)
+      minmax(240px, 1fr);
+
+    gap: 16px;
+  }
+
+  .task-activity-top .tac-right .tac-side-card {
+    padding: 18px;
+  }
+
+  .tac-score-circle {
+    width: 100px;
+    height: 100px;
+  }
+
+  .tac-sum-card {
+    min-height: 64px;
+  }
+}
+
+/* =================================================
+   SMALL LAPTOP / TABLET LANDSCAPE
+   901px to 1099px
+================================================= */
+
+@media (min-width: 901px) and (max-width: 1099px) {
+  .task-activity-top {
+    grid-template-columns:
+      minmax(210px, 1fr)
+      minmax(210px, 1fr);
+
+    gap: 14px;
+  }
+
+  .task-activity-top .tac-filter-row select,
+  .task-activity-top .tac-date-picker {
+    min-height: 42px;
+    padding: 8px 30px 8px 10px;
+    font-size: 0.76rem;
+  }
+
+  .task-activity-top .tac-date-picker {
+    padding-right: 8px;
+  }
+
+  .task-activity-top .tac-right .tac-side-card {
+    padding: 14px;
+  }
+
+  .tac-score-circle {
+    width: 90px;
+    height: 90px;
+  }
+
+  .score-desc {
+    max-width: 210px;
+  }
+
+  .tac-sum-card {
+    min-height: 60px;
+  }
+}
+
+/* =================================================
+   TABLET AND SMALL COMPONENT WIDTH
+================================================= */
+
+@media (max-width: 900px) {
+  .tac-container {
+    height: auto;
+  }
+
+  .task-activity-top {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .task-activity-top .tac-left,
+  .task-activity-top .tac-right,
+  .task-activity-top .tac-left .tac-filters {
+    height: auto;
+    min-height: 0;
+  }
+
+  .task-activity-top .tac-filter-row,
+  .task-activity-top .tac-filter-row:has(.tac-date-picker) {
+    height: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .task-activity-top .tac-filter-row select,
+  .task-activity-top .tac-date-picker {
+    flex: none;
+    height: 46px;
+    min-height: 46px;
+  }
+
+  .task-activity-top .tac-right .tac-side-card {
+    height: auto;
+    min-height: 240px;
+  }
+
+  .task-summary-row.row-top {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .task-summary-row.row-bottom {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* =================================================
+   TABLET PORTRAIT / LARGE MOBILE
+================================================= */
+
+@media (max-width: 700px) {
+  .task-summary-row.row-top {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .task-summary-row.row-bottom {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Last card of first row can span full width */
+  .task-summary-row.row-top .tac-sum-card:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .task-activity-top .tac-right .tac-side-card {
+    min-height: 220px;
+  }
+}
+
+/* =================================================
+   MOBILE — 481px to 600px
+================================================= */
+
+@media (min-width: 481px) and (max-width: 600px) {
+  .task-activity-top {
+    gap: 12px;
+  }
+
+  .task-activity-top .tac-filter-row {
+    gap: 8px;
+  }
+
+  .task-activity-top .tac-filter-row select,
+  .task-activity-top .tac-date-picker {
+    height: 44px;
+    min-height: 44px;
+    padding: 9px 32px 9px 10px;
+    font-size: 0.8rem;
+  }
+
+  .task-activity-top .tac-date-picker {
+    padding-right: 9px;
+  }
+
+  .tac-sum-card {
+    min-height: 62px;
+  }
+}
+
+/* =================================================
+   SMALL MOBILE — up to 480px
+================================================= */
+
+@media (max-width: 480px) {
+  .tac-header {
+    margin-bottom: 12px;
+  }
+
+  .tac-title {
+    font-size: 1rem;
+  }
+
+  .tac-sub {
+    font-size: 0.74rem;
+  }
+
+  .task-activity-top {
+    gap: 12px;
+  }
+
+  .task-activity-top .tac-filter-row {
+    gap: 8px;
+  }
+
+  .task-activity-top .tac-filter-row select,
+  .task-activity-top .tac-date-picker {
+    height: 43px;
+    min-height: 43px;
+
+    padding: 8px 30px 8px 10px;
+
+    font-size: 0.78rem;
+  }
+
+  .task-activity-top .tac-date-picker {
+    padding-right: 8px;
+  }
+
+  .task-activity-top .tac-right .tac-side-card {
+    min-height: 205px;
+    padding: 16px 12px;
+  }
+
+  .tac-score-circle {
+    width: 86px;
+    height: 86px;
+  }
+
+  .task-summary-wrapper {
+    gap: 9px;
+  }
+
+  .task-summary-row {
+    gap: 9px;
+  }
+
+  .task-summary-row.row-top,
+  .task-summary-row.row-bottom {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .task-summary-row.row-top .tac-sum-card:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .tac-sum-card {
+    min-height: 58px;
+    padding: 8px 6px;
+
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .tac-sum-card .val {
+    font-size: 1rem;
+  }
+
+  .tac-sum-card .lbl {
+    max-width: 100%;
+    font-size: 0.7rem;
+  }
+
+  .view-all-tasks-button {
+    min-height: 46px;
+    font-size: 0.78rem !important;
+    padding: 11px 8px !important;
+  }
+}
+
+/* =================================================
+   VERY SMALL MOBILE — up to 360px
+================================================= */
+
+@media (max-width: 360px) {
+  .task-summary-row.row-top,
+  .task-summary-row.row-bottom {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .task-summary-row.row-top .tac-sum-card:last-child {
+    grid-column: auto;
+  }
+
+  .task-activity-top .tac-right .tac-side-card {
+    min-height: 190px;
+  }
+
+  .tac-score-circle {
+    width: 80px;
+    height: 80px;
+  }
+
+  .tac-sum-card {
+    min-height: 54px;
+  }
+
+  .view-all-tasks-button {
+    font-size: 0.74rem !important;
+  }
+}
+
+/* =================================================
+   SHORT HEIGHT SCREENS / LANDSCAPE MOBILE
+================================================= */
+
+@media (max-height: 600px) and (orientation: landscape) {
+  .task-activity-top {
+    grid-template-columns:
+      minmax(0, 1fr)
+      minmax(0, 1fr);
+  }
+
+  .task-activity-top .tac-filter-row select,
+  .task-activity-top .tac-date-picker {
+    min-height: 38px;
+    height: 38px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .task-activity-top .tac-right .tac-side-card {
+    min-height: 0;
+    padding: 12px;
+  }
+
+  .tac-score-circle {
+    width: 76px;
+    height: 76px;
+  }
+
+  .score-desc {
+    margin-top: 7px;
+  }
+
+  .tac-sum-card {
+    min-height: 50px;
+  }
+}
+
+/* =================================================
+   CONTAINER-BASED RESPONSIVENESS
+================================================= */
+
+@container (max-width: 650px) {
+  .task-activity-top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* =================================================
+   FINAL OVERFLOW PROTECTION
+================================================= */
+
+.task-activity-top select,
+.task-activity-top input,
+.task-summary-wrapper,
+.task-summary-row,
+.tac-sum-card,
+.view-all-tasks-button {
+  max-width: 100%;
+}
+
+.tac-title,
+.tac-sub,
+.score-desc,
+.view-all-tasks-button {
+  overflow-wrap: anywhere;
+}
+
+img,
+svg,
+canvas {
+  max-width: 100%;
+}
+`}</style>
       {/* ── HEADER ── */}
       <div className="tac-header">
         <div>
@@ -330,7 +1027,7 @@ export default function TaskActivityCenter() {
 
         {/* RIGHT COLUMN: Productivity & Action Button */}
         <div className="tac-right">
-          <div className="tac-side-card" style={{ marginBottom: '16px' }}>
+          <div className="tac-side-card">
             <h4>Productivity Score</h4>
             <div className="tac-score-circle">
               <svg width="100" height="100" viewBox="0 0 100 100">

@@ -343,13 +343,14 @@ export default function WorkProgressTracker() {
           {/* Historical Progress Date Picker */}
           <div className="wpt-card">
             <div className="wpt-card-header">View Previous Progress</div>
-            <input
-              type="date"
-              className="wpt-date-picker"
-              style={{ width: "100%", marginBottom: "16px" }}
-              value={historicalDate}
-              onChange={(e) => setHistoricalDate(e.target.value)}
-            />
+           <input
+  type="date"
+  className="wpt-date-picker"
+  style={{ width: "100%", marginBottom: "16px" }}
+  value={historicalDate}
+  max={new Date().toISOString().split("T")[0]}
+  onChange={(e) => setHistoricalDate(e.target.value)}
+/>
             {histStats.total === 0 ? (
               <div style={{ textAlign: "center", padding: "24px", color: "var(--text-muted)", background: "var(--bg-body)", borderRadius: "12px" }}>
                 No task history available for this date.
