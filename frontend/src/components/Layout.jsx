@@ -697,7 +697,7 @@ function Layout({ children }) {
             </div>
 
             {/* Theme Toggle Button */}
-            <button
+            {/* <button
               type="button"
               className="topbar-icon-btn theme-toggle-btn"
               onClick={toggleTheme}
@@ -720,7 +720,7 @@ function Layout({ children }) {
               }}>
                 {theme === "light" ? <MoonIcon /> : <SunIcon />}
               </div>
-            </button>
+            </button> */}
 
             {/* Quick Add Task Button */}
             {/* Quick Add Task Button */}
