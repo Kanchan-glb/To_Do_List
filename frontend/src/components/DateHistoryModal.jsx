@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useTasks } from "../context/TaskContext";
-import { format, parseISO, subDays, addDays, isThisWeek, isThisMonth } from "date-fns";
+import { format, parseISO, subDays, addDays, isThisWeek, isThisMonth, isToday, isYesterday, isTomorrow } from "date-fns";
 import TaskDetailsModal from "./TaskDetailsModal";
 
 /* ── Micro SVG Icons ── */
@@ -35,7 +35,14 @@ export default function DateHistoryModal({ dateStr, onClose }) {
 
   const displayDate = useMemo(() => {
     try {
-      return format(parseISO(dateStr), "MMMM d, yyyy");
+      if (dateStr === "All Tasks" || dateStr === "This Week" || dateStr === "This Month" || dateStr === "Today" || dateStr === "Yesterday" || dateStr === "Tomorrow") {
+        return dateStr;
+      }
+      const parsed = parseISO(dateStr);
+      if (isToday(parsed)) return "Today";
+      if (isYesterday(parsed)) return "Yesterday";
+      if (isTomorrow(parsed)) return "Tomorrow";
+      return format(parsed, "MMMM d, yyyy");
     } catch(e) {
       return dateStr;
     }

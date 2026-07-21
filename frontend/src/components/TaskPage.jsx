@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useTasks } from "../context/TaskContext";
-import { format, isAfter, parseISO } from "date-fns";
+import { format, parseISO, isToday, isYesterday, isTomorrow } from "date-fns";
 import { generateSubtasks } from "../services/gemini";
 import { getSpeechRecognizer, parseSpeechToTask } from "../services/speech";
 import { calculateDefaultDueTime } from "../utils/taskUtils";
@@ -170,9 +170,20 @@ function TaskPage() {
         return "Date not available";
       }
 
+      let dateLabel = "";
+      if (isToday(parsedDate)) {
+        dateLabel = "Today";
+      } else if (isYesterday(parsedDate)) {
+        dateLabel = "Yesterday";
+      } else if (isTomorrow(parsedDate)) {
+        dateLabel = "Tomorrow";
+      } else {
+        dateLabel = format(parsedDate, "dd MMM yyyy");
+      }
+
       return includeTime
-        ? format(parsedDate, "dd MMM yyyy, h:mm a")
-        : format(parsedDate, "dd MMM yyyy");
+        ? `${dateLabel}, ${format(parsedDate, "h:mm a")}`
+        : dateLabel;
     } catch (error) {
       return "Date not available";
     }

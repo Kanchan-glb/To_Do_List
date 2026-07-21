@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useTasks } from "../context/TaskContext";
-import { format, isThisWeek, parseISO } from "date-fns";
+import { format, isThisWeek, parseISO, isToday, isYesterday, isTomorrow } from "date-fns";
 import TaskDetailsModal from "./TaskDetailsModal";
 import TaskActivityCenter from "./TaskActivityCenter";
 import ProductivityAnalytics from "./ProductivityAnalytics";
@@ -84,12 +84,18 @@ const PRIORITY_COLORS = {
 function formatDueDisplay(dueDate, dueTime) {
   if (!dueDate) return null;
   try {
-    const today = format(new Date(), "yyyy-MM-dd");
-    const tomorrow = format(new Date(Date.now() + 86400000), "yyyy-MM-dd");
-    let label =
-      dueDate === today ? "Today" :
-        dueDate === tomorrow ? "Tomorrow" :
-          format(parseISO(dueDate), "MMM d");
+    const dateObj = parseISO(dueDate);
+    let label = "";
+    if (isToday(dateObj)) {
+      label = "Today";
+    } else if (isYesterday(dateObj)) {
+      label = "Yesterday";
+    } else if (isTomorrow(dateObj)) {
+      label = "Tomorrow";
+    } else {
+      label = format(dateObj, "dd MMM yyyy");
+    }
+
     if (dueTime) {
       try {
         label += `, ${format(new Date(`2000-01-01T${dueTime}`), "h:mm a")}`;
