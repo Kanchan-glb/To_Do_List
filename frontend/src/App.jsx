@@ -13,6 +13,7 @@ import ProfilePage from "./components/ProfilePage";
 import MorningPopup from "./components/MorningPopup";
 import NightPopup from "./components/NightPopup";
 import { TaskProvider, useTasks } from "./context/TaskContext";
+import { NotificationProvider } from "./context/NotificationContext";
 import { checkTaskReminders, sendBrowserNotification } from "./services/notification";
 import { format, addDays } from "date-fns";
 import { calculateDefaultDueTime } from "./utils/taskUtils";
@@ -369,103 +370,105 @@ function ProtectedRoute({ children }) {
 function App() {
   return (
     <TaskProvider>
-      <BrowserRouter>
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 2500,
-          }}
-        />
-        <MorningPopup />
-        <NightPopup />
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <DashboardPage />
-                </Layout>
-              </ProtectedRoute>
-            }
+      <NotificationProvider>
+        <BrowserRouter>
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 2500,
+            }}
           />
-          <Route
-            path="/tasks"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <TaskPage />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/tasks/:statusOrId"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <TaskPage />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/planner"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <MorningPlanner />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/reports"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <ReportsPage />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/progress"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <WorkProgressTracker />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <SettingsPage />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <ProfilePage />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-        <GlobalReminderEngine />
-        <Toaster position="top-right" reverseOrder={false} />
-      </BrowserRouter>
+          <MorningPopup />
+          <NightPopup />
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <DashboardPage />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tasks"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <TaskPage />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tasks/:statusOrId"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <TaskPage />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/planner"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <MorningPlanner />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reports"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <ReportsPage />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/progress"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <WorkProgressTracker />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <SettingsPage />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <ProfilePage />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+          <GlobalReminderEngine />
+          <Toaster position="top-right" reverseOrder={false} />
+        </BrowserRouter>
+      </NotificationProvider>
     </TaskProvider>
   );
 }

@@ -2,6 +2,9 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useTasks } from "../context/TaskContext";
 import { useState, useRef, useEffect } from "react";
 import { toast, Toaster } from "react-hot-toast";
+import { useTheme } from "../context/ThemeContext";
+import { useNotification } from "../context/NotificationContext";
+import { formatDistanceToNow, format, parse, isToday, isTomorrow, isYesterday } from "date-fns";
 
 /* ── SVG Icon Components ── */
 const Icon = ({
@@ -58,6 +61,12 @@ const SettingIcon = () => (
 const BellIcon = () => (
   <span style={{ fontSize: "22px", lineHeight: 1 }}>🔔</span>
 );
+const SunIcon = () => (
+  <Icon d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+);
+const MoonIcon = () => (
+  <Icon d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" fill="currentColor" stroke="none" />
+);
 const LogoutIcon = () => <Icon><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></Icon>;
 const TimerIcon = () => <Icon><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 15" /></Icon>;
 const PlayIcon = () => <Icon d="M5 3l14 9-14 9V3z" fill="currentColor" stroke="none" />;
@@ -100,9 +109,29 @@ const ResetIcon = ({ size = 18 }) => (
     <polyline points="3 3 3 9 9 9" />
   </svg>
 );
+
+const formatNotificationDate = (dueDate, dueTime) => {
+  if (!dueDate || !dueTime) return "";
+  try {
+    const dateObj = parse(`${dueDate} ${dueTime}`, "yyyy-MM-dd HH:mm", new Date());
+    if (isToday(dateObj)) {
+      return `Today, ${format(dateObj, "h:mm a")}`;
+    }
+    if (isTomorrow(dateObj)) {
+      return `Tomorrow, ${format(dateObj, "h:mm a")}`;
+    }
+    if (isYesterday(dateObj)) {
+      return `Yesterday, ${format(dateObj, "h:mm a")}`;
+    }
+    return `${format(dateObj, "d MMM yyyy")} • ${format(dateObj, "h:mm a")}`;
+  } catch (e) {
+    return "";
+  }
+};
 function Layout({ children }) {
   const userName = localStorage.getItem("smartName") || "User";
   const {
+    tasks,
     getDailyProgress,
     focusTimeLeft,
     setFocusTimeLeft,
@@ -127,28 +156,24 @@ function Layout({ children }) {
   const { completionRate, todayCompleted, todayCount } = getDailyProgress();
 
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [timerDropdownOpen, setTimerDropdownOpen] = useState(false);
   const [showTimerSettings, setShowTimerSettings] = useState(false);
   const [tempSettings, setTempSettings] = useState(pomodoroSettings || { work: 25, shortBreak: 5, longBreak: 15 });
-  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
-  return window.innerWidth > 1199;
-});
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const dropdownRef = useRef(null);
   const timerDropdownRef = useRef(null);
+  const notificationRef = useRef(null);
+  const { notifications, unreadCount, markAllAsRead, clearAll, deleteNotification } = useNotification();
+  const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
 
   const resetPomodoroTimer = () => {
     setIsFocusRunning(false);
     setFocusTimeLeft(pomodoroSettings[focusMode] * 60);
   };
 
-  // Persist sidebar state
- useEffect(() => {
-  localStorage.setItem(
-    "sidebarOpen",
-    JSON.stringify(isSidebarOpen)
-  );
-}, [isSidebarOpen]);
+
   // Handle escape key to close sidebar on mobile
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -169,6 +194,9 @@ function Layout({ children }) {
       if (timerDropdownRef.current && !timerDropdownRef.current.contains(e.target)) {
         setTimerDropdownOpen(false);
         setShowTimerSettings(false);
+      }
+      if (notificationRef.current && !notificationRef.current.contains(e.target)) {
+        setNotificationDropdownOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
@@ -581,23 +609,119 @@ function Layout({ children }) {
                 </div>
               )}
             </div>
-            {/* Notification Button */}
+            {/* Notification Button & Dropdown */}
+            <div className="notification-wrapper" ref={notificationRef} style={{ position: "relative" }}>
+              <button
+                type="button"
+                className="topbar-icon-btn notification-btn"
+                onClick={() => {
+                  if (notificationStatus !== "granted") {
+                    handleRequestPermission();
+                  }
+                  if (!notificationDropdownOpen) {
+                    markAllAsRead();
+                  }
+                  setNotificationDropdownOpen(!notificationDropdownOpen);
+                }}
+                title="Notifications"
+              >
+                <BellIcon />
+                {unreadCount > 0 && (
+                  <span className="notification-badge">{unreadCount > 9 ? "9+" : unreadCount}</span>
+                )}
+              </button>
+
+              {notificationDropdownOpen && (
+                <div className="notification-dropdown">
+                  <div className="notification-header">
+                    <h4>Notifications</h4>
+                    <div className="notification-actions">
+                      <button type="button" onClick={markAllAsRead} className="text-btn">Mark all read</button>
+                      <button type="button" onClick={clearAll} className="text-btn">Clear</button>
+                    </div>
+                  </div>
+                  <div className="notification-body">
+                    {notifications.length === 0 ? (
+                      <div className="notification-empty">
+                        <span style={{ fontSize: "2rem" }}>🔔</span>
+                        <p>No notifications yet</p>
+                        <small>You're all caught up!</small>
+                      </div>
+                    ) : (
+                      notifications.map(n => {
+                        let displayTitle = n.title;
+                        if (displayTitle === "Task Overdue" || displayTitle === "Task Due Soon") {
+                          const linkedTask = tasks.find(t => t.id === n.taskId);
+                          displayTitle = linkedTask ? (linkedTask.text || linkedTask.title) : "Untitled Task";
+                        }
+                        return (
+                        <div key={n.id} className={`notification-item ${!n.read ? 'unread' : ''}`} onClick={() => {
+                          setNotificationDropdownOpen(false);
+                          if(n.taskId) navigate(`/tasks/${n.taskId}`);
+                        }}>
+                          <div className="notification-icon">
+                            {n.type === 'overdue' && '🔴'}
+                            {n.type === 'due_soon' && '🟡'}
+                            {n.type === 'completed' && '🟢'}
+                            {n.type === 'reminder' && '🔵'}
+                            {(!['overdue', 'due_soon', 'completed', 'reminder'].includes(n.type)) && '🟣'}
+                          </div>
+                          <div className="notification-content">
+                            <strong>{displayTitle || "Untitled Task"}</strong>
+                            <p>
+                              {n.type === 'overdue' && 'Overdue'}
+                              {n.type === 'due_soon' && 'Due in 10 minutes'}
+                              {n.type === 'completed' && 'Completed'}
+                              {n.type === 'reminder' && 'Reminder'}
+                              {(!['overdue', 'due_soon', 'completed', 'reminder'].includes(n.type)) && 'Update'}
+                              {n.dueDate && n.dueTime ? ` • ${formatNotificationDate(n.dueDate, n.dueTime)}` : ''}
+                              {` • ${formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}`}
+                            </p>
+                          </div>
+                          <button 
+                            type="button"
+                            className="notification-delete" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteNotification(n.id);
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )})
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Theme Toggle Button */}
             <button
               type="button"
-              className="topbar-icon-btn notification-btn"
-              onClick={handleRequestPermission}
-              title={
-                notificationStatus === "granted"
-                  ? "Notifications Enabled"
-                  : "Enable Notifications"
-              }
+              className="topbar-icon-btn theme-toggle-btn"
+              onClick={toggleTheme}
+              title={theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
+              style={{
+                background: "rgba(255,255,255,0.1)",
+                backdropFilter: "blur(4px)",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+                transition: "all 0.3s ease",
+                position: "relative",
+                overflow: "hidden"
+              }}
             >
-              <BellIcon />
-
-              {notificationStatus !== "granted" && (
-                <span className="notification-dot"></span>
-              )}
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transform: `rotate(${theme === 'dark' ? '360deg' : '0deg'})`,
+                transition: "transform 0.5s ease"
+              }}>
+                {theme === "light" ? <MoonIcon /> : <SunIcon />}
+              </div>
             </button>
+
             {/* Quick Add Task Button */}
             {/* Quick Add Task Button */}
 

@@ -11,6 +11,28 @@ import toast from "react-hot-toast";
 import axios from "axios";
 import "../tasks.css";
 
+
+function getEmptyStateMessage(status, filterCategory, filterPriority) {
+  const isCategoryFiltered = filterCategory !== "All";
+  const isPriorityFiltered = filterPriority !== "All";
+
+  if (isCategoryFiltered && isPriorityFiltered) {
+    return `No ${filterPriority} priority tasks found in "${filterCategory}" category.`;
+  } else if (isCategoryFiltered) {
+    return `No tasks found in "${filterCategory}" category.`;
+  } else if (isPriorityFiltered) {
+    return `No ${filterPriority} priority tasks found.`;
+  } else {
+    switch (status) {
+      case "Pending": return "No pending tasks 🎉";
+      case "Overdue": return "No overdue tasks";
+      case "Completed": return "No completed tasks yet";
+      case "Incoming": return "No incoming tasks";
+      default: return "No tasks found";
+    }
+  }
+}
+
 function TaskPage() {
   const { tasks, addTask, updateTask, deleteTask, toggleSubtask, geminiApiKey } = useTasks();
   const navigate = useNavigate();
@@ -669,16 +691,20 @@ function TaskPage() {
 
   const isDraftEmpty = (draftData) => {
     if (!draftData) return true;
+    const todayStr = format(new Date(), "yyyy-MM-dd");
     return (
       (!draftData.originalTranscript || !draftData.originalTranscript.trim()) &&
       (!draftData.title || !draftData.title.trim()) &&
       (!draftData.description || !draftData.description.trim()) &&
       (!draftData.subtasksList || draftData.subtasksList.length === 0) &&
-      (!draftData.customCategory || !draftData.customCategory.trim())
+      (!draftData.customCategory || !draftData.customCategory.trim()) &&
+      (draftData.category === "Work" || !draftData.category) &&
+      (draftData.priority === "Medium" || !draftData.priority) &&
+      (draftData.dueDate === todayStr || !draftData.dueDate)
     );
   };
 
-  const saveDraftImmediately = () => {
+const saveDraftImmediately = () => {
     const draftData = {
       modalView,
       originalTranscript,
@@ -743,143 +769,33 @@ function TaskPage() {
     }
   };
 
-  const handleContinueDraft = () => {
-    if (!savedDraft) return;
-
-    isRestoringDraftRef.current = true;
-
-    setModalView(savedDraft.modalView || "edit");
-    setOriginalTranscript(savedDraft.originalTranscript || "");
-    setTranslatedTranscript(savedDraft.translatedTranscript || "");
-    setTitle(savedDraft.title || "");
-    setDescription(savedDraft.description || "");
-    setCategory(savedDraft.category || "Work");
-    setPriority(savedDraft.priority || "Medium");
-    setDueDate(savedDraft.dueDate || todayStr);
-    setDueTime(savedDraft.dueTime || calculateDefaultDueTime(savedDraft.category || "Work"));
-    setSubtasksList(savedDraft.subtasksList || []);
-    setFilledFields(savedDraft.filledFields || {});
-    setVoiceExtractedData(savedDraft.voiceExtractedData || {
-      startTime: null,
-      endTime: null,
-      reminder: null,
-      person: null,
-      location: null,
-      tags: [],
-      recurrence: null,
-      notes: null,
-      originalTranscript: null,
-      translatedTranscript: null
-    });
-    setIsAddingCategory(savedDraft.isAddingCategory || false);
-    setCustomCategory(savedDraft.customCategory || "");
-    setIsLargeTask(savedDraft.isLargeTask || false);
-
-    setHasDraft(false);
-    setDraftStatus("Draft restored");
-
-    setTimeout(() => {
-      isRestoringDraftRef.current = false;
-      focusFirstField();
-    }, 120);
-  };
-
-  const handleStartNew = () => {
-    const confirmed = window.confirm("Are you sure you want to delete the old draft and start a new task?");
-    if (!confirmed) return;
-
-    localStorage.removeItem(`smartPlanner_addTaskDraft_${userEmail}`);
-    setHasDraft(false);
-    setSavedDraft(null);
-    setDraftStatus("");
-
-    resetForm(false);
-    setModalView("edit");
-
-    setTimeout(() => {
-      focusFirstField();
-    }, 80);
-  };
-
-  const handleDismissDraft = () => {
-    setHasDraft(false);
-    setDraftStatus("");
-  };
-
   const handleClearAllAction = () => {
-    const confirmed = window.confirm("Clear all entered task data?");
-    if (!confirmed) return;
-
     stopVoiceRecording();
     localStorage.removeItem(`smartPlanner_addTaskDraft_${userEmail}`);
 
-    resetForm(false);
-    setModalView("edit");
+    const isVoiceMode = modalView === "voice" || modalView === "review";
+
+    resetForm(false, false);
+    
+    if (isVoiceMode) {
+      toast.success("Transcript cleared successfully.", { position: "top-right", duration: 3000 });
+      setModalView("voice");
+      setVoiceState("idle");
+    } else {
+      toast.success("Draft cleared successfully.", { position: "top-right", duration: 3000 });
+      setModalView("edit");
+    }
+    
     setDraftStatus("");
     setTimeError("");
     setVoiceErrorText("");
 
     setTimeout(() => {
-      focusFirstField();
+      if (!isVoiceMode) {
+        focusFirstField();
+      }
     }, 50);
   };
-
-  // Auto-save draft effect
-  useEffect(() => {
-    if (!showAddModal) return;
-    if (isRestoringDraftRef.current) return;
-
-    const draftData = {
-      modalView,
-      originalTranscript,
-      translatedTranscript,
-      title,
-      description,
-      category,
-      priority,
-      dueDate,
-      dueTime,
-      subtasksList,
-      filledFields,
-      voiceExtractedData,
-      isAddingCategory,
-      customCategory,
-      isLargeTask,
-      updatedAt: new Date().toISOString()
-    };
-
-    if (isDraftEmpty(draftData)) {
-      localStorage.removeItem(`smartPlanner_addTaskDraft_${userEmail}`);
-      setDraftStatus("");
-      return;
-    }
-
-    setDraftStatus("Saving draft...");
-
-    const handler = setTimeout(() => {
-      localStorage.setItem(`smartPlanner_addTaskDraft_${userEmail}`, JSON.stringify(draftData));
-      setDraftStatus("Draft saved");
-    }, 300);
-
-    return () => clearTimeout(handler);
-  }, [
-    showAddModal,
-    modalView,
-    originalTranscript,
-    translatedTranscript,
-    title,
-    description,
-    category,
-    priority,
-    dueDate,
-    dueTime,
-    subtasksList,
-    filledFields,
-    voiceExtractedData,
-    isAddingCategory,
-    customCategory,
-    isLargeTask
-  ]);
 
   // Load draft on mount (Automatically restores)
   useEffect(() => {
@@ -951,6 +867,63 @@ function TaskPage() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [showAddModal, isSaving, modalView, originalTranscript, title, description, category, priority, dueDate, dueTime, subtasksList, customCategory, isAddingCategory]);
+
+  // Auto-save draft effect
+  useEffect(() => {
+    if (!showAddModal) return;
+    if (isRestoringDraftRef.current) return;
+
+    const draftData = {
+      modalView,
+      originalTranscript,
+      translatedTranscript,
+      title,
+      description,
+      category,
+      priority,
+      dueDate,
+      dueTime,
+      subtasksList,
+      filledFields,
+      voiceExtractedData,
+      isAddingCategory,
+      customCategory,
+      isLargeTask,
+      updatedAt: new Date().toISOString()
+    };
+
+    if (isDraftEmpty(draftData)) {
+      localStorage.removeItem(`smartPlanner_addTaskDraft_${userEmail}`);
+      setDraftStatus("");
+      return;
+    }
+
+    setDraftStatus("Saving draft...");
+
+    const handler = setTimeout(() => {
+      localStorage.setItem(`smartPlanner_addTaskDraft_${userEmail}`, JSON.stringify(draftData));
+      setDraftStatus("Draft saved");
+    }, 300);
+
+    return () => clearTimeout(handler);
+  }, [
+    showAddModal,
+    modalView,
+    originalTranscript,
+    translatedTranscript,
+    title,
+    description,
+    category,
+    priority,
+    dueDate,
+    dueTime,
+    subtasksList,
+    filledFields,
+    voiceExtractedData,
+    isAddingCategory,
+    customCategory,
+    isLargeTask
+  ]);
 
   // Popstate history browser back listener
   useEffect(() => {
@@ -1123,7 +1096,12 @@ function TaskPage() {
                 </div>
               </div>
               <button
-                onClick={() => toast.dismiss(t.id)}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  toast.dismiss(t.id);
+                }}
                 style={{ background: "transparent", border: "none", fontSize: "1.1rem", cursor: "pointer", color: "#94a3b8", padding: 0 }}
               >
                 ✕
@@ -1131,7 +1109,10 @@ function TaskPage() {
             </div>
             <div style={{ display: "flex", gap: "8px", borderTop: "1px solid #f1f5f9", paddingTop: "10px" }}>
               <button
-                onClick={() => {
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   setSelectedTask(createdTask);
                   toast.dismiss(t.id);
                 }}
@@ -1150,7 +1131,12 @@ function TaskPage() {
                 View Task
               </button>
               <button
-                onClick={() => toast.dismiss(t.id)}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  toast.dismiss(t.id);
+                }}
                 style={{
                   background: "transparent",
                   color: "#64748b",
@@ -1174,7 +1160,18 @@ function TaskPage() {
       toast.custom((t) => (
         <div style={{ background: "#fef2f2", color: "#991b1b", padding: "12px 16px", borderRadius: "12px", border: "1px solid #fca5a5", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
           <span>Failed to save task: {err.message}</span>
-          <button onClick={() => { toast.dismiss(t.id); handleSubmit(); }} style={{ background: "#991b1b", color: "white", border: "none", borderRadius: "6px", padding: "4px 8px", fontSize: "0.8rem", cursor: "pointer" }}>Retry</button>
+          <button 
+            type="button"
+            onClick={(e) => { 
+              e.preventDefault();
+              e.stopPropagation();
+              toast.dismiss(t.id); 
+              handleSubmit(); 
+            }} 
+            style={{ background: "#991b1b", color: "white", border: "none", borderRadius: "6px", padding: "4px 8px", fontSize: "0.8rem", cursor: "pointer" }}
+          >
+            Retry
+          </button>
         </div>
       ));
     } finally {
@@ -1182,7 +1179,7 @@ function TaskPage() {
     }
   };
 
-  const resetForm = (shouldSaveDraft = true) => {
+  const resetForm = (shouldSaveDraft = true, closeModal = true) => {
     if (showAddModal) {
       if (shouldSaveDraft) {
         saveDraftImmediately();
@@ -1225,11 +1222,11 @@ function TaskPage() {
     setIsLargeTask(false);
     setSubtasksList([]);
     setEditTaskId(null);
-    setShowAddModal(false);
-
-    // Reset voice states
-    setModalView("edit");
-    setIsVoiceModeActive(false);
+    if (closeModal) {
+      setShowAddModal(false);
+      setModalView("edit");
+      setIsVoiceModeActive(false);
+    }
     setVoiceState("idle");
     setOriginalTranscript("");
     setLiveTranscript("");
@@ -1356,6 +1353,12 @@ function TaskPage() {
       return matchesSearch && matchesCategory && matchesPriority;
     });
   }, [tasks, searchQuery, filterCategory, filterPriority]);
+
+  
+  const totalPendingCount = useMemo(() => tasks.filter(task => getTaskStatus(task) === 'Pending').length, [tasks]);
+  const totalOverdueCount = useMemo(() => tasks.filter(task => getTaskStatus(task) === 'Overdue').length, [tasks]);
+  const totalCompletedCount = useMemo(() => tasks.filter(task => getTaskStatus(task) === 'Completed').length, [tasks]);
+  const totalIncomingCount = useMemo(() => tasks.filter(task => getTaskStatus(task) === 'Incoming').length, [tasks]);
 
   const pendingTasksList = useMemo(() => {
     return baseFilteredTasks.filter(task => getTaskStatus(task) === "Pending");
@@ -1544,18 +1547,16 @@ function TaskPage() {
             </div>
 
             <span className="status-card-count">
-              {pendingTasksList.length} Tasks
+              {totalPendingCount} Tasks
             </span>
           </header>
 
           <div className="status-card-previews">
             {pendingTasksList.length === 0 ? (
-              <div className="status-card-empty">
-                No pending tasks 🎉
-              </div>
+              <div className="status-card-empty">{getEmptyStateMessage("Pending", filterCategory, filterPriority)}</div>
             ) : (
               pendingTasksList
-                .slice(0, 3)
+                .slice(0, 2)
                 .map((task) => {
                   const progress =
                     getSubtaskProgress(task);
@@ -1565,76 +1566,79 @@ function TaskPage() {
                       key={getTaskId(task)}
                       className="task-preview-item"
                     >
-                      <div className="task-title-checkbox-row">
-                        <label
-                          className="task-complete-checkbox"
-                          title={
-                            areAllSubtasksCompleted(task)
-                              ? "Mark task as completed"
-                              : "Complete all subtasks first"
-                          }
-                        >
-                          <input
-                            type="checkbox"
-                            checked={false}
-                            onChange={() =>
-                              handleCompleteTask(task)
-                            }
-                          />
-
-                          <span className="custom-checkmark" />
-                        </label>
-
-                        <h4 className="task-preview-title">
-                          📌 {task.title}
-                        </h4>
-                      </div>
-
-                      <div className="task-preview-date">
-                        📅 Due Date:{" "}
-                        {formatTaskDate(task.dueDate)}
-                      </div>
-
-                      {task.subtasks?.length > 0 && (
-                        <div className="subtask-progress-text">
-                          Subtasks: {progress.completed}/
-                          {progress.total} completed
-                        </div>
-                      )}
-
-                      <div className="task-preview-actions">
-                        {task.subtasks?.length > 0 && (
-                          <button
-                            type="button"
-                            className="subtask-toggle-btn"
-                            onClick={() =>
-                              setSubtaskPopupTask(task)
+                      {/* Top Row: Title & Due Date */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "4px" }}>
+                        <div className="task-title-checkbox-row" style={{ display: "flex", alignItems: "flex-start", gap: "4px", margin: 0, flex: 1, minWidth: 0 }}>
+                          
+                          <label
+                            className="task-complete-checkbox"
+                            style={{ flexShrink: 0, marginTop: "2px" }}
+                            title={
+                              areAllSubtasksCompleted(task)
+                                ? "Mark task as completed"
+                                : "Complete all subtasks first"
                             }
                           >
-                            ☑ Subtasks
+                            <input
+                              type="checkbox"
+                              checked={false}
+                              onChange={() => handleCompleteTask(task)}
+                            />
+                            <span className="custom-checkmark" />
+                          </label>
+                          
+                          <h4 className="task-preview-title" style={{ margin: 0, lineHeight: 1.3 }}>
+                            {task.title}
+                          </h4>
+                        </div>
+                        <div className="task-preview-date" style={{ margin: 0, padding: 0, background: "none", flexShrink: 0, fontSize: "0.85rem", fontWeight: 600 }}>
+                          
+                          <span style={{ color: "var(--text-muted)", fontSize: "0.85rem", fontWeight: 600 }}>Due • </span>
+                          {formatTaskDate(task.dueDate)}
+                          
+                        </div>
+                      </div>
+
+                      {/* Bottom Row: Subtasks on left, View Details on right (or left if no subtasks) */}
+                      <div className="task-preview-actions" style={{ display: "flex", justifyContent: task.subtasks?.length > 0 ? "space-between" : "flex-start", alignItems: "center",gap: "8px" }}>
+                        {task.subtasks?.length > 0 ? (
+                          <>
+                            <button
+                              type="button"
+                              className="subtask-toggle-btn"
+                              style={{ margin: 0 }}
+                              onClick={() => setSubtaskPopupTask(task)}
+                            >
+                              Subtasks: {progress.completed}/{progress.total}
+                            </button>
+                            <button
+                              type="button"
+                              className="status-card-viewall"
+                              style={{ margin: 0 }}
+                              onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
+                            >
+                              View Details →
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            className="status-card-viewall"
+                            style={{ margin: 0 }}
+                            onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
+                          >
+                            View Details →
                           </button>
                         )}
-
-                        <button
-                          type="button"
-                          className="status-card-viewall"
-                          onClick={() =>
-                            navigate(
-                              `/tasks/${getTaskId(task)}`
-                            )
-                          }
-                        >
-                          View Details →
-                        </button>
                       </div>
                     </div>
                   );
                 })
             )}
 
-            {pendingTasksList.length > 3 && (
+            {pendingTasksList.length > 2 && (
               <div className="status-card-more">
-                +{pendingTasksList.length - 3} more tasks
+                +{pendingTasksList.length - 2} more tasks
               </div>
             )}
           </div>
@@ -1668,18 +1672,16 @@ function TaskPage() {
             </div>
 
             <span className="status-card-count">
-              {overdueTasksList.length} Tasks
+              {totalOverdueCount} Tasks
             </span>
           </header>
 
           <div className="status-card-previews">
             {overdueTasksList.length === 0 ? (
-              <div className="status-card-empty">
-                No overdue tasks
-              </div>
+              <div className="status-card-empty">{getEmptyStateMessage("Overdue", filterCategory, filterPriority)}</div>
             ) : (
               overdueTasksList
-                .slice(0, 3)
+                .slice(0, 2)
                 .map((task) => {
                   const progress =
                     getSubtaskProgress(task);
@@ -1689,76 +1691,79 @@ function TaskPage() {
                       key={getTaskId(task)}
                       className="task-preview-item"
                     >
-                      <div className="task-title-checkbox-row">
-                        <label
-                          className="task-complete-checkbox"
-                          title={
-                            areAllSubtasksCompleted(task)
-                              ? "Mark task as completed"
-                              : "Complete all subtasks first"
-                          }
-                        >
-                          <input
-                            type="checkbox"
-                            checked={false}
-                            onChange={() =>
-                              handleCompleteTask(task)
-                            }
-                          />
-
-                          <span className="custom-checkmark" />
-                        </label>
-
-                        <h4 className="task-preview-title">
-                          📌 {task.title}
-                        </h4>
-                      </div>
-
-                      <div className="task-preview-date overdue-date">
-                        🔴 Overdue Date:{" "}
-                        {formatTaskDate(task.dueDate)}
-                      </div>
-
-                      {task.subtasks?.length > 0 && (
-                        <div className="subtask-progress-text">
-                          Subtasks: {progress.completed}/
-                          {progress.total} completed
-                        </div>
-                      )}
-
-                      <div className="task-preview-actions">
-                        {task.subtasks?.length > 0 && (
-                          <button
-                            type="button"
-                            className="subtask-toggle-btn"
-                            onClick={() =>
-                              setSubtaskPopupTask(task)
+                      {/* Top Row: Title & Due Date */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                        <div className="task-title-checkbox-row" style={{ display: "flex", alignItems: "flex-start", gap: "8px", margin: 0, flex: 1, minWidth: 0 }}>
+                          
+                          <label
+                            className="task-complete-checkbox"
+                            style={{ flexShrink: 0 }}
+                            title={
+                              areAllSubtasksCompleted(task)
+                                ? "Mark task as completed"
+                                : "Complete all subtasks first"
                             }
                           >
-                            ☑ Subtasks
+                            <input
+                              type="checkbox"
+                              checked={false}
+                              onChange={() => handleCompleteTask(task)}
+                            />
+                            <span className="custom-checkmark" />
+                          </label>
+                          
+                          <h4 className="task-preview-title" style={{ margin: 0, lineHeight: 1.3 }}>
+                            {task.title}
+                          </h4>
+                        </div>
+                        <div className="task-preview-date" style={{ margin: 0, padding: 0, background: "none", flexShrink: 0, fontSize: "0.85rem", fontWeight: 600 }}>
+                          
+                          <span style={{ color: "#ef4444", fontSize: "0.85rem", fontWeight: 600 }}>Overdue • </span>
+                          {formatTaskDate(task.dueDate)}
+                          
+                        </div>
+                      </div>
+
+                      {/* Bottom Row: Subtasks on left, View Details on right (or left if no subtasks) */}
+                      <div className="task-preview-actions" style={{ display: "flex", justifyContent: task.subtasks?.length > 0 ? "space-between" : "flex-start", alignItems: "center", gap: "8px" }}>
+                        {task.subtasks?.length > 0 ? (
+                          <>
+                            <button
+                              type="button"
+                              className="subtask-toggle-btn"
+                              style={{ margin: 0 }}
+                              onClick={() => setSubtaskPopupTask(task)}
+                            >
+                              Subtasks: {progress.completed}/{progress.total}
+                            </button>
+                            <button
+                              type="button"
+                              className="status-card-viewall"
+                              style={{ margin: 0 }}
+                              onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
+                            >
+                              View Details →
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            className="status-card-viewall"
+                            style={{ margin: 0 }}
+                            onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
+                          >
+                            View Details →
                           </button>
                         )}
-
-                        <button
-                          type="button"
-                          className="status-card-viewall"
-                          onClick={() =>
-                            navigate(
-                              `/tasks/${getTaskId(task)}`
-                            )
-                          }
-                        >
-                          View Details →
-                        </button>
                       </div>
                     </div>
                   );
                 })
             )}
 
-            {overdueTasksList.length > 3 && (
+            {overdueTasksList.length > 2 && (
               <div className="status-card-more">
-                +{overdueTasksList.length - 3} more tasks
+                +{overdueTasksList.length - 2} more tasks
               </div>
             )}
           </div>
@@ -1792,18 +1797,16 @@ function TaskPage() {
             </div>
 
             <span className="status-card-count">
-              {completedTasksList.length} Tasks
+              {totalCompletedCount} Tasks
             </span>
           </header>
 
           <div className="status-card-previews">
             {completedTasksList.length === 0 ? (
-              <div className="status-card-empty">
-                No completed tasks yet
-              </div>
+              <div className="status-card-empty">{getEmptyStateMessage("Completed", filterCategory, filterPriority)}</div>
             ) : (
               completedTasksList
-                .slice(0, 3)
+                .slice(0, 2)
                 .map((task) => {
                   const completedDate =
                     task.completedAt ||
@@ -1815,69 +1818,68 @@ function TaskPage() {
                   return (
                     <div
                       key={getTaskId(task)}
-                      className="task-preview-item completed-task-item"
+                      className="task-preview-item"
                     >
-                      <div className="task-title-checkbox-row">
-                        <div
-                          className="completed-static-checkbox"
-                          title="Task completed"
-                        >
-                          ✓
+                      {/* Top Row: Title & Due Date */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1px" }}>
+                        <div className="task-title-checkbox-row" style={{ display: "flex", alignItems: "flex-start", gap: "4px", margin: 0, flex: 1, minWidth: 0 }}>
+                          
+                          <div className="completed-static-checkbox" style={{ flexShrink: 0 }} title="Task completed">
+                            ✓
+                          </div>
+                          
+                          <h4 className="task-preview-title" style={{ margin: 0, lineHeight: 1.3 }}>
+                            {task.title}
+                          </h4>
                         </div>
-
-                        <h4 className="task-preview-title completed-title">
-                          📌 {task.title}
-                        </h4>
+                        <div className="task-preview-date" style={{ margin: 0, padding: 0, background: "none", flexShrink: 0, fontSize: "0.85rem", fontWeight: 600 }}>
+                          
+                          <span style={{ color: "var(--text-muted)", fontSize: "0.85rem", fontWeight: 600 }}>Completed • </span>
+                          {formatTaskDate(task.completedAt || task.completedDate || task.dueDate, Boolean(task.completedAt))}
+                          
+                        </div>
                       </div>
 
-                      <div className="task-preview-date completed-date">
-                        ✅ Completed Date:{" "}
-                        {formatTaskDate(
-                          completedDate,
-                          Boolean(task.completedAt)
-                        )}
-                      </div>
-
-                      {task.subtasks?.length > 0 && (
-                        <div className="subtask-progress-text">
-                          Subtasks: {progress.completed}/
-                          {progress.total} completed
-                        </div>
-                      )}
-
-                      <div className="task-preview-actions">
-                        {task.subtasks?.length > 0 && (
+                      {/* Bottom Row: Subtasks on left, View Details on right (or left if no subtasks) */}
+                      <div className="task-preview-actions" style={{ display: "flex", justifyContent: task.subtasks?.length > 0 ? "space-between" : "flex-start", alignItems: "center", gap: "8px" }}>
+                        {task.subtasks?.length > 0 ? (
+                          <>
+                            <button
+                              type="button"
+                              className="subtask-toggle-btn"
+                              style={{ margin: 0 }}
+                              onClick={() => setSubtaskPopupTask(task)}
+                            >
+                              Subtasks: {progress.completed}/{progress.total}
+                            </button>
+                            <button
+                              type="button"
+                              className="status-card-viewall"
+                              style={{ margin: 0 }}
+                              onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
+                            >
+                              View Details →
+                            </button>
+                          </>
+                        ) : (
                           <button
                             type="button"
-                            className="subtask-toggle-btn"
-                            onClick={() =>
-                              setSubtaskPopupTask(task)
-                            }
+                            className="status-card-viewall"
+                            style={{ margin: 0 }}
+                            onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
                           >
-                            ☑ Subtasks
+                            View Details →
                           </button>
                         )}
-
-                        <button
-                          type="button"
-                          className="status-card-viewall"
-                          onClick={() =>
-                            navigate(
-                              `/tasks/${getTaskId(task)}`
-                            )
-                          }
-                        >
-                          View Details →
-                        </button>
                       </div>
                     </div>
                   );
                 })
             )}
 
-            {completedTasksList.length > 3 && (
+            {completedTasksList.length > 2 && (
               <div className="status-card-more">
-                +{completedTasksList.length - 3} more tasks
+                +{completedTasksList.length - 2} more tasks
               </div>
             )}
           </div>
@@ -1911,18 +1913,16 @@ function TaskPage() {
             </div>
 
             <span className="status-card-count">
-              {incomingTasksList.length} Tasks
+              {totalIncomingCount} Tasks
             </span>
           </header>
 
           <div className="status-card-previews">
             {incomingTasksList.length === 0 ? (
-              <div className="status-card-empty">
-                No incoming tasks
-              </div>
+              <div className="status-card-empty">{getEmptyStateMessage("Incoming", filterCategory, filterPriority)}</div>
             ) : (
               incomingTasksList
-                .slice(0, 3)
+                .slice(0, 2)
                 .map((task) => {
                   const progress =
                     getSubtaskProgress(task);
@@ -1932,76 +1932,79 @@ function TaskPage() {
                       key={getTaskId(task)}
                       className="task-preview-item"
                     >
-                      <div className="task-title-checkbox-row">
-                        <label
-                          className="task-complete-checkbox"
-                          title={
-                            areAllSubtasksCompleted(task)
-                              ? "Mark task as completed"
-                              : "Complete all subtasks first"
-                          }
-                        >
-                          <input
-                            type="checkbox"
-                            checked={false}
-                            onChange={() =>
-                              handleCompleteTask(task)
-                            }
-                          />
-
-                          <span className="custom-checkmark" />
-                        </label>
-
-                        <h4 className="task-preview-title">
-                          📌 {task.title}
-                        </h4>
-                      </div>
-
-                      <div className="task-preview-date incoming-date">
-                        🔵 Incoming Date:{" "}
-                        {formatTaskDate(task.dueDate)}
-                      </div>
-
-                      {task.subtasks?.length > 0 && (
-                        <div className="subtask-progress-text">
-                          Subtasks: {progress.completed}/
-                          {progress.total} completed
-                        </div>
-                      )}
-
-                      <div className="task-preview-actions">
-                        {task.subtasks?.length > 0 && (
-                          <button
-                            type="button"
-                            className="subtask-toggle-btn"
-                            onClick={() =>
-                              setSubtaskPopupTask(task)
+                      {/* Top Row: Title & Due Date */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "4px" }}>
+                        <div className="task-title-checkbox-row" style={{ display: "flex", alignItems: "flex-start", gap: "4px", margin: 0, flex: 1, minWidth: 0 }}>
+                          
+                          <label
+                            className="task-complete-checkbox"
+                            style={{ flexShrink: 0 }}
+                            title={
+                              areAllSubtasksCompleted(task)
+                                ? "Mark task as completed"
+                                : "Complete all subtasks first"
                             }
                           >
-                            ☑ Subtasks
+                            <input
+                              type="checkbox"
+                              checked={false}
+                              onChange={() => handleCompleteTask(task)}
+                            />
+                            <span className="custom-checkmark" />
+                          </label>
+                          
+                          <h4 className="task-preview-title" style={{ margin: 0, lineHeight: 1.3 }}>
+                            {task.title}
+                          </h4>
+                        </div>
+                        <div className="task-preview-date" style={{ margin: 0, padding: 0, background: "none", flexShrink: 0, fontSize: "0.85rem", fontWeight: 600 }}>
+                          
+                          <span style={{ color: "var(--text-muted)", fontSize: "0.85rem", fontWeight: 600 }}>Due • </span>
+                          {formatTaskDate(task.dueDate)}
+                          
+                        </div>
+                      </div>
+
+                      {/* Bottom Row: Subtasks on left, View Details on right (or left if no subtasks) */}
+                      <div className="task-preview-actions" style={{ display: "flex", justifyContent: task.subtasks?.length > 0 ? "space-between" : "flex-start", alignItems: "center", gap: "8px" }}>
+                        {task.subtasks?.length > 0 ? (
+                          <>
+                            <button
+                              type="button"
+                              className="subtask-toggle-btn"
+                              style={{ margin: 0 }}
+                              onClick={() => setSubtaskPopupTask(task)}
+                            >
+                              Subtasks: {progress.completed}/{progress.total}
+                            </button>
+                            <button
+                              type="button"
+                              className="status-card-viewall"
+                              style={{ margin: 0 }}
+                              onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
+                            >
+                              View Details →
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            className="status-card-viewall"
+                            style={{ margin: 0 }}
+                            onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
+                          >
+                            View Details →
                           </button>
                         )}
-
-                        <button
-                          type="button"
-                          className="status-card-viewall"
-                          onClick={() =>
-                            navigate(
-                              `/tasks/${getTaskId(task)}`
-                            )
-                          }
-                        >
-                          View Details →
-                        </button>
                       </div>
                     </div>
                   );
                 })
             )}
 
-            {incomingTasksList.length > 3 && (
+            {incomingTasksList.length > 2 && (
               <div className="status-card-more">
-                +{incomingTasksList.length - 3} more tasks
+                +{incomingTasksList.length - 2} more tasks
               </div>
             )}
           </div>
@@ -2646,17 +2649,24 @@ function TaskPage() {
                       </button>
                     )}
 
-                    {originalTranscript && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={handleProcessTask}
-                          style={{ background: "#10b981", color: "white", border: "none", borderRadius: "8px", padding: "6px 12px", fontSize: "0.8rem", fontWeight: "700", cursor: "pointer" }}
-                        >
-                          Process Task
-                        </button>
-                      </>
-                    )}
+                    <button
+                      type="button"
+                      onClick={handleProcessTask}
+                      disabled={!originalTranscript || !originalTranscript.trim()}
+                      style={{
+                        background: "#8b5cf6",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "8px",
+                        padding: "6px 12px",
+                        fontSize: "0.8rem",
+                        fontWeight: "600",
+                        cursor: (!originalTranscript || !originalTranscript.trim()) ? "not-allowed" : "pointer",
+                        opacity: (!originalTranscript || !originalTranscript.trim()) ? 0.5 : 1
+                      }}
+                    >
+                      Proceed
+                    </button>
 
                     <button
                       type="button"

@@ -10,7 +10,7 @@
   margin-top: 5vh;
   overflow: visible;
   animation: fadeIn 0.4s ease-out;
-  padding:20px 50px;
+  /* padding:20px 50px; */
 }
 .wpt-header{
     display:grid;
@@ -98,8 +98,8 @@
 }
 
 .wpt-filter-btn.active{
-    background: linear-gradient(135deg,#4f46e5,#6366f1);
-    color: #fff;
+    background: linear-gradient(135deg,var(--color-primary),var(--color-primary));
+    color: var(--bg-card);
     box-shadow: 0 8px 18px rgba(79,70,229,.28);
 }
 
@@ -229,7 +229,7 @@
 
 .wpt-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #6366f1, #10b981);
+  background: linear-gradient(90deg, var(--color-primary), var(--color-success));
   border-radius: 99px;
   transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
@@ -343,9 +343,9 @@
 }
 
 .wpt-cal-cell.status-none { background: var(--bg-muted); color: var(--text-muted); }
-.wpt-cal-cell.status-bad { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
-.wpt-cal-cell.status-ok { background: #fef3c7; color: #d97706; border-color: #fcd34d; }
-.wpt-cal-cell.status-good { background: #d1fae5; color: #047857; border-color: #6ee7b7; }
+.wpt-cal-cell.status-bad { background: var(--color-danger-light); color: var(--color-danger); border-color: #fca5a5; }
+.wpt-cal-cell.status-ok { background: var(--color-warning-light); color: var(--color-warning); border-color: #fcd34d; }
+.wpt-cal-cell.status-good { background: var(--color-success-light); color: #047857; border-color: #6ee7b7; }
 
 /* Insights */
 .wpt-insights {

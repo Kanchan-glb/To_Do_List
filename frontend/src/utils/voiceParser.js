@@ -171,10 +171,13 @@ export function extractTaskDetails(originalText, translatedText) {
 
   // 4. Time extraction
   const timeRegexes = [
-    /(\d{1,2})(?::(\d{2}))?\s*(am|pm)/gi,  // rIdx 0: "8:00 am", "8 am"
-    /(\d{1,2})\s*(am|pm)/gi,               // rIdx 1: "8am"
-    /\bat\s+(\d{1,2}):(\d{2})\b/g,         // rIdx 2: "at 8:00" (scoped to "at")
-    /(\d{1,2})\s*baje/gi                    // rIdx 3: "8 baje"
+    /(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)/gi,
+    /(\d{1,2})\s*(am|pm|a\.m\.|p\.m\.)/gi,
+    /\bat\s+(\d{1,2})(?::(\d{2}))?\b/gi,
+    /(\d{1,2})\s*baje/gi,
+    /(?:morning|evening|tonight|afternoon|night)\s+(?:at\s+)?(\d{1,2})(?::(\d{2}))?\b/gi,
+    /\b(\d{1,2})(?::(\d{2}))?\s+(?:in the\s+)?(?:morning|evening|afternoon|night)\b/gi,
+    /\b(noon|midnight)\b/gi
   ];
 
   let matches = [];
@@ -187,13 +190,24 @@ export function extractTaskDetails(originalText, translatedText) {
 
       if (rIdx === 0) {
         minutes = match[2] ? parseInt(match[2]) : 0;
-        ampm = match[3] ? match[3].toLowerCase() : null;
+        ampm = match[3] ? match[3].toLowerCase().replace(/\./g, '') : null;
       } else if (rIdx === 1) {
-        ampm = match[2] ? match[2].toLowerCase() : null;
+        ampm = match[2] ? match[2].toLowerCase().replace(/\./g, '') : null;
       } else if (rIdx === 2) {
-        // "at X:XX" — grab groups 1 and 2
         hours = parseInt(match[1]);
         minutes = match[2] ? parseInt(match[2]) : 0;
+      } else if (rIdx === 4 || rIdx === 5) {
+        hours = parseInt(match[1]);
+        minutes = match[2] ? parseInt(match[2]) : 0;
+      } else if (rIdx === 6) {
+        let val = match[1].toLowerCase();
+        if (val === 'noon') {
+          hours = 12;
+          ampm = 'pm';
+        } else if (val === 'midnight') {
+          hours = 0;
+          ampm = 'am';
+        }
       }
 
       // Skip if hours out of valid range
@@ -227,7 +241,8 @@ export function extractTaskDetails(originalText, translatedText) {
       const isMorning = fullText.includes("morning") || fullText.includes("subah");
       const isEvening = fullText.includes("evening") || fullText.includes("shyam") ||
                         fullText.includes("shaam") || fullText.includes("pm") ||
-                        fullText.includes("tonight") || fullText.includes("night");
+                        fullText.includes("tonight") || fullText.includes("night") ||
+                        fullText.includes("afternoon");
       if (isMorning && hr <= 12) {
         // Keep as AM — no change
       } else if (isEvening && hr < 12) {
@@ -332,9 +347,12 @@ export function extractTaskDetails(originalText, translatedText) {
     /kal/gi,
     /today/gi,
     /aaj/gi,
-    /at \d{1,2}(?::\d{2})?\s*(?:am|pm)?/gi,
-    /\b\d{1,2}(?::\d{2})?\s*(?:am|pm)?\s*baje/gi,
-    /\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b/gi,
+    /at \d{1,2}(?::\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.)?/gi,
+    /\b\d{1,2}(?::\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.)?\s*baje/gi,
+    /\b\d{1,2}(?::\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.)\b/gi,
+    /(?:morning|evening|tonight|afternoon|night)\s+(?:at\s+)?\d{1,2}(?::\d{2})?\b/gi,
+    /\b\d{1,2}(?::\d{2})?\s+(?:in the\s+)?(?:morning|evening|afternoon|night)\b/gi,
+    /\b(noon|midnight)\b/gi,
     /next monday/gi,
     /agle monday/gi,
     /friday ko/gi,
