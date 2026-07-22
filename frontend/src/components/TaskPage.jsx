@@ -1,4 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+
+import DraggableGrid from "./dnd/DraggableGrid";
+import DraggableCard from "./dnd/DraggableCard";
+import { clearLayout } from "../utils/layoutStorage";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useTasks } from "../context/TaskContext";
 import { format, parseISO, isToday, isYesterday, isTomorrow } from "date-fns";
@@ -32,6 +36,8 @@ function getEmptyStateMessage(status, filterCategory, filterPriority) {
     }
   }
 }
+
+const IcoReset = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3 3 3 9 9 9"/></svg>;
 
 function TaskPage() {
   const { tasks, addTask, updateTask, deleteTask, toggleSubtask, geminiApiKey } = useTasks();
@@ -1542,12 +1548,22 @@ const saveDraftImmediately = () => {
       </section>
 
       {/* ── Always render the 4 status cards grid ── */}
-      <section className="status-grid">
-        {/* =================================================
-      PENDING CARD
-  ================================================= */}
+      
+      {/* Reset Layout Button */}
+      {/* <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "16px", width: "100%" }}>
+        <button type="button" className="db-summary-trigger-btn" onClick={() => { clearLayout('tasks'); window.location.reload(); }} aria-label="Reset Layout" title="Reset Layout to Default">
+          <IcoReset />
+          <span className="db-summary-trigger-label">Reset Layout</span>
+        </button>
+      </div> */}
 
-        <div className="status-card pending">
+      <DraggableGrid page="tasks" defaultLayout={['pending', 'overdue', 'completed', 'incoming']}>
+        {({ layout }) => {
+          const renderCard = (id) => {
+            switch(id) {
+              case 'pending': return (
+                <DraggableCard id="pending" key="pending">
+                  <div className="status-card pending" style={{ height: "350px", display: "flex", flexDirection: "column" }}>
           <header className="status-card-header">
             <div className="status-card-title-group">
               <span className="status-card-icon">🕒</span>
@@ -1562,13 +1578,11 @@ const saveDraftImmediately = () => {
             </span>
           </header>
 
-          <div className="status-card-previews">
+          <div className="status-card-previews" style={{ flex: 1, overflow: "hidden", paddingRight: "4px" }}>
             {pendingTasksList.length === 0 ? (
               <div className="status-card-empty">{getEmptyStateMessage("Pending", filterCategory, filterPriority)}</div>
             ) : (
-              pendingTasksList
-                .slice(0, 2)
-                .map((task) => {
+              pendingTasksList.slice(0, 3).map((task) => {
                   const progress =
                     getSubtaskProgress(task);
 
@@ -1647,11 +1661,7 @@ const saveDraftImmediately = () => {
                 })
             )}
 
-            {pendingTasksList.length > 2 && (
-              <div className="status-card-more">
-                +{pendingTasksList.length - 2} more tasks
-              </div>
-            )}
+            
           </div>
 
           <footer className="status-card-footer">
@@ -1667,12 +1677,11 @@ const saveDraftImmediately = () => {
             </button>
           </footer>
         </div>
-
-        {/* =================================================
-      OVERDUE CARD
-  ================================================= */}
-
-        <div className="status-card overdue">
+                </DraggableCard>
+              );
+              case 'overdue': return (
+                <DraggableCard id="overdue" key="overdue">
+                  <div className="status-card overdue" style={{ height: "350px", display: "flex", flexDirection: "column" }}>
           <header className="status-card-header">
             <div className="status-card-title-group">
               <span className="status-card-icon">🔴</span>
@@ -1687,13 +1696,11 @@ const saveDraftImmediately = () => {
             </span>
           </header>
 
-          <div className="status-card-previews">
+          <div className="status-card-previews" style={{ flex: 1, overflow: "hidden", paddingRight: "4px" }}>
             {overdueTasksList.length === 0 ? (
               <div className="status-card-empty">{getEmptyStateMessage("Overdue", filterCategory, filterPriority)}</div>
             ) : (
-              overdueTasksList
-                .slice(0, 2)
-                .map((task) => {
+              overdueTasksList.slice(0, 3).map((task) => {
                   const progress =
                     getSubtaskProgress(task);
 
@@ -1772,11 +1779,7 @@ const saveDraftImmediately = () => {
                 })
             )}
 
-            {overdueTasksList.length > 2 && (
-              <div className="status-card-more">
-                +{overdueTasksList.length - 2} more tasks
-              </div>
-            )}
+            
           </div>
 
           <footer className="status-card-footer">
@@ -1792,12 +1795,11 @@ const saveDraftImmediately = () => {
             </button>
           </footer>
         </div>
-
-        {/* =================================================
-      COMPLETED CARD
-  ================================================= */}
-
-        <div className="status-card completed">
+                </DraggableCard>
+              );
+              case 'completed': return (
+                <DraggableCard id="completed" key="completed">
+                  <div className="status-card completed" style={{ height: "350px", display: "flex", flexDirection: "column" }}>
           <header className="status-card-header">
             <div className="status-card-title-group">
               <span className="status-card-icon">🟢</span>
@@ -1812,13 +1814,11 @@ const saveDraftImmediately = () => {
             </span>
           </header>
 
-          <div className="status-card-previews">
+          <div className="status-card-previews" style={{ flex: 1, overflow: "hidden", paddingRight: "4px" }}>
             {completedTasksList.length === 0 ? (
               <div className="status-card-empty">{getEmptyStateMessage("Completed", filterCategory, filterPriority)}</div>
             ) : (
-              completedTasksList
-                .slice(0, 2)
-                .map((task) => {
+              completedTasksList.slice(0, 3).map((task) => {
                   const completedDate =
                     task.completedAt ||
                     task.completedDate;
@@ -1888,11 +1888,7 @@ const saveDraftImmediately = () => {
                 })
             )}
 
-            {completedTasksList.length > 2 && (
-              <div className="status-card-more">
-                +{completedTasksList.length - 2} more tasks
-              </div>
-            )}
+            
           </div>
 
           <footer className="status-card-footer">
@@ -1908,12 +1904,11 @@ const saveDraftImmediately = () => {
             </button>
           </footer>
         </div>
-
-        {/* =================================================
-      INCOMING CARD
-  ================================================= */}
-
-        <div className="status-card incoming">
+                </DraggableCard>
+              );
+              case 'incoming': return (
+                <DraggableCard id="incoming" key="incoming">
+                  <div className="status-card incoming" style={{ height: "350px", display: "flex", flexDirection: "column" }}>
           <header className="status-card-header">
             <div className="status-card-title-group">
               <span className="status-card-icon">🔵</span>
@@ -1928,13 +1923,11 @@ const saveDraftImmediately = () => {
             </span>
           </header>
 
-          <div className="status-card-previews">
+          <div className="status-card-previews" style={{ flex: 1, overflow: "hidden", paddingRight: "4px" }}>
             {incomingTasksList.length === 0 ? (
               <div className="status-card-empty">{getEmptyStateMessage("Incoming", filterCategory, filterPriority)}</div>
             ) : (
-              incomingTasksList
-                .slice(0, 2)
-                .map((task) => {
+              incomingTasksList.slice(0, 3).map((task) => {
                   const progress =
                     getSubtaskProgress(task);
 
@@ -2013,11 +2006,7 @@ const saveDraftImmediately = () => {
                 })
             )}
 
-            {incomingTasksList.length > 2 && (
-              <div className="status-card-more">
-                +{incomingTasksList.length - 2} more tasks
-              </div>
-            )}
+            
           </div>
 
           <footer className="status-card-footer">
@@ -2033,7 +2022,20 @@ const saveDraftImmediately = () => {
             </button>
           </footer>
         </div>
-      </section>
+                </DraggableCard>
+              );
+              default: return null;
+            }
+          };
+
+          return (
+            <section className="status-grid">
+              {layout.map(renderCard)}
+            </section>
+          );
+        }}
+      </DraggableGrid>
+      
       {subtaskPopupTask && (
         <div
           className="subtask-popup-overlay"

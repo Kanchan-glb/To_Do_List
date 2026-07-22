@@ -7,7 +7,10 @@ import "../reports.css";
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#64748b"];
 
+
 function ReportsPage() {
+  const IcoReset = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3 3 3 9 9 9"/></svg>;
+
   const { tasks, history, saveWeeklyReview, geminiApiKey, getDailyProgress } = useTasks();
 
   const [aiSuggestions, setAiSuggestions] = useState("Generating Weekly Productivity Insights...");
@@ -90,166 +93,129 @@ function ReportsPage() {
 
   return (
     <div className="reports-page">
-    <div className="reports-page printable-reports">
-      {/* <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
-        <button className="export-btn no-print" onClick={handleExportPDF} style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', border: 'none', boxShadow: '0 8px 20px rgba(139, 92, 246, 0.3)' }}>
-          📄 Export / Print PDF
-        </button>
-      </div> */}
-
-      {/* Row 1: Key Metrics */}
-      <section className="stats-grid">
-        <article className="stat-card">
-          <p>🎯 Tasks Completed (7 Days)</p>
-          <h3 style={{ color: "#ec4899" }}>{completedLastWeek.length}</h3>
-          <span>Excellent work</span>
-        </article>
-        <article className="stat-card">
-          <p>🚀 Weekly Completion Rate</p>
-          <h3 style={{ color: "#8b5cf6" }}>{weeklyRate}%</h3>
-          <span>Target is 80%</span>
-        </article>
-        <article className="stat-card">
-          <p>🏆 Most Productive Day</p>
-          <h3 style={{ color: "#3b82f6" }}>{mostProductiveDay}</h3>
-          <span>{maxCompleted} task completions</span>
-        </article>
-      </section>
-
-      {/* Row 2: Charts Grid */}
-      <div className="reports-grid">
-
-        {/* Progress chart */}
-        <div className="report-card">
-          <h3>📈 Task Completions (Last 7 Days)</h3>
-        <div className="chart-container">
-            <ResponsiveContainer>
-              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorComp" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} tickLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} allowDecimals={false} />
-                <Tooltip />
-                <Area type="monotone" dataKey="Completed" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorComp)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Category breakdown chart */}
-        <div className="report-card">
-          <h3>📊 Category Distribution</h3>
-          {barData.length === 0 ? (
-            <p style={{ color: "#6b7280", fontStyle: "italic", textAlign: "center", paddingTop: "80px" }}>No category data yet.</p>
-          ) : (
-            <div style={{ width: "100%", height: 260 }}>
-              <ResponsiveContainer>
-                <BarChart data={barData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                  <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} tickLine={false} />
-                  <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} allowDecimals={false} />
-                  <Tooltip />
-                  <Bar dataKey="Completed" fill="#8b5cf6" radius={[6, 6, 0, 0]}>
-                    {barData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </div>
-
-      </div>
-
-      {/* Row 3: AI Recommendations & Historical Log */}
-      <div className="reports-grid">
-        <div className="report-card">
-          <h2>💡 AI Recommendations for Next Week</h2>
-          <div className="ai-review-box" style={{ marginTop: "16px" }}>
-            <p style={{ whiteSpace: "pre-line", margin: 0 }}>
-              {aiSuggestions}
-            </p>
-          </div>
-        </div>
-
-        {/* <div className="report-card">
-          <h2>📜 Productivity Logs History</h2>
-          <div className="history-list" style={{ marginTop: "20px", maxHeight: "300px", overflowY: "auto", paddingRight: "8px" }}>
-            {(() => {
-              const todayDateStr = format(new Date(), "yyyy-MM-dd");
-
-              const pastHistory = history.filter(h => !(h.type === "daily" && h.date === todayDateStr));
-
-              const dailyStats = getDailyProgress();
-
-              const todaySummary = {
-                id: "today-live",
-                type: "daily",
-                date: todayDateStr,
-                totalTasks: dailyStats.todayCount + dailyStats.pendingCount, // approximation of all things active today
-                completedCount: dailyStats.todayCompleted,
-                pendingCount: dailyStats.pendingCount,
-                overdueCount: dailyStats.overdueCount,
-                completionRate: dailyStats.completionRate,
-                productivityScore: Math.min(100, dailyStats.completionRate + (dailyStats.streak > 3 ? 5 : 0) + (dailyStats.todayCompleted > 5 ? 10 : 0))
-              };
-
-              let displayHistory = [todaySummary, ...pastHistory].sort((a, b) => {
-                const dateA = a.date.split(" ")[0];
-                const dateB = b.date.split(" ")[0];
-                return dateB.localeCompare(dateA);
-              });
-
-              if (displayHistory.length === 0) {
-                return <p style={{ color: "#6b7280", fontStyle: "italic" }}>No entries in history yet.</p>;
-              }
-
-              return displayHistory.map((item) => {
-                if (item.type === "weekly") {
-                  return (
-                    <div key={item.id} className="history-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-light)', paddingBottom: '8px', marginBottom: '4px' }}>
-                        Weekly Report - {item.date}
-                      </div>
-                      <div style={{ fontSize: '0.9rem' }}>
-                        <div>Completed Tasks: <strong>{item.completedCount}</strong></div>
+      <div className="reports-page printable-reports">
+        <DraggableGrid page="reports" defaultLayout={['stat-completed', 'stat-rate', 'stat-productive', 'chart-completions', 'chart-category', 'ai-recommendations']}>
+          {({ layout, resetLayout }) => {
+            const renderWidget = (id) => {
+              switch(id) {
+                case 'stat-completed': return (
+                  <DraggableCard id="stat-completed" key="stat-completed">
+                    <article className="stat-card" style={{ height: "100%" }}>
+                      <p>🎯 Tasks Completed (7 Days)</p>
+                      <h3 style={{ color: "#ec4899" }}>{completedLastWeek.length}</h3>
+                      <span>Excellent work</span>
+                    </article>
+                  </DraggableCard>
+                );
+                case 'stat-rate': return (
+                  <DraggableCard id="stat-rate" key="stat-rate">
+                    <article className="stat-card" style={{ height: "100%" }}>
+                      <p>🚀 Weekly Completion Rate</p>
+                      <h3 style={{ color: "#8b5cf6" }}>{weeklyRate}%</h3>
+                      <span>Target is 80%</span>
+                    </article>
+                  </DraggableCard>
+                );
+                case 'stat-productive': return (
+                  <DraggableCard id="stat-productive" key="stat-productive">
+                    <article className="stat-card" style={{ height: "100%" }}>
+                      <p>🏆 Most Productive Day</p>
+                      <h3 style={{ color: "#3b82f6" }}>{mostProductiveDay}</h3>
+                      <span>{maxCompleted} task completions</span>
+                    </article>
+                  </DraggableCard>
+                );
+                case 'chart-completions': return (
+                  <DraggableCard id="chart-completions" key="chart-completions">
+                    <div className="report-card" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+                      <h3>📈 Task Completions (Last 7 Days)</h3>
+                      <div className="chart-container" style={{ flex: 1 }}>
+                        <ResponsiveContainer>
+                          <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="colorComp" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
+                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0} />
+                              </linearGradient>
+                            </defs>
+                            <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} tickLine={false} />
+                            <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} allowDecimals={false} />
+                            <Tooltip />
+                            <Area type="monotone" dataKey="Completed" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorComp)" />
+                          </AreaChart>
+                        </ResponsiveContainer>
                       </div>
                     </div>
-                  );
-                }
+                  </DraggableCard>
+                );
+                case 'chart-category': return (
+                  <DraggableCard id="chart-category" key="chart-category">
+                    <div className="report-card" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+                      <h3>📊 Category Distribution</h3>
+                      {barData.length === 0 ? (
+                        <p style={{ color: "#6b7280", fontStyle: "italic", textAlign: "center", paddingTop: "80px", flex: 1 }}>No category data yet.</p>
+                      ) : (
+                        <div style={{ width: "100%", flex: 1, minHeight: 260 }}>
+                          <ResponsiveContainer>
+                            <BarChart data={barData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                              <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} tickLine={false} />
+                              <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} allowDecimals={false} />
+                              <Tooltip />
+                              <Bar dataKey="Completed" fill="#8b5cf6" radius={[6, 6, 0, 0]}>
+                                {barData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                              </Bar>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+                    </div>
+                  </DraggableCard>
+                );
+                case 'ai-recommendations': return (
+                  <DraggableCard id="ai-recommendations" key="ai-recommendations">
+                    <div className="report-card" style={{ height: "100%" }}>
+                      <h2>💡 AI Recommendations for Next Week</h2>
+                      <div className="ai-review-box" style={{ marginTop: "16px" }}>
+                        <p style={{ whiteSpace: "pre-line", margin: 0 }}>
+                          {aiSuggestions}
+                        </p>
+                      </div>
+                    </div>
+                  </DraggableCard>
+                );
+                default: return null;
+              }
+            };
 
-                // return (
-                //   <div key={item.id} className="history-card" style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', background: 'var(--surface-bg)', borderRadius: '12px', border: '1px solid var(--border-light)', marginBottom: '12px' }}>
-                //     <div style={{ fontWeight: '600', fontSize: '1.05rem', color: 'var(--text-primary)', borderBottom: '1px dashed var(--border-light)', paddingBottom: '8px', marginBottom: '4px' }}>
-                //       {format(new Date(item.date), "dd MMM yyyy")}
-                //       {item.id === "today-live" && <span style={{ fontSize: '0.75rem', color: '#10b981', marginLeft: '8px', padding: '2px 6px', background: 'rgba(16,185,129,0.1)', borderRadius: '12px' }}>Live</span>}
-                //     </div>
+            return (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
+                  <button type="button" className="db-summary-trigger-btn no-print" onClick={resetLayout} aria-label="Reset Layout" title="Reset Layout to Default">
+                    <IcoReset />
+                    <span className="db-summary-trigger-label">Reset Layout</span>
+                  </button>
+                </div>
 
-                //     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '0.9rem' }}>
-                //       <div style={{ color: 'var(--text-secondary)' }}>Total Tasks: <strong style={{ color: 'var(--text-primary)' }}>{item.totalTasks || 0}</strong></div>
-                //       <div style={{ color: 'var(--text-secondary)' }}>Completed: <strong style={{ color: '#10b981' }}>{item.completedCount || 0}</strong></div>
-                //       <div style={{ color: 'var(--text-secondary)' }}>Pending: <strong style={{ color: '#f59e0b' }}>{item.pendingCount || 0}</strong></div>
-                //       <div style={{ color: 'var(--text-secondary)' }}>Overdue: <strong style={{ color: '#ef4444' }}>{item.overdueCount || 0}</strong></div>
-                //     </div>
+                <section className="stats-grid">
+                  {layout.filter(id => id.startsWith('stat-')).map(renderWidget)}
+                </section>
 
-                //     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '0.9rem', marginTop: '4px', paddingTop: '10px', borderTop: '1px dashed var(--border-light)' }}>
-                //       <div style={{ color: 'var(--text-secondary)' }}>Completion: <strong style={{ color: '#3b82f6' }}>{item.completionRate || 0}%</strong></div>
-                //       <div style={{ color: 'var(--text-secondary)' }}>Productivity Score: <strong style={{ color: '#8b5cf6' }}>{item.productivityScore || 0}</strong></div>
-                //     </div>
-                //   </div>
-                // );
-              });
-            })()}
-          </div>
-        </div> */}
+                <div className="reports-grid">
+                  {layout.filter(id => id.startsWith('chart-')).map(renderWidget)}
+                </div>
+
+                <div className="reports-grid">
+                  {layout.filter(id => id === 'ai-recommendations').map(renderWidget)}
+                </div>
+              </>
+            );
+          }}
+        </DraggableGrid>
       </div>
-    </div>
     </div>
   );
 }
-
 export default ReportsPage;
+

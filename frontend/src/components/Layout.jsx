@@ -140,7 +140,10 @@ function Layout({ children }) {
     focusMode,
     switchFocusMode,
     pomodoroSettings,
-    updatePomodoroSettings
+    updatePomodoroSettings,
+    startTimer,
+    pauseTimer,
+    resetTimerToDefault
   } = useTasks();
   const [accountModal, setAccountModal] = useState(null);
   const [profileName, setProfileName] = useState(userName);
@@ -427,8 +430,7 @@ function Layout({ children }) {
           </div>
 
 
-          {/* Right: Actions */}
-          <div className="topbar-actions">
+          <div className="topbar-center">
             <button
               type="button"
               className="topbar-add-task-btn"
@@ -455,6 +457,7 @@ function Layout({ children }) {
             </button>
             {/* Pomodoro Timer Dropdown */}
             <div className="timer-menu-wrap" ref={timerDropdownRef}>
+              {(!isFocusRunning && focusTimeLeft === pomodoroSettings[focusMode] * 60) ? (
               <button
                 type="button"
                 className={`topbar-icon-btn timer-btn ${timerDropdownOpen ? "open" : ""}`}
@@ -466,7 +469,7 @@ function Layout({ children }) {
                   borderRadius: "14px",
                   padding: "10px 18px",
                   minHeight: "42px",
-                  minWidth: "110px",
+                  minWidth: "140px",
                   fontWeight: "700",
                   fontSize: "14px",
                   display: "flex",
@@ -482,22 +485,52 @@ function Layout({ children }) {
                 <span className="timer-btn-icon">
                   <TimerIcon />
                 </span>
-
                 Timer
-
-                {isFocusRunning && (
-                  <span
-                    className="timer-active-dot"
-                    style={{ background: getModeColor(focusMode) }}
-                  />
-                )}
               </button>
+            ) : (
+              <div className={`topbar-icon-btn timer-btn timer-active-group ${timerDropdownOpen ? "open" : ""}`} style={{
+                background: "linear-gradient(135deg, #4f46e5, #7c3aed)",
+                color: "#fff",
+                borderRadius: "14px",
+                minHeight: "42px",
+                minWidth: "140px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "0 6px",
+                boxShadow: "0 8px 24px rgba(79, 70, 229, 0.35)",
+                gap: "4px"
+              }}>
+                <button 
+                  onClick={() => isFocusRunning ? pauseTimer() : startTimer()} 
+                  style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center' }}
+                >
+                  {isFocusRunning ? <PauseIcon size={18} /> : <PlayIcon size={18} />}
+                </button>
+                
+                <button 
+                  onClick={() => setTimerDropdownOpen(!timerDropdownOpen)}
+                  style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontWeight: '700', fontSize: '15px', padding: '0', flex: 1, textAlign: 'center' }}
+                >
+                  {!isFocusRunning ? `Resume ${Math.floor(focusTimeLeft / 60).toString().padStart(2, '0')}:${(focusTimeLeft % 60).toString().padStart(2, '0')}` : `${Math.floor(focusTimeLeft / 60).toString().padStart(2, '0')}:${(focusTimeLeft % 60).toString().padStart(2, '0')}`}
+                </button>
+                
+                <button 
+                  onClick={() => { setTimerDropdownOpen(true); resetTimerToDefault(); }}
+                  style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center' }}
+                  title="Reset Timer"
+                >
+                  <ResetIcon size={18} />
+                </button>
+              </div>
+            )}
 
               {timerDropdownOpen && (
                 <div className="timer-dropdown">
                   <div className="timer-dropdown-header">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <h4 className="timer-dropdown-title" style={{ margin: 0 }}>Pomodoro Timer</h4>
+                    <div style={{ display: 'flex', gap: '8px' }}>
                       <button
                         type="button"
                         className="timer-settings-btn"
@@ -510,6 +543,15 @@ function Layout({ children }) {
                       >
                         <PlusIcon />
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setTimerDropdownOpen(false)}
+                        title="Close Popup"
+                        style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)', padding: '4px', borderRadius: '4px', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        ✕
+                      </button>
+                    </div>
                     </div>
                     {!showTimerSettings && (
                       <div className="timer-mode-tabs">
@@ -574,42 +616,58 @@ function Layout({ children }) {
 
                       <div className="timer-dropdown-footer">
                         <button
-                          type="button"
-                          className={`timer-action-btn ${isFocusRunning ? "running" : ""}`}
-                          onClick={() => setIsFocusRunning(!isFocusRunning)}
-                          style={{
-                            background: isFocusRunning ? "transparent" : getModeColor(focusMode),
-                            color: isFocusRunning ? getModeColor(focusMode) : "#fff",
-                            borderColor: isFocusRunning ? getModeColor(focusMode) : "transparent",
-                          }}
-                        >
-                          {isFocusRunning ? (
-                            <>
-                              <PauseIcon /> Pause
-                            </>
+                        type="button"
+                        className={`timer-action-btn ${isFocusRunning ? "running" : ""}`}
+                        onClick={() => isFocusRunning ? pauseTimer() : startTimer()}
+                        style={{
+                          background: isFocusRunning ? "transparent" : getModeColor(focusMode),
+                          color: isFocusRunning ? getModeColor(focusMode) : "#fff",
+                          borderColor: isFocusRunning ? getModeColor(focusMode) : "transparent",
+                          flex: 1
+                        }}
+                      >
+                        {isFocusRunning ? (
+                          <><PauseIcon /> Pause</>
+                        ) : (
+                          focusTimeLeft !== pomodoroSettings[focusMode] * 60 ? (
+                            <><PlayIcon /> Resume</>
                           ) : (
-                            <>
-                              <PlayIcon /> Start
-                            </>
-                          )}
-                        </button>
-
-                        <button
-                          type="button"
-                          className="timer-reset-btn"
-                          onClick={resetPomodoroTimer}
-                          title="Reset Timer"
-                          aria-label="Reset Timer"
-                        >
-                          <ResetIcon />
-                        </button>
+                            <><PlayIcon /> Start</>
+                          )
+                        )}
+                      </button>
                       </div>
+                    <button
+                        type="button"
+                        onClick={resetTimerToDefault}
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          marginTop: '8px',
+                          background: 'rgba(239, 68, 68, 0.1)',
+                          color: '#ef4444',
+                          border: '1px solid rgba(239, 68, 68, 0.2)',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          fontWeight: '600',
+                          fontSize: '13px',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = '#fff'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; e.currentTarget.style.color = '#ef4444'; }}
+                      >
+                        Reset to Default
+                      </button>
                     </>
                   )}
                 </div>
               )}
             </div>
-            {/* Notification Button & Dropdown */}
+          </div>
+          {/* Right: Actions */}
+          <div className="topbar-actions">
+            
+          {/* Notification Button & Dropdown */}
             <div className="notification-wrapper" ref={notificationRef} style={{ position: "relative" }}>
               <button
                 type="button"

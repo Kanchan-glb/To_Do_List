@@ -1,4 +1,9 @@
 import { useState, useMemo } from "react";
+
+import DraggableGrid from "./dnd/DraggableGrid";
+import DraggableCard from "./dnd/DraggableCard";
+import { clearLayout } from "../utils/layoutStorage";
+
 import { useTasks } from "../context/TaskContext";
 import { format, subDays, addDays, isThisMonth, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isThisWeek, startOfWeek, endOfWeek, differenceInDays } from "date-fns";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
@@ -20,6 +25,8 @@ const IcoTrendingUp = () => <Ico><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"
 const IcoTrendingDown = () => <Ico><polyline points="23 18 13.5 8.5 8.5 13.5 1 6" /><polyline points="17 18 23 18 23 12" /></Ico>;
 const IcoStar = () => <Ico><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></Ico>;
 const IcoZap = () => <Ico><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></Ico>;
+
+const IcoReset = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7" /><polyline points="3 3 3 9 9 9" /></svg>;
 
 export default function WorkProgressTracker() {
   const { tasks, streak, longestStreak } = useTasks();
@@ -200,20 +207,17 @@ export default function WorkProgressTracker() {
   ].filter(d => d.value > 0);
   if (pieData.length === 0) pieData.push({ name: "No Tasks", value: 1, color: "#e2e8f0" });
 
+
   return (
     <div className="page-fade-in wpt-container">
-
       {/* ── Header & Filters ── */}
       <div className="wpt-header">
         <div>
           <h2 className="wpt-title">Report Tracker</h2>
-          {/* <p className="wpt-subtitle">Monitor productivity, track work, and review historical performance.</p> */}
         </div>
-        <div className="wpt-filters">
-
+        <div className="wpt-filters" style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
           <div className="wpt-filter-group">
-
-            {["Today", "Yesterday", "Tomorrow","Last 7 Days", "This Month"].map(f => (
+            {["Today", "Yesterday", "Tomorrow", "Last 7 Days", "This Month"].map(f => (
               <button
                 key={f}
                 className={`wpt-filter-btn ${activeFilter === f ? "active" : ""}`}
@@ -222,226 +226,199 @@ export default function WorkProgressTracker() {
                 {f}
               </button>
             ))}
-
           </div>
-
-          {/* <input
-            type="date"
-            className="wpt-date-picker"
-            value={customDate}
-            onChange={(e) => {
-              setCustomDate(e.target.value);
-              setActiveFilter("Custom Date");
-            }}
-          /> */}
 
         </div>
       </div>
 
-      {/* ── Top Summary Cards ── */}
-      <div className="wpt-summary-grid">
-        <div className="wpt-sum-card">
-          <span className="wpt-sum-title">Total Tasks</span>
-          <span className="wpt-sum-value" style={{ color: "#6366f1" }}>{summaryStats.total}</span>
-        </div>
-        <div className="wpt-sum-card">
-          <span className="wpt-sum-title">Completed</span>
-          <span className="wpt-sum-value" style={{ color: "#10b981" }}>{summaryStats.completed}</span>
-        </div>
-        <div className="wpt-sum-card">
-          <span className="wpt-sum-title">Pending</span>
-          <span className="wpt-sum-value" style={{ color: "#f59e0b" }}>{summaryStats.pending}</span>
-        </div>
-        <div className="wpt-sum-card">
-          <span className="wpt-sum-title">Overdue</span>
-          <span className="wpt-sum-value" style={{ color: "#ef4444" }}>{summaryStats.overdue}</span>
-        </div>
-        <div className="wpt-sum-card">
-          <span className="wpt-sum-title">Rescheduled</span>
-          <span className="wpt-sum-value" style={{ color: "#3b82f6" }}>{summaryStats.rescheduled}</span>
-        </div>
-        <div className="wpt-sum-card">
-          <span className="wpt-sum-title">Completion %</span>
-          <span className="wpt-sum-value" style={{ color: "#a855f7" }}>{summaryStats.completionPct}%</span>
-        </div>
-      </div>
-
-      <div className="wpt-main-grid">
-        {/* LEFT COLUMN */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-
-          {/* Daily Progress */}
-          <div className="wpt-card">
-            <div className="wpt-card-header">
-              <span>{activeFilter} Progress</span>
-              <span style={{ color: "var(--color-primary)" }}>{summaryStats.completed} / {summaryStats.total} Tasks Completed</span>
-            </div>
-            <div className="wpt-progress-wrapper">
-              <div className="wpt-progress-fill" style={{ width: `${summaryStats.completionPct}%` }}>
-                {summaryStats.completionPct > 5 && <span className="wpt-progress-text">{summaryStats.completionPct}%</span>}
-              </div>
-            </div>
-          </div>
-
-          {/* Weekly Progress (Last 7 Days) */}
-          <div className="wpt-card">
-            <div className="wpt-card-header">Last 7 Days Progress</div>
-            <div className="wpt-weekly-row">
-              {last7DaysData.map(d => (
-                <div key={d.dateStr} className="wpt-day-card">
-                  <span className="wpt-day-name">{d.displayDay}</span>
-                  <span className="wpt-day-stats">{d.completed} <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: 500 }}>/ {d.total}</span></span>
-                  <span className="wpt-day-pct">{d.completionPct}%</span>
-                  <div style={{ width: "100%", height: "4px", background: "var(--border-light)", borderRadius: "4px", overflow: "hidden", marginTop: "4px" }}>
-                    <div style={{ width: `${d.completionPct}%`, height: "100%", background: "var(--color-primary)", borderRadius: "4px" }} />
+      <DraggableGrid page="reports" defaultLayout={['sum-total', 'sum-completed', 'sum-pending', 'sum-overdue', 'sum-rescheduled', 'sum-completion', 'left-daily', 'left-weekly', 'chart-weekly', 'chart-status', 'right-previous', 'right-insights']}>
+        {({ layout }) => {
+          const renderWidget = (id) => {
+            switch (id) {
+              case 'sum-total': return <DraggableCard id="sum-total" key="sum-total"><div className="wpt-sum-card">
+                <span className="wpt-sum-title">Total Tasks</span>
+                <span className="wpt-sum-value" style={{ color: "#6366f1" }}>{summaryStats.total}</span>
+              </div></DraggableCard>;
+              case 'sum-completed': return <DraggableCard id="sum-completed" key="sum-completed"><div className="wpt-sum-card">
+                <span className="wpt-sum-title">Completed</span>
+                <span className="wpt-sum-value" style={{ color: "#10b981" }}>{summaryStats.completed}</span>
+              </div></DraggableCard>;
+              case 'sum-pending': return <DraggableCard id="sum-pending" key="sum-pending"><div className="wpt-sum-card">
+                <span className="wpt-sum-title">Pending</span>
+                <span className="wpt-sum-value" style={{ color: "#f59e0b" }}>{summaryStats.pending}</span>
+              </div></DraggableCard>;
+              case 'sum-overdue': return <DraggableCard id="sum-overdue" key="sum-overdue"><div className="wpt-sum-card">
+                <span className="wpt-sum-title">Overdue</span>
+                <span className="wpt-sum-value" style={{ color: "#ef4444" }}>{summaryStats.overdue}</span>
+              </div></DraggableCard>;
+              case 'sum-rescheduled': return <DraggableCard id="sum-rescheduled" key="sum-rescheduled"><div className="wpt-sum-card">
+                <span className="wpt-sum-title">Rescheduled</span>
+                <span className="wpt-sum-value" style={{ color: "#3b82f6" }}>{summaryStats.rescheduled}</span>
+              </div></DraggableCard>;
+              case 'sum-completion': return <DraggableCard id="sum-completion" key="sum-completion"><div className="wpt-sum-card">
+                <span className="wpt-sum-title">Completion %</span>
+                <span className="wpt-sum-value" style={{ color: "#a855f7" }}>{summaryStats.completionPct}%</span>
+              </div></DraggableCard>;
+              case 'left-daily': return <DraggableCard id="left-daily" key="left-daily">{/* Daily Progress */}
+                <div className="wpt-card">
+                  <div className="wpt-card-header">
+                    <span>{activeFilter} Progress</span>
+                    <span style={{ color: "var(--color-primary)" }}>{summaryStats.completed} / {summaryStats.total} Tasks Completed</span>
+                  </div>
+                  <div className="wpt-progress-wrapper">
+                    <div className="wpt-progress-fill" style={{ width: `${summaryStats.completionPct}%` }}>
+                      {summaryStats.completionPct > 5 && <span className="wpt-progress-text">{summaryStats.completionPct}%</span>}
+                    </div>
+                  </div>
+                </div></DraggableCard>;
+              case 'left-weekly': return <DraggableCard id="left-weekly" key="left-weekly">{/* Weekly Progress (Last 7 Days) */}
+                <div className="wpt-card">
+                  <div className="wpt-card-header">Last 7 Days Progress</div>
+                  <div className="wpt-weekly-row">
+                    {last7DaysData.map(d => (
+                      <div key={d.dateStr} className="wpt-day-card">
+                        <span className="wpt-day-name">{d.displayDay}</span>
+                        <span className="wpt-day-stats">{d.completed} <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: 500 }}>/ {d.total}</span></span>
+                        <span className="wpt-day-pct">{d.completionPct}%</span>
+                        <div style={{ width: "100%", height: "4px", background: "var(--border-light)", borderRadius: "4px", overflow: "hidden", marginTop: "4px" }}>
+                          <div style={{ width: `${d.completionPct}%`, height: "100%", background: "var(--color-primary)", borderRadius: "4px" }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div></DraggableCard>;
+              case 'chart-weekly': return <DraggableCard id="chart-weekly" key="chart-weekly"><div className="wpt-card" style={{ padding: "16px" }}>
+                <div className="wpt-card-header" style={{ marginBottom: "8px", fontSize: "1rem" }}>Weekly Completion </div>
+                <div style={{ height: "180px", width: "100%" }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={last7DaysData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                      <XAxis dataKey="displayDay" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} width={30} />
+                      <RechartsTooltip contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
+                      <Line type="monotone" dataKey="completionPct" stroke="#4f46e5" strokeWidth={3} dot={{ r: 4, fill: "#4f46e5" }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div></DraggableCard>;
+              case 'chart-status': return <DraggableCard id="chart-status" key="chart-status"><div className="wpt-card" style={{ padding: "16px" }}>
+                <div className="wpt-card-header" style={{ marginBottom: "8px", fontSize: "1rem" }}>Status Distribution</div>
+                <div style={{ height: "180px", width: "100%", position: "relative" }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={pieData} innerRadius={50} outerRadius={70} paddingAngle={2} dataKey="value" stroke="none">
+                        {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                      </Pie>
+                      <RechartsTooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
+                    <span style={{ fontSize: "1.2rem", fontWeight: 800, color: "var(--text-primary)" }}>{summaryStats.completionPct}%</span>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Charts Row */}
-          <div className="wpt-chart-grid">
-            <div className="wpt-card" style={{ padding: "16px" }}>
-              <div className="wpt-card-header" style={{ marginBottom: "8px", fontSize: "1rem" }}>Weekly Completion </div>
-              <div style={{ height: "180px", width: "100%" }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={last7DaysData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                    <XAxis dataKey="displayDay" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} width={30} />
-                    <RechartsTooltip contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
-                    <Line type="monotone" dataKey="completionPct" stroke="#4f46e5" strokeWidth={3} dot={{ r: 4, fill: "#4f46e5" }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="wpt-card" style={{ padding: "16px" }}>
-              <div className="wpt-card-header" style={{ marginBottom: "8px", fontSize: "1rem" }}>Status Distribution</div>
-              <div style={{ height: "180px", width: "100%", position: "relative" }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={pieData} innerRadius={50} outerRadius={70} paddingAngle={2} dataKey="value" stroke="none">
-                      {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
-                    </Pie>
-                    <RechartsTooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
-                  <span style={{ fontSize: "1.2rem", fontWeight: 800, color: "var(--text-primary)" }}>{summaryStats.completionPct}%</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-        {/* RIGHT COLUMN */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-
-          {/* Historical Progress Date Picker */}
-          <div className="wpt-card">
-            <div className="wpt-card-header">View Previous Progress</div>
-           <input
-  type="date"
-  className="wpt-date-picker"
-  style={{ width: "100%", marginBottom: "16px" }}
-  value={historicalDate}
-  max={new Date().toISOString().split("T")[0]}
-  onChange={(e) => setHistoricalDate(e.target.value)}
-/>
-            {histStats.total === 0 ? (
-              <div style={{ textAlign: "center", padding: "24px", color: "var(--text-muted)", background: "var(--bg-body)", borderRadius: "12px" }}>
-                No task history available for this date.
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontWeight: 600, color: "var(--text-secondary)" }}>Total Tasks</span>
-                  <span style={{ fontWeight: 800 }}>{histStats.total}</span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontWeight: 600, color: "#10b981" }}>Completed</span>
-                  <span style={{ fontWeight: 800, color: "#10b981" }}>{histStats.completed}</span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontWeight: 600, color: "#f59e0b" }}>Pending</span>
-                  <span style={{ fontWeight: 800, color: "#f59e0b" }}>{histStats.pending}</span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontWeight: 600, color: "#ef4444" }}>Overdue</span>
-                  <span style={{ fontWeight: 800, color: "#ef4444" }}>{histStats.overdue}</span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border-light)", paddingTop: "12px" }}>
-                  <span style={{ fontWeight: 800, color: "var(--text-primary)" }}>Completion</span>
-                  <span style={{ fontWeight: 800, color: "#a855f7", fontSize: "1.2rem" }}>{histStats.completionPct}%</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Calendar View */}
-          {/* <div className="wpt-card">
-            <div className="wpt-card-header" style={{ marginBottom: "12px" }}>
-              <span>Calendar View</span>
-              <span style={{ fontSize: "0.9rem", color: "var(--text-muted)", fontWeight: 600 }}>{format(calendarMonth, "MMMM yyyy")}</span>
-            </div>
-            <div className="wpt-calendar">
-              <div className="wpt-cal-header">
-                {["Su","Mo","Tu","We","Th","Fr","Sa"].map(d => <span key={d}>{d}</span>)}
-              </div>
-              <div className="wpt-cal-grid">
-                {calendarDays.map((d, i) => (
-                  d ? (
-                    <div 
-                      key={d.dateStr} 
-                      className={`wpt-cal-cell ${d.status}`}
-                      title={`${format(d.date, "MMM d")}: ${d.stats.completionPct}% (${d.stats.completed}/${d.stats.total})`}
-                      onClick={() => setHistoricalDate(d.dateStr)}
-                    >
-                      {d.date.getDate()}
+              </div></DraggableCard>;
+              case 'right-previous': return <DraggableCard id="right-previous" key="right-previous">{/* Historical Progress Date Picker */}
+                <div className="wpt-card">
+                  <div className="wpt-card-header">View Previous Progress</div>
+                  <input
+                    type="date"
+                    className="wpt-date-picker"
+                    style={{ width: "100%", marginBottom: "16px" }}
+                    value={historicalDate}
+                    max={new Date().toISOString().split("T")[0]}
+                    onChange={(e) => setHistoricalDate(e.target.value)}
+                  />
+                  {histStats.total === 0 ? (
+                    <div style={{ textAlign: "center", padding: "24px", color: "var(--text-muted)", background: "var(--bg-body)", borderRadius: "12px" }}>
+                      No task history available for this date.
                     </div>
-                  ) : <div key={`empty-${i}`} className="wpt-cal-cell disabled" />
-                ))}
-              </div>
-            </div>
-          </div> */}
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontWeight: 600, color: "var(--text-secondary)" }}>Total Tasks</span>
+                        <span style={{ fontWeight: 800 }}>{histStats.total}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontWeight: 600, color: "#10b981" }}>Completed</span>
+                        <span style={{ fontWeight: 800, color: "#10b981" }}>{histStats.completed}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontWeight: 600, color: "#f59e0b" }}>Pending</span>
+                        <span style={{ fontWeight: 800, color: "#f59e0b" }}>{histStats.pending}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontWeight: 600, color: "#ef4444" }}>Overdue</span>
+                        <span style={{ fontWeight: 800, color: "#ef4444" }}>{histStats.overdue}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border-light)", paddingTop: "12px" }}>
+                        <span style={{ fontWeight: 800, color: "var(--text-primary)" }}>Completion</span>
+                        <span style={{ fontWeight: 800, color: "#a855f7", fontSize: "1.2rem" }}>{histStats.completionPct}%</span>
+                      </div>
+                    </div>
+                  )}
+                </div></DraggableCard>;
+              case 'right-insights': return <DraggableCard id="right-insights" key="right-insights">{/* Performance Insights */}
+                <div className="wpt-card">
+                  <div className="wpt-card-header" style={{ marginBottom: "16px" }}>Performance Insights</div>
+                  <div className="wpt-insights">
+                    <div className="wpt-insight-row">
+                      <span className="wpt-insight-label"><IcoStar size={16} /> Best Performing Day</span>
+                      <span className="wpt-insight-value">{insights.bestDay}</span>
+                    </div>
+                    <div className="wpt-insight-row">
+                      <span className="wpt-insight-label"><IcoFire size={16} /> Current Streak</span>
+                      <span className="wpt-insight-value">{insights.streak} Days</span>
+                    </div>
+                    <div className="wpt-insight-row">
+                      <span className="wpt-insight-label"><IcoTarget size={16} /> Highest Completion %</span>
+                      <span className="wpt-insight-value">{insights.highestPct}%</span>
+                    </div>
+                    <div className="wpt-insight-row">
+                      <span className="wpt-insight-label"><IcoZap size={16} /> Avg Daily Completion</span>
+                      <span className="wpt-insight-value">{insights.avgDaily} Tasks</span>
+                    </div>
+                    <div className="wpt-insight-row">
+                      <span className="wpt-insight-label">
+                        {insights.trendDiff >= 0 ? <IcoTrendingUp size={16} /> : <IcoTrendingDown size={16} />}
+                        Weekly Trend
+                      </span>
+                      <span className="wpt-insight-value" style={{ color: insights.trendDiff >= 0 ? "#10b981" : "#ef4444" }}>
+                        {insights.trendDiff > 0 ? "+" : ""}{insights.trendDiff}%
+                      </span>
+                    </div>
+                  </div>
+                </div></DraggableCard>;
+              default: return null;
+            }
+          };
 
-          {/* Performance Insights */}
-          <div className="wpt-card">
-            <div className="wpt-card-header" style={{ marginBottom: "16px" }}>Performance Insights</div>
-            <div className="wpt-insights">
-              <div className="wpt-insight-row">
-                <span className="wpt-insight-label"><IcoStar size={16} /> Best Performing Day</span>
-                <span className="wpt-insight-value">{insights.bestDay}</span>
+          return (
+            <>
+              {/* ── Top Summary Cards ── */}
+              <div className="wpt-summary-grid">
+                {layout.filter(id => id.startsWith('sum-')).map(renderWidget)}
               </div>
-              <div className="wpt-insight-row">
-                <span className="wpt-insight-label"><IcoFire size={16} /> Current Streak</span>
-                <span className="wpt-insight-value">{insights.streak} Days</span>
-              </div>
-              <div className="wpt-insight-row">
-                <span className="wpt-insight-label"><IcoTarget size={16} /> Highest Completion %</span>
-                <span className="wpt-insight-value">{insights.highestPct}%</span>
-              </div>
-              <div className="wpt-insight-row">
-                <span className="wpt-insight-label"><IcoZap size={16} /> Avg Daily Completion</span>
-                <span className="wpt-insight-value">{insights.avgDaily} Tasks</span>
-              </div>
-              <div className="wpt-insight-row">
-                <span className="wpt-insight-label">
-                  {insights.trendDiff >= 0 ? <IcoTrendingUp size={16} /> : <IcoTrendingDown size={16} />}
-                  Weekly Trend
-                </span>
-                <span className="wpt-insight-value" style={{ color: insights.trendDiff >= 0 ? "#10b981" : "#ef4444" }}>
-                  {insights.trendDiff > 0 ? "+" : ""}{insights.trendDiff}%
-                </span>
-              </div>
-            </div>
-          </div>
 
-        </div>
-      </div>
+              <div className="wpt-main-grid">
+                {/* LEFT COLUMN */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+                  {layout.filter(id => id.startsWith('left-')).map(renderWidget)}
+
+                  {/* Charts Row */}
+                  <div className="wpt-chart-grid">
+                    {layout.filter(id => id.startsWith('chart-')).map(renderWidget)}
+                  </div>
+                </div>
+
+                {/* RIGHT COLUMN */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+                  {layout.filter(id => id.startsWith('right-')).map(renderWidget)}
+                </div>
+              </div>
+            </>
+          );
+        }}
+      </DraggableGrid>
     </div>
   );
 }

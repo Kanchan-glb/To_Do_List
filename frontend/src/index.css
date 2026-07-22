@@ -1465,6 +1465,29 @@ textarea:focus {
   font-weight: 800;
   line-height: 1;
 }
+.topbar-add-task-btn,
+.timer-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  height: 46px;
+  padding: 0 20px;
+
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.95rem;
+
+  cursor: pointer;
+  transition: all .2s ease;
+}
+
+.topbar-add-task-btn:hover,
+.timer-action-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(.95);
+}
 
 .avatar-status {
   position: absolute;
@@ -3040,5 +3063,40 @@ textarea:focus {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+.topbar-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 10;
+}
+
+@media (max-width: 768px) {
+  .topbar-center {
+    gap: 6px;
+  }
+  .topbar-add-task-btn span,
+  .timer-btn .timer-label,
+  .timer-btn {
+     /* We will handle icon-only styling safely below */
+  }
+  .topbar-add-task-btn span:not(.icon) {
+    display: none;
+  }
+  .topbar-add-task-btn {
+    min-width: 42px !important;
+    padding: 0 10px !important;
+  }
+  .timer-btn {
+    min-width: 42px !important;
+    padding: 0 10px !important;
+    font-size: 0 !important; /* Hide 'Timer' text */
+  }
+  .timer-btn .timer-btn-icon {
+    margin: 0;
   }
 }

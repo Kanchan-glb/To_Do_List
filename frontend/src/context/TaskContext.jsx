@@ -73,20 +73,67 @@ export function TaskProvider({ children }) {
   }, [pomodoroSettings, userEmail]);
 
   // Pomodoro Focus Timer State
-  const [focusTimeLeft, setFocusTimeLeft] = useState(() => {
-    const settings = getScopedData("smartPomodoroSettings", { work: 25 }, true);
-    return settings.work * 60;
+  const [pomodoroState, setPomodoroState] = useState(() => {
+    const defaultSettings = getScopedData("smartPomodoroSettings", { work: 25, shortBreak: 5, longBreak: 15 }, true);
+    return getScopedData("smartPomodoroState", {
+      focusMode: "work",
+      focusTimeLeft: defaultSettings.work * 60,
+      isFocusRunning: false,
+      targetTime: null
+    }, true);
   });
-  const [isFocusRunning, setIsFocusRunning] = useState(false);
-  const [focusMode, setFocusMode] = useState("work"); // work, shortBreak, longBreak
+
+  const focusTimeLeft = pomodoroState.focusTimeLeft;
+  const isFocusRunning = pomodoroState.isFocusRunning;
+  const focusMode = pomodoroState.focusMode;
+
   const [focusStats, setFocusStats] = useState(() => getScopedData("smartFocusStats", { workMinutes: 0, completedSessions: 0 }, true));
+
+  // Persist Pomodoro State
+  useEffect(() => {
+    localStorage.setItem(`smartPomodoroState_${userEmail}`, JSON.stringify(pomodoroState));
+  }, [pomodoroState, userEmail]);
 
   const updatePomodoroSettings = (newSettings) => {
     setPomodoroSettings(newSettings);
-    if (!isFocusRunning) {
-      setFocusTimeLeft(newSettings[focusMode] * 60);
+    if (!pomodoroState.isFocusRunning) {
+      setPomodoroState(prev => ({
+        ...prev,
+        focusTimeLeft: newSettings[prev.focusMode] * 60
+      }));
     }
   };
+  const startTimer = () => {
+    if (pomodoroState.isFocusRunning) return;
+    setPomodoroState(prev => ({
+      ...prev,
+      isFocusRunning: true,
+      targetTime: Date.now() + prev.focusTimeLeft * 1000
+    }));
+  };
+
+  const pauseTimer = () => {
+    if (!pomodoroState.isFocusRunning) return;
+    setPomodoroState(prev => {
+      const remaining = prev.targetTime ? Math.max(0, Math.round((prev.targetTime - Date.now()) / 1000)) : prev.focusTimeLeft;
+      return {
+        ...prev,
+        isFocusRunning: false,
+        focusTimeLeft: remaining,
+        targetTime: null
+      };
+    });
+  };
+
+  const resetTimerToDefault = () => {
+    setPomodoroState(prev => ({
+      ...prev,
+      isFocusRunning: false,
+      focusTimeLeft: pomodoroSettings[prev.focusMode] * 60,
+      targetTime: null
+    }));
+  };
+
 
   const timerRef = useRef(null);
 
@@ -250,16 +297,36 @@ export function TaskProvider({ children }) {
 
   // Pomodoro timer tick logic
   useEffect(() => {
-    if (isFocusRunning) {
+    // If we just loaded and it's supposedly running, check if it expired while away
+    if (pomodoroState.isFocusRunning && pomodoroState.targetTime) {
+      const remaining = Math.round((pomodoroState.targetTime - Date.now()) / 1000);
+      if (remaining <= 0) {
+         setIsFocusRunning(false); // We need to define this helper for handleFocusTimerComplete backwards compatibility
+         handleFocusTimerComplete();
+         return;
+      }
+    }
+
+    if (pomodoroState.isFocusRunning) {
       timerRef.current = setInterval(() => {
-        setFocusTimeLeft((prev) => {
-          if (prev <= 1) {
+        setPomodoroState((prev) => {
+          if (!prev.isFocusRunning || !prev.targetTime) return prev;
+          
+          const remaining = Math.round((prev.targetTime - Date.now()) / 1000);
+          if (remaining <= 0) {
             clearInterval(timerRef.current);
-            setIsFocusRunning(false);
-            handleFocusTimerComplete();
-            return 0;
+            setTimeout(() => handleFocusTimerComplete(), 0);
+            return {
+              ...prev,
+              isFocusRunning: false,
+              focusTimeLeft: 0,
+              targetTime: null
+            };
           }
-          return prev - 1;
+          return {
+            ...prev,
+            focusTimeLeft: remaining
+          };
         });
       }, 1000);
     } else {
@@ -269,7 +336,7 @@ export function TaskProvider({ children }) {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isFocusRunning, focusMode]);
+  }, [pomodoroState.isFocusRunning, pomodoroState.targetTime]);
 
   const handleFocusTimerComplete = () => {
     try {
@@ -304,11 +371,32 @@ export function TaskProvider({ children }) {
     }
   };
 
-  const switchFocusMode = (mode) => {
-    setIsFocusRunning(false);
-    setFocusMode(mode);
-    setFocusTimeLeft(pomodoroSettings[mode] * 60);
+  
+  const setIsFocusRunning = (running) => {
+    if (running) {
+       startTimer();
+    } else {
+       pauseTimer();
+    }
   };
+  
+  const setFocusTimeLeft = (timeOrFn) => {
+     setPomodoroState(prev => {
+        const newTime = typeof timeOrFn === 'function' ? timeOrFn(prev.focusTimeLeft) : timeOrFn;
+        return { ...prev, focusTimeLeft: newTime };
+     });
+  };
+
+  const switchFocusMode = (mode) => {
+    setPomodoroState(prev => ({
+      ...prev,
+      isFocusRunning: false,
+      focusMode: mode,
+      focusTimeLeft: pomodoroSettings[mode] * 60,
+      targetTime: null
+    }));
+  };
+
 
   // Task Actions
   const addTask = (taskData) => {
@@ -564,7 +652,10 @@ export function TaskProvider({ children }) {
         focusStats,
         switchFocusMode,
         pomodoroSettings,
-        updatePomodoroSettings
+        updatePomodoroSettings,
+    startTimer,
+    pauseTimer,
+    resetTimerToDefault
       }}
     >
       {children}

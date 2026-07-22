@@ -5,6 +5,8 @@ import TaskDetailsModal from "./TaskDetailsModal";
 import TaskActivityCenter from "./TaskActivityCenter";
 import ProductivityAnalytics from "./ProductivityAnalytics";
 import { useNavigate } from "react-router-dom";
+import DraggableGrid from "./dnd/DraggableGrid";
+import DraggableCard from "./dnd/DraggableCard";
 import "../dashboard.css";
 
 /* ── Micro SVG Icons ── */
@@ -26,6 +28,8 @@ const Ico = ({ children, size = 24 }) => (
     {children}
   </svg>
 );
+const IcoSettings = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>;
+const IcoReset = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3 3 3 9 9 9"/></svg>;
 const IcoTarget = () => <Ico><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></Ico>;
 const IcoClock = () => (
   <svg
@@ -295,8 +299,6 @@ function DashboardPage() {
   const todayStr = format(currentTime, "yyyy-MM-dd");
   const todayLabel = format(currentTime, "EEEE, MMMM d");
   const timeLabel = format(currentTime, "h:mm a");
-  const nowStr = format(new Date(), "yyyy-MM-dd");
-  const nowTime = format(new Date(), "HH:mm");
 
   const getTaskStatus = (task) => {
     if (task.completed) return "Completed";
@@ -390,16 +392,32 @@ function DashboardPage() {
   const currentHour = new Date().getHours();
   const greeting = currentHour < 12 ? "Good morning" : currentHour < 17 ? "Good afternoon" : "Good evening";
 
-  const modeConfig = {
-    work: { label: "Deep Work", duration: 25, color: "#4f46e5", bg: "rgba(79,70,229,0.12)" },
-    shortBreak: { label: "Short Break", duration: 5, color: "#059669", bg: "rgba(5,150,105,0.12)" },
-    longBreak: { label: "Long Break", duration: 15, color: "#d97706", bg: "rgba(217,119,6,0.12)" },
-  };
-  const mc = modeConfig[focusMode];
-
   /* ════════════════ RENDER ════════════════ */
+  const renderWidget = (id) => {
+    switch (id) {
+      case 'pending': return (
+        <TaskPreviewSection title="Pending Tasks" icon={<IcoClock />} accentColor="#d97706" accentBg="#fef3c7" tasks={pendingTasks} emptyMsg="No pending tasks. Great job!" viewAllLabel="View All Pending" onViewAll={() => navigate("/tasks", { state: { filterStatus: "Pending" } })} onSelect={setSelectedTask} />
+      );
+      case 'overdue': return (
+        <TaskPreviewSection title="Overdue Tasks" icon={<IcoAlert />} accentColor="#dc2626" accentBg="#fef2f2" tasks={overdueTasks} emptyMsg="No overdue tasks. You're all caught up! 🎉" viewAllLabel="View All Overdue" onViewAll={() => navigate("/tasks", { state: { filterStatus: "Overdue" } })} onSelect={setSelectedTask} />
+      );
+      case 'completed': return (
+        <TaskPreviewSection title="Completed Tasks" icon={<IcoCheck />} accentColor="#059669" accentBg="#d1fae5" tasks={completedTasks} emptyMsg="No completed tasks yet." viewAllLabel="View All Completed" onViewAll={() => navigate("/tasks", { state: { filterStatus: "Completed" } })} onSelect={setSelectedTask} />
+      );
+      case 'activity': return <TaskActivityCenter />;
+      case 'analytics': return <ProductivityAnalytics />;
+      default: return null;
+    }
+  };
+
   return (
-    <div className="page-fade-in dashboard-page">
+    <DraggableGrid 
+      page="dashboard" 
+      defaultLayout={['pending', 'overdue', 'completed', 'activity', 'analytics']}
+      renderOverlay={(id) => renderWidget(id)}
+    >
+      {({ layout, resetLayout }) => (
+        <div className="page-fade-in dashboard-page">
       <div className="dashboard-summary-buttons">
         {/* Today's Summary */}
         <div className="today-summary-trigger" onMouseEnter={handleTodayEnter} onMouseLeave={handleTodayLeave} onClick={e => e.stopPropagation()}>
@@ -462,6 +480,12 @@ function DashboardPage() {
             </div>
           )}
         </div>
+        
+        {/* Reset Layout */}
+        {/* <button type="button" className="db-summary-trigger-btn" onClick={resetLayout} aria-label="Reset Layout" title="Reset Layout to Default">
+          <IcoReset />
+          <span className="db-summary-trigger-label">Reset Layout</span>
+        </button> */}
       </div>
 
       {/* ── Notification banners ── */}
@@ -525,52 +549,35 @@ function DashboardPage() {
 
       {/* ══════════ TASK PREVIEW SECTIONS ══════════ */}
       <section className="db-task-preview-grid">
-        <TaskPreviewSection
-          title="Pending Tasks"
-          icon={<IcoClock />}
-          accentColor="#d97706"
-          accentBg="#fef3c7"
-          tasks={pendingTasks}
-          emptyMsg="No pending tasks. Great job!"
-          viewAllLabel="View All Pending"
-          onViewAll={() => navigate("/tasks", { state: { filterStatus: "Pending" } })}
-          onSelect={setSelectedTask}
-        />
-        <TaskPreviewSection
-          title="Overdue Tasks"
-          icon={<IcoAlert />}
-          accentColor="#dc2626"
-          accentBg="#fef2f2"
-          tasks={overdueTasks}
-          emptyMsg="No overdue tasks. You're all caught up! 🎉"
-          viewAllLabel="View All Overdue"
-          onViewAll={() => navigate("/tasks", { state: { filterStatus: "Overdue" } })}
-          onSelect={setSelectedTask}
-        />
-        <TaskPreviewSection
-          title="Completed Tasks"
-          icon={<IcoCheck />}
-          accentColor="#059669"
-          accentBg="#d1fae5"
-          tasks={completedTasks}
-          emptyMsg="No completed tasks yet."
-          viewAllLabel="View All Completed"
-          onViewAll={() => navigate("/tasks", { state: { filterStatus: "Completed" } })}
-          onSelect={setSelectedTask}
-        />
+        {layout.slice(0, 3).map(id => (
+          <DraggableCard key={id} id={id}>
+            {renderWidget(id)}
+          </DraggableCard>
+        ))}
       </section>
 
       {/* ══════════ BOTTOM GRID (Activity + Analytics) ══════════ */}
       <section className="dashboard-bottom-grid">
-        <TaskActivityCenter />
-        <ProductivityAnalytics />
+        {layout.slice(3).map(id => (
+          <DraggableCard key={id} id={id}>
+            {renderWidget(id)}
+          </DraggableCard>
+        ))}
       </section>
 
       {/* ══════════ FLOATING SUMMARY WIDGETS ══════════ */}
 
 
-      {selectedTask && <TaskDetailsModal task={selectedTask} onClose={() => setSelectedTask(null)} />}
+      {selectedTask && (
+        <TaskDetailsModal
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)}
+          onEdit={() => {}}
+        />
+      )}
     </div>
+    )}
+  </DraggableGrid>
   );
 }
 
