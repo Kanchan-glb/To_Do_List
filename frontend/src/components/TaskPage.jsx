@@ -156,6 +156,7 @@ function TaskPage() {
     originalTranscript: null,
     translatedTranscript: null
   });
+  const [showMoreDetails, setShowMoreDetails] = useState(false);
   /* =================================================
      STATUS CARD AND SUBTASK POPUP
   ================================================= */
@@ -1082,6 +1083,35 @@ const saveDraftImmediately = () => {
     try {
       let createdTask = null;
       if (editTaskId) {
+        const originalTask = tasks.find(t => t.id === editTaskId);
+        if (originalTask) {
+          const fieldsToCheck = ["title", "description", "category", "priority", "dueDate", "dueTime"];
+          let changes = [];
+          fieldsToCheck.forEach(field => {
+            const oldVal = originalTask[field] || "";
+            const newVal = taskObj[field] || "";
+            if (oldVal !== newVal) {
+              changes.push({
+                field: field.charAt(0).toUpperCase() + field.slice(1),
+                oldValue: oldVal,
+                newValue: newVal
+              });
+            }
+          });
+          if (JSON.stringify(originalTask.subtasks || []) !== JSON.stringify(taskObj.subtasks || [])) {
+            changes.push({ field: "Subtasks", oldValue: "Previous Subtasks", newValue: "Updated Subtasks" });
+          }
+          if (changes.length > 0) {
+            const now = new Date();
+            const updateEntry = {
+              date: format(now, "dd MMM yyyy"),
+              time: format(now, "hh:mm a"),
+              changes
+            };
+            const existingHistory = originalTask.updateHistory || [];
+            taskObj.updateHistory = [updateEntry, ...existingHistory];
+          }
+        }
         createdTask = updateTask(editTaskId, taskObj);
         toast.success("Task updated successfully.");
       } else {
@@ -1107,22 +1137,11 @@ const saveDraftImmediately = () => {
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div>
-                <div style={{ fontWeight: "700", fontSize: "0.95rem" }}>Task added successfully.</div>
+                <div style={{ fontWeight: "700", fontSize: "0.95rem" }}>✅ Task added successfully.</div>
                 <div style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "2px" }}>
                   Would you like to review this task?
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  toast.dismiss(t.id);
-                }}
-                style={{ background: "transparent", border: "none", fontSize: "1.1rem", cursor: "pointer", color: "#94a3b8", padding: 0 }}
-              >
-                ✕
-              </button>
             </div>
             <div style={{ display: "flex", gap: "8px", borderTop: "1px solid #f1f5f9", paddingTop: "10px" }}>
               <button
@@ -1147,29 +1166,9 @@ const saveDraftImmediately = () => {
               >
                 View Task
               </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  toast.dismiss(t.id);
-                }}
-                style={{
-                  background: "transparent",
-                  color: "#64748b",
-                  border: "none",
-                  borderRadius: "8px",
-                  padding: "6px 12px",
-                  fontSize: "0.8rem",
-                  fontWeight: "500",
-                  cursor: "pointer"
-                }}
-              >
-                Dismiss
-              </button>
             </div>
           </div>
-        ), { duration: 10000 });
+        ), { duration: 3000 });
       }
 
       resetForm(false);
@@ -1243,6 +1242,7 @@ const saveDraftImmediately = () => {
       setShowAddModal(false);
       setModalView("edit");
       setIsVoiceModeActive(false);
+      setShowMoreDetails(false);
     }
     setVoiceState("idle");
     setOriginalTranscript("");
@@ -2207,7 +2207,7 @@ const saveDraftImmediately = () => {
             className="viewall-modal-content"
             onClick={(e) => e.stopPropagation()}
             style={{
-              width: "min(1100px, 92vw)",
+              width: "min(950px, 92vw)",
               maxHeight: "85vh",
               background: "var(--bg-card)",
               borderRadius: "24px",
@@ -2273,13 +2273,13 @@ const saveDraftImmediately = () => {
                 padding: "12px 24px",
                 background: "var(--bg-app)",
                 borderBottom: "1px solid rgba(226, 232, 240, 0.8)",
-                display: "flex",
+                display: "grid",
+                gridTemplateColumns: "minmax(200px, 2fr) minmax(120px, 1fr) minmax(120px, 1fr)",
                 gap: "12px",
-                flexWrap: "wrap",
                 alignItems: "center"
               }}
             >
-              <div className="tasks-search-wrapper" style={{ flex: 1, minWidth: "200px" }}>
+              <div className="tasks-search-wrapper" style={{ width: "100%" }}>
                 <span className="tasks-search-icon">🔍</span>
                 <input
                   type="text"
@@ -2287,14 +2287,14 @@ const saveDraftImmediately = () => {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="tasks-search-input"
-                  style={{ padding: "8px 12px 8px 36px", fontSize: "0.85rem" }}
+                  style={{ width: "100%", padding: "8px 12px 8px 36px", fontSize: "0.85rem", boxSizing: "border-box" }}
                 />
               </div>
               <select
                 value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value)}
                 className="tasks-select"
-                style={{ padding: "8px 12px", fontSize: "0.82rem" }}
+                style={{ width: "100%", padding: "8px 12px", fontSize: "0.82rem", boxSizing: "border-box" }}
               >
                 <option value="All">All Categories</option>
                 {allCategories.map(cat => (
@@ -2305,7 +2305,7 @@ const saveDraftImmediately = () => {
                 value={filterPriority}
                 onChange={(e) => setFilterPriority(e.target.value)}
                 className="tasks-select"
-                style={{ padding: "8px 12px", fontSize: "0.82rem" }}
+                style={{ width: "100%", padding: "8px 12px", fontSize: "0.82rem", boxSizing: "border-box" }}
               >
                 <option value="All">All Priorities</option>
                 <option value="High">High</option>
@@ -2316,13 +2316,12 @@ const saveDraftImmediately = () => {
 
             {/* Scrollable Tasks list */}
             <div
+              className="view-all-task-grid"
               style={{
                 padding: "24px",
                 overflowY: "auto",
                 flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                gap: "16px",
+                alignContent: "start",
                 background: "var(--bg-app)"
               }}
             >
@@ -2348,84 +2347,72 @@ const saveDraftImmediately = () => {
                       key={task.id}
                       style={{
                         background: "var(--bg-card)",
-                        borderRadius: "16px",
+                        borderRadius: "12px",
                         border: "1px solid rgba(226, 232, 240, 0.8)",
-                        borderLeft: `6px solid ${statusBorderColor}`,
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.02)",
-                        padding: "20px",
+                        borderLeft: `4px solid ${statusBorderColor}`,
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
+                        padding: "16px",
                         display: "flex",
                         flexDirection: "column",
-                        gap: "12px",
+                        gap: "8px",
                         position: "relative"
                       }}
                     >
                       {/* Top Row: Title */}
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
-                        <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: "800", color: "var(--text-primary)" }}>
-                          {task.title}
-                        </h3>
-                        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                          <span className={`task-preview-badge priority ${task.priority.toLowerCase()}`} style={{ fontSize: "0.65rem", padding: "2px 6px" }}>
-                            {task.priority}
-                          </span>
-                          {task.category && (
-                            <span className="task-preview-badge category" style={{ fontSize: "0.65rem", padding: "2px 6px" }}>
-                              {task.category}
-                            </span>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", overflow: "hidden" }}>
+                          {!task.completed && (
+                            <input
+                              type="checkbox"
+                              style={{ width: "16px", height: "16px", cursor: "pointer", accentColor: "#10b981", flexShrink: 0 }}
+                              onChange={async (e) => {
+                                e.stopPropagation();
+                                if (window.confirm("Mark this task as completed?")) {
+                                  const hasIncompleteSubtasks = task.subtasks && task.subtasks.length > 0 && task.subtasks.some(s => !s.completed);
+                                  if (hasIncompleteSubtasks) {
+                                    const completedCount = task.subtasks.filter(s => s.completed).length;
+                                    toast.error(`Complete all subtasks before marking this task as completed. (${completedCount} of ${task.subtasks.length} completed)`);
+                                    return;
+                                  }
+                                  try {
+                                    await updateTask(task.id, { completed: true, status: "completed" });
+                                    toast.success("✅ Task marked as completed.");
+                                  } catch (err) {}
+                                }
+                              }}
+                            />
                           )}
+                          <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: "700", color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {task.title}
+                          </h3>
                         </div>
+                        <span className={`task-preview-badge priority ${task.priority.toLowerCase()}`} style={{ fontSize: "0.6rem", padding: "2px 6px", flexShrink: 0 }}>
+                          {task.priority}
+                        </span>
                       </div>
 
-                      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                        <TaskStatusDropdown task={task} />
-                      </div>
-
-                      {/* Description */}
-                      {task.description && (
-                        <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-secondary)", lineHeight: "1.5" }}>
-                          {task.description}
-                        </p>
-                      )}
-
-                      {/* Two Column Layout for details on Desktop/Tablet */}
-                      <div className="task-detail-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "10px", padding: "10px 0", borderTop: "1px solid rgba(241, 245, 249, 0.8)", borderBottom: "1px solid rgba(241, 245, 249, 0.8)", fontSize: "0.82rem", color: "var(--text-secondary)" }}>
-                        <div>
-                          <strong>📁 Category:</strong> {task.category || "General"}
-                        </div>
-                        <div>
-                          <strong>🕒 Status:</strong> {getTaskStatus(task)}
-                        </div>
-                        <div>
-                          <strong>📅 Created At:</strong> {task.createdDate ? format(new Date(task.createdDate), "dd MMMM yyyy") : format(new Date(), "dd MMMM yyyy")}
-                        </div>
-                        <div>
-                          <strong>📅 Due Date:</strong> {task.dueDate ? format(new Date(task.dueDate), "dd MMMM yyyy") : "-"}
-                        </div>
-                        <div>
-                          <strong>🕐 Due/Start Time:</strong> {task.dueTime || "-"}
-                        </div>
-                        {task.reminder && (
-                          <div>
-                            <strong>🔔 Reminder:</strong> {task.reminder} min before
-                          </div>
-                        )}
-                        {task.recurrence && (
-                          <div>
-                            <strong>🔁 Recurrence:</strong> {task.recurrence}
-                          </div>
-                        )}
-                      </div>
+                      {/* Extra info removed to simplify card */}
 
                       {/* Action buttons */}
-                      <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "4px" }}>
+                      <div style={{ display: "flex", gap: "8px", justifyContent: "space-between", marginTop: "auto", paddingTop: "8px" }}>
                         <button
                           type="button"
-                          className="task-action-btn task-edit-btn"
-                          onClick={() => handleEditClick(task)}
-                          style={{ padding: "6px 12px", fontSize: "0.78rem" }}
+                          className="task-action-btn task-view-btn"
+                          onClick={() => setSelectedTask(task)}
+                          style={{ padding: "4px 10px", fontSize: "0.75rem", borderRadius: "6px", background: "#e0f2fe", color: "#0284c7", border: "none", cursor: "pointer" }}
                         >
-                          ✏️ Edit Task
+                          View Details
                         </button>
+                        {!task.completed && (
+                          <button
+                            type="button"
+                            className="task-action-btn task-edit-btn"
+                            onClick={() => handleEditClick(task)}
+                            style={{ padding: "4px 10px", fontSize: "0.75rem", borderRadius: "6px" }}
+                          >
+                             Edit
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="task-action-btn task-delete-btn"
@@ -2434,9 +2421,9 @@ const saveDraftImmediately = () => {
                               deleteTask(task.id);
                             }
                           }}
-                          style={{ padding: "6px 12px", fontSize: "0.78rem" }}
+                          style={{ padding: "4px 10px", fontSize: "0.75rem", borderRadius: "6px" }}
                         >
-                          🗑️ Delete Task
+                           Delete
                         </button>
                       </div>
                     </div>
@@ -2814,7 +2801,34 @@ const saveDraftImmediately = () => {
                     )}
                   </details>
                 )}
-                <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                <form 
+                  onSubmit={handleSubmit} 
+                  style={{ display: "flex", flexDirection: "column", gap: "16px" }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      e.preventDefault();
+                      resetForm(false, true); // Close without saving
+                      return;
+                    }
+                    if (e.key === 'Enter') {
+                      if (e.shiftKey) {
+                        return; // Let Shift+Enter pass (e.g. for textareas)
+                      }
+                      e.preventDefault();
+                      if (!editTaskId) {
+                        const finalCat = category || "Work";
+                        const finalPrio = priority || "Medium";
+                        const finalDate = dueDate || format(new Date(), "yyyy-MM-dd");
+                        const finalTime = dueTime || calculateDefaultDueTime(finalCat, new Date());
+                        setCategory(finalCat);
+                        setPriority(finalPrio);
+                        setDueDate(finalDate);
+                        setDueTime(finalTime);
+                      }
+                      setTimeout(() => handleSubmit(new Event('submit')), 0);
+                    }
+                  }}
+                >
                   <div className="form-group">
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
                       <label htmlFor="modal-task-title" style={{ display: "flex", alignItems: "center" }}>
@@ -2883,8 +2897,33 @@ const saveDraftImmediately = () => {
                     </div>
                   </div>
 
-                  {/* Task Description Input field */}
-                  <div className="form-group">
+                  {!editTaskId && (
+                    <button
+                      type="button"
+                      onClick={() => setShowMoreDetails(prev => !prev)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#64748b',
+                        cursor: 'pointer',
+                        fontSize: '0.9rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        alignSelf: 'flex-start',
+                        marginTop: '-4px',
+                        marginBottom: '8px',
+                        fontWeight: '600'
+                      }}
+                    >
+                      {showMoreDetails ? "▲ Hide Details" : "▼ More Details"}
+                    </button>
+                  )}
+
+                  {(showMoreDetails || editTaskId) && (
+                    <>
+                      {/* Task Description Input field */}
+                      <div className="form-group">
                     <label htmlFor="modal-task-desc" style={{ display: "flex", alignItems: "center" }}>
                       Description
                       {filledFields.description && <span style={{ color: "#3b82f6", fontSize: "0.7rem", fontWeight: "600", marginLeft: "6px" }}>✨ Detected from voice</span>}
@@ -3150,6 +3189,8 @@ const saveDraftImmediately = () => {
                       {editTaskId ? "Save Changes" : "Create Task"}
                     </button>
                   </div>
+                    </>
+                  )}
                 </form>
               </>
             )}

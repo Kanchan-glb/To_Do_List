@@ -49,7 +49,9 @@ export default function WorkProgressTracker() {
       const wasCompletedOnOrBeforeDate = t.completed && t.completedDate && t.completedDate <= dateStr;
 
       const isDueToday = taskDue === dateStr;
-      const isCarryForward = taskDue < dateStr && !wasCompletedBeforeDate;
+      
+      const todayStr = format(new Date(), "yyyy-MM-dd");
+      const isCarryForward = dateStr <= todayStr && taskDue < dateStr && !wasCompletedBeforeDate;
 
       if (isDueToday || isCarryForward) {
         total++;
@@ -78,6 +80,7 @@ export default function WorkProgressTracker() {
 
     if (activeFilter === "Today") return getStatsForDate(todayStr);
     if (activeFilter === "Yesterday") return getStatsForDate(format(subDays(new Date(), 1), "yyyy-MM-dd"));
+    if (activeFilter === "Tomorrow") return getStatsForDate(format(addDays(new Date(), 1), "yyyy-MM-dd"));
     if (activeFilter === "Custom Date") return getStatsForDate(customDate);
 
     // For Week / Month, aggregate over the period

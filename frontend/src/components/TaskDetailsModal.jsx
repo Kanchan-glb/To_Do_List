@@ -46,37 +46,16 @@ export default function TaskDetailsModal({ task, onClose, onEdit, onDelete }) {
             </div>
             <div>
               <strong style={{ color: 'var(--text-primary)' }}>Status:</strong>
-              <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <input
-                  type="checkbox"
-                  checked={task.completed}
-                  disabled={task.completed}
-                  title={task.completed ? "This task has already been completed." : "Mark as Completed"}
-                  onChange={async (e) => {
-                    if (task.completed) return;
-
-                    // Subtasks validation check
-                    const hasIncompleteSubtasks = task.subtasks && task.subtasks.length > 0 && task.subtasks.some(s => !s.completed);
-                    if (hasIncompleteSubtasks) {
-                      const completedCount = task.subtasks.filter(s => s.completed).length;
-                      toast.error(`Complete all subtasks before marking this task as completed. (${completedCount} of ${task.subtasks.length} completed)`);
-                      return;
-                    }
-
-                    try {
-                      await updateTask(task.id, { completed: true, status: "completed" });
-                    } catch (err) {}
-                  }}
-                  style={{
-                    width: "16px",
-                    height: "16px",
-                    accentColor: "#10b981",
-                    cursor: task.completed ? "not-allowed" : "pointer"
-                  }}
-                />
-                <span style={{ fontSize: "0.85rem", fontWeight: "700", color: task.completed ? "#10b981" : "var(--text-muted)" }}>
-                  {task.completed ? "Completed ✓" : "Mark Complete"}
-                </span>
+              <div style={{ marginTop: '4px', fontWeight: '600', fontSize: '0.95rem' }}>
+                {(() => {
+                  if (task.completed) return <span style={{ color: '#10b981' }}>🟢 Completed</span>;
+                  const now = new Date();
+                  const today = format(now, 'yyyy-MM-dd');
+                  const taskDateObj = new Date(`${task.dueDate}T${task.dueTime || "23:59"}`);
+                  if (taskDateObj < now) return <span style={{ color: '#ef4444' }}>🔴 Overdue</span>;
+                  if (task.dueDate === today) return <span style={{ color: '#eab308' }}>🟡 Pending</span>;
+                  return <span style={{ color: '#3b82f6' }}>🔵 Incoming</span>;
+                })()}
               </div>
             </div>
           </div>
@@ -84,7 +63,7 @@ export default function TaskDetailsModal({ task, onClose, onEdit, onDelete }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div><strong style={{ color: 'var(--text-primary)' }}>Due Date:</strong> <div style={{ marginTop: '2px' }}>{task.dueDate}</div></div>
             <div>
-              <strong style={{ color: 'var(--text-primary)' }}>Due/Start Time:</strong>
+              <strong style={{ color: 'var(--text-primary)' }}>Due Time:</strong>
               <div style={{ marginTop: '2px' }}>{task.dueTime || 'N/A'}</div>
             </div>
           </div>
@@ -184,12 +163,68 @@ export default function TaskDetailsModal({ task, onClose, onEdit, onDelete }) {
             </div>
           )}
 
+          {task.updateHistory && task.updateHistory.length > 0 && (
+            <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
+              <strong style={{ color: 'var(--text-primary)' }}>📝 Update History ({task.updateHistory.length}):</strong>
+              <ul style={{ paddingLeft: '0', listStyle: 'none', margin: '8px 0 0', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85rem' }}>
+                {task.updateHistory.map((entry, i) => (
+                  <li key={i} style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ marginBottom: '8px', fontWeight: '600', color: '#475569', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px' }}>
+                      Updated on: {entry.date} • {entry.time}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {entry.changes.map((change, j) => (
+                        <div key={j}>
+                          <strong style={{ color: '#0f172a' }}>{change.field}:</strong>
+                          <div style={{ color: '#64748b', marginLeft: '4px' }}>
+                            From: <span style={{ textDecoration: 'line-through' }}>{change.oldValue || '(empty)'}</span>
+                          </div>
+                          <div style={{ color: '#10b981', marginLeft: '4px' }}>
+                            To: {change.newValue || '(empty)'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {(task.completedAt || task.completedDate) && (
-            <div>
-              <strong style={{ color: 'var(--text-primary)' }}>Completed At:</strong>
-              <div style={{ marginTop: '2px' }}>
-                {task.completedAt ? format(new Date(task.completedAt), "dd MMMM yyyy '•' hh:mm:ss a") : task.completedDate}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <strong style={{ color: 'var(--text-primary)' }}>Completed At:</strong>
+                <div style={{ marginTop: '2px' }}>
+                  {task.completedAt ? format(new Date(task.completedAt), "dd MMMM yyyy '•' hh:mm a") : task.completedDate}
+                </div>
               </div>
+              {(() => {
+                try {
+                  if (!task.createdDate) return null;
+                  const createdStr = `${task.createdDate}T${task.createdTime || "00:00:00"}`;
+                  const start = new Date(createdStr);
+                  let end = task.completedAt ? new Date(task.completedAt) : (task.completedDate ? new Date(task.completedDate) : new Date());
+                  const diffMs = end - start;
+                  if (diffMs > 0 && !isNaN(diffMs)) {
+                    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
+                    const mins = Math.floor((diffMs / 1000 / 60) % 60);
+                    let res = [];
+                    if (days > 0) res.push(`${days}d`);
+                    if (hours > 0) res.push(`${hours}h`);
+                    if (mins > 0) res.push(`${mins}m`);
+                    const timeTaken = res.length > 0 ? res.join(" ") : "< 1m";
+                    return (
+                      <div>
+                        <strong style={{ color: 'var(--text-primary)' }}>Total Time Taken:</strong>
+                        <div style={{ marginTop: '2px', color: '#10b981', fontWeight: '600' }}>{timeTaken}</div>
+                      </div>
+                    );
+                  }
+                } catch (e) {}
+                return null;
+              })()}
             </div>
           )}
 
@@ -209,22 +244,24 @@ export default function TaskDetailsModal({ task, onClose, onEdit, onDelete }) {
 
           {/* Action Buttons */}
           <div style={{ display: "flex", gap: "8px", borderTop: "1px solid #e2e8f0", paddingTop: "16px", marginTop: "8px" }}>
-            <button
-              onClick={() => onEdit(task)}
-              style={{
-                flex: 1,
-                background: "#e2e8f0",
-                color: "#334155",
-                border: "none",
-                borderRadius: "8px",
-                padding: "8px 16px",
-                fontSize: "0.85rem",
-                fontWeight: "600",
-                cursor: "pointer"
-              }}
-            >
-              ✏️ Edit Task
-            </button>
+            {!task.completed && (
+              <button
+                onClick={() => onEdit(task)}
+                style={{
+                  flex: 1,
+                  background: "#e2e8f0",
+                  color: "#334155",
+                  border: "none",
+                  borderRadius: "8px",
+                  padding: "8px 16px",
+                  fontSize: "0.85rem",
+                  fontWeight: "600",
+                  cursor: "pointer"
+                }}
+              >
+                ✏️ Edit Task
+              </button>
+            )}
             <button
               onClick={() => {
                 if (window.confirm("Are you sure you want to delete this task?")) {

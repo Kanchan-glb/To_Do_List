@@ -126,10 +126,12 @@ export function TaskProvider({ children }) {
   };
 
   const resetTimerToDefault = () => {
+    const defaultSettings = { work: 25, shortBreak: 5, longBreak: 10 };
+    setPomodoroSettings(defaultSettings);
     setPomodoroState(prev => ({
       ...prev,
       isFocusRunning: false,
-      focusTimeLeft: pomodoroSettings[prev.focusMode] * 60,
+      focusTimeLeft: defaultSettings[prev.focusMode] * 60,
       targetTime: null
     }));
   };

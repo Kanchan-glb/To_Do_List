@@ -138,3 +138,37 @@ export function checkTaskReminders(tasks, notifiedTaskIds, onTriggerReminder) {
     }
   });
 }
+
+/**
+ * Checks all tasks for overdue reminders.
+ * Returns tasks that have passed their due time and need an hourly overdue prompt.
+ */
+export function checkOverdueTaskReminders(tasks, getOverdueRecord, saveOverdueRecord, onTriggerReminder) {
+  const now = new Date();
+  
+  tasks.forEach((task) => {
+    if (task.completed) return;
+    
+    try {
+      const dueStr = `${task.dueDate}T${task.dueTime || "12:00"}`;
+      const dueTime = new Date(dueStr);
+      
+      // Calculate milliseconds difference
+      const diffMs = now - dueTime;
+      
+      // If task is overdue (diffMs > 0)
+      if (diffMs > 0) {
+        const lastNotified = getOverdueRecord(task.id);
+        
+        // If never notified, or if 1 hour (3600000 ms) has passed since last notification
+        if (!lastNotified || now.getTime() - lastNotified >= 3600000) {
+          console.log(`[Reminder System] Triggering overdue reminder for task: ${task.title}`);
+          onTriggerReminder(task);
+          saveOverdueRecord(task.id, now.getTime());
+        }
+      }
+    } catch (e) {
+      console.error("Error parsing task date for overdue reminder:", e);
+    }
+  });
+}

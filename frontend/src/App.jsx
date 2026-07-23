@@ -13,8 +13,8 @@ import ProfilePage from "./components/ProfilePage";
 import MorningPopup from "./components/MorningPopup";
 import NightPopup from "./components/NightPopup";
 import { TaskProvider, useTasks } from "./context/TaskContext";
-import { NotificationProvider } from "./context/NotificationContext";
-import { checkTaskReminders, sendBrowserNotification } from "./services/notification";
+import { NotificationProvider, useNotification } from "./context/NotificationContext";
+import { checkTaskReminders, sendBrowserNotification, checkOverdueTaskReminders } from "./services/notification";
 import { format, addDays } from "date-fns";
 import { calculateDefaultDueTime } from "./utils/taskUtils";
 
@@ -24,6 +24,8 @@ import { calculateDefaultDueTime } from "./utils/taskUtils";
  * Global component to handle background task reminders and interactive snoozing/rescheduling.
  */
 function GlobalReminderEngine() {
+  const navigate = useNavigate();
+  const { addOrUpdateOverdueNotification } = useNotification();
   const { tasks, updateTask, rescheduleTask } = useTasks();
   const [activeReminder, setActiveReminder] = useState(null);
   const userEmail = localStorage.getItem("smartEmail") || "guest";
@@ -46,15 +48,27 @@ function GlobalReminderEngine() {
     }
   });
 
+  const [overdueTaskRecords, setOverdueTaskRecords] = useState(() => {
+    try {
+      const stored = localStorage.getItem(`smartOverdueNotified_${userEmail}`);
+      if (stored) return JSON.parse(stored);
+      return {};
+    } catch (e) {
+      return {};
+    }
+  });
+
   const tasksRef = useRef(tasks);
   const notifiedTaskIdsRef = useRef(notifiedTaskIds);
   const updateTaskRef = useRef(updateTask);
+  const overdueTaskRecordsRef = useRef(overdueTaskRecords);
 
   useEffect(() => {
     tasksRef.current = tasks;
     notifiedTaskIdsRef.current = notifiedTaskIds;
     updateTaskRef.current = updateTask;
-  }, [tasks, notifiedTaskIds, updateTask]);
+    overdueTaskRecordsRef.current = overdueTaskRecords;
+  }, [tasks, notifiedTaskIds, updateTask, overdueTaskRecords]);
 
   // Custom reschedule view state
   const [showRescheduleForm, setShowRescheduleForm] = useState(false);
@@ -110,6 +124,30 @@ function GlobalReminderEngine() {
           return next;
         });
       });
+
+      // Overdue Task Notifications
+      checkOverdueTaskReminders(
+        tasksRef.current,
+        (taskId) => overdueTaskRecordsRef.current[taskId],
+        (taskId, timeMs) => {
+          setOverdueTaskRecords(prev => {
+            const next = { ...prev, [taskId]: timeMs };
+            localStorage.setItem(`smartOverdueNotified_${userEmail}`, JSON.stringify(next));
+            return next;
+          });
+        },
+        (task) => {
+          sendBrowserNotification("⏰ Overdue Task Reminder", {
+            body: `Your task "${task.title}" is overdue.\nPlease complete or reschedule it as soon as possible.\nOriginal Due: ${task.dueDate} at ${task.dueTime}`,
+            data: { taskId: task.id, isOverdueClick: true },
+            requireInteraction: true // Ensures it doesn't auto-dismiss
+          });
+          if (addOrUpdateOverdueNotification) {
+            addOrUpdateOverdueNotification(task);
+          }
+        }
+      );
+
       // Smart Morning Planner OS Notification
       const now = new Date();
       const currentHour = now.getHours();
@@ -179,9 +217,14 @@ function GlobalReminderEngine() {
     // Listen for messages from the service worker (OS Notification Clicks)
     const handleAction = (event) => {
       if (event.data && event.data.type === 'NOTIFICATION_ACTION') {
-        const { action, taskId, isMorning, isNight } = event.data;
+        const { action, taskId, isMorning, isNight, isOverdueClick } = event.data;
         console.log(`[Reminder System] Native Notification clicked. Action: "${action || 'body'}", Task ID: ${taskId}`);
         
+        if (isOverdueClick && (!action || action === 'body')) {
+          navigate(`/tasks/${taskId}`);
+          return;
+        }
+
         if (action === 'plan' || isMorning) {
           window.dispatchEvent(new Event('openMorningPlanner'));
           return;

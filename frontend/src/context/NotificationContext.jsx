@@ -46,6 +46,36 @@ export function NotificationProvider({ children }) {
     ]);
   }, []);
 
+  const addOrUpdateOverdueNotification = useCallback((task) => {
+    setNotifications(prev => {
+      const existingIdx = prev.findIndex(n => n.type === 'overdue' && n.taskId === task.id);
+      const newTimestamp = new Date().toISOString();
+      if (existingIdx !== -1) {
+        // Update existing notification, move it to the top, mark unread
+        const existing = prev[existingIdx];
+        const updated = { ...existing, createdAt: newTimestamp, read: false, dueDate: task.dueDate, dueTime: task.dueTime, title: task.title || task.text };
+        const newArr = [...prev];
+        newArr.splice(existingIdx, 1);
+        return [updated, ...newArr];
+      } else {
+        // Create new one
+        return [
+          {
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+            createdAt: newTimestamp,
+            read: false,
+            type: "overdue",
+            title: task.text || task.title || "Untitled Task",
+            taskId: task.id,
+            dueDate: task.dueDate,
+            dueTime: task.dueTime
+          },
+          ...prev
+        ];
+      }
+    });
+  }, []);
+
   const markAllAsRead = () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
@@ -84,23 +114,9 @@ export function NotificationProvider({ children }) {
 
           const diffMins = differenceInMinutes(taskDateTime, now);
 
-          // Overdue Check
-          const overdueKey = `overdue_${task.id}`;
-          if (diffMins < 0 && !newNotifiedEvents.includes(overdueKey)) {
-            addNotification({
-              type: "overdue",
-              title: task.text || task.title || "Untitled Task",
-              taskId: task.id,
-              dueDate: task.dueDate,
-              dueTime: task.dueTime
-            });
-            newNotifiedEvents.push(overdueKey);
-            hasChanges = true;
-          }
-          
           // Due soon check (within 10 mins)
           const dueSoonKey = `duesoon_${task.id}`;
-          if (diffMins >= 0 && diffMins <= 10 && !newNotifiedEvents.includes(dueSoonKey) && !newNotifiedEvents.includes(overdueKey)) {
+          if (diffMins >= 0 && diffMins <= 10 && !newNotifiedEvents.includes(dueSoonKey)) {
             addNotification({
               type: "due_soon",
               title: task.text || task.title || "Untitled Task",
@@ -135,7 +151,8 @@ export function NotificationProvider({ children }) {
       markAllAsRead,
       clearAll,
       deleteNotification,
-      addNotification
+      addNotification,
+      addOrUpdateOverdueNotification
     }}>
       {children}
     </NotificationContext.Provider>

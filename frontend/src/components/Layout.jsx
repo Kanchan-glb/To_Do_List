@@ -143,7 +143,8 @@ function Layout({ children }) {
     updatePomodoroSettings,
     startTimer,
     pauseTimer,
-    resetTimerToDefault
+    resetTimerToDefault,
+    updateTask
   } = useTasks();
   const [accountModal, setAccountModal] = useState(null);
   const [profileName, setProfileName] = useState(userName);
@@ -358,8 +359,8 @@ function Layout({ children }) {
               to={item.path}
               className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
               onClick={() => {
-  setIsSidebarOpen(false);
-}}
+                setIsSidebarOpen(false);
+              }}
             >
               <span className="nav-icon">{item.icon}</span>
               <span className="nav-label">{item.label}</span>
@@ -458,100 +459,100 @@ function Layout({ children }) {
             {/* Pomodoro Timer Dropdown */}
             <div className="timer-menu-wrap" ref={timerDropdownRef}>
               {(!isFocusRunning && focusTimeLeft === pomodoroSettings[focusMode] * 60) ? (
-              <button
-                type="button"
-                className={`topbar-icon-btn timer-btn ${timerDropdownOpen ? "open" : ""}`}
-                onClick={() => setTimerDropdownOpen(!timerDropdownOpen)}
-                style={{
+                <button
+                  type="button"
+                  className={`topbar-icon-btn timer-btn ${timerDropdownOpen ? "open" : ""}`}
+                  onClick={() => setTimerDropdownOpen(!timerDropdownOpen)}
+                  style={{
+                    background: "linear-gradient(135deg, #4f46e5, #7c3aed)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "10px",
+                    padding: "10px 18px",
+                    minHeight: "46px",
+                    minWidth: "148px",
+                    fontWeight: "700",
+                    fontSize: "14px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    boxShadow: "0 8px 24px rgba(79, 70, 229, 0.35)",
+                    cursor: "pointer",
+                    transition: "all 0.25s ease",
+                  }}
+                  aria-label="Pomodoro Timer"
+                >
+                  <span className="timer-btn-icon">
+                    <TimerIcon />
+                  </span>
+                  Timer
+                </button>
+              ) : (
+                <div className={`topbar-icon-btn timer-btn timer-active-group ${timerDropdownOpen ? "open" : ""}`} style={{
                   background: "linear-gradient(135deg, #4f46e5, #7c3aed)",
                   color: "#fff",
-                  border: "none",
-                  borderRadius: "14px",
-                  padding: "10px 18px",
-                  minHeight: "42px",
-                  minWidth: "140px",
-                  fontWeight: "700",
-                  fontSize: "14px",
+                  borderRadius: "10px",
+                  minHeight: "46px",
+                  minWidth: "148px",
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "center",
-                  gap: "8px",
+                  justifyContent: "space-between",
+                  padding: "0 6px",
                   boxShadow: "0 8px 24px rgba(79, 70, 229, 0.35)",
-                  cursor: "pointer",
-                  transition: "all 0.25s ease",
-                }}
-                aria-label="Pomodoro Timer"
-              >
-                <span className="timer-btn-icon">
-                  <TimerIcon />
-                </span>
-                Timer
-              </button>
-            ) : (
-              <div className={`topbar-icon-btn timer-btn timer-active-group ${timerDropdownOpen ? "open" : ""}`} style={{
-                background: "linear-gradient(135deg, #4f46e5, #7c3aed)",
-                color: "#fff",
-                borderRadius: "14px",
-                minHeight: "42px",
-                minWidth: "140px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "0 6px",
-                boxShadow: "0 8px 24px rgba(79, 70, 229, 0.35)",
-                gap: "4px"
-              }}>
-                <button 
-                  onClick={() => isFocusRunning ? pauseTimer() : startTimer()} 
-                  style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center' }}
-                >
-                  {isFocusRunning ? <PauseIcon size={18} /> : <PlayIcon size={18} />}
-                </button>
-                
-                <button 
-                  onClick={() => setTimerDropdownOpen(!timerDropdownOpen)}
-                  style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontWeight: '700', fontSize: '15px', padding: '0', flex: 1, textAlign: 'center' }}
-                >
-                  {!isFocusRunning ? `Resume ${Math.floor(focusTimeLeft / 60).toString().padStart(2, '0')}:${(focusTimeLeft % 60).toString().padStart(2, '0')}` : `${Math.floor(focusTimeLeft / 60).toString().padStart(2, '0')}:${(focusTimeLeft % 60).toString().padStart(2, '0')}`}
-                </button>
-                
-                <button 
-                  onClick={() => { setTimerDropdownOpen(true); resetTimerToDefault(); }}
-                  style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center' }}
-                  title="Reset Timer"
-                >
-                  <ResetIcon size={18} />
-                </button>
-              </div>
-            )}
+                  gap: "4px"
+                }}>
+                  <button
+                    onClick={() => isFocusRunning ? pauseTimer() : startTimer()}
+                    style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center' }}
+                  >
+                    {isFocusRunning ? <PauseIcon size={18} /> : <PlayIcon size={18} />}
+                  </button>
+
+                  <button
+                    onClick={() => setTimerDropdownOpen(!timerDropdownOpen)}
+                    style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontWeight: '700', fontSize: '15px', padding: '0', flex: 1, textAlign: 'center' }}
+                  >
+                    {!isFocusRunning ? `Resume ${Math.floor(focusTimeLeft / 60).toString().padStart(2, '0')}:${(focusTimeLeft % 60).toString().padStart(2, '0')}` : `${Math.floor(focusTimeLeft / 60).toString().padStart(2, '0')}:${(focusTimeLeft % 60).toString().padStart(2, '0')}`}
+                  </button>
+
+                  <button
+                    onClick={() => { setTimerDropdownOpen(true); resetTimerToDefault(); }}
+                    style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center' }}
+                    title="Reset Timer"
+                  >
+                    <ResetIcon size={18} />
+                  </button>
+                </div>
+              )}
 
               {timerDropdownOpen && (
                 <div className="timer-dropdown">
                   <div className="timer-dropdown-header">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <h4 className="timer-dropdown-title" style={{ margin: 0 }}>Pomodoro Timer</h4>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button
-                        type="button"
-                        className="timer-settings-btn"
-                        onClick={() => {
-                          if (!showTimerSettings) setTempSettings(pomodoroSettings);
-                          setShowTimerSettings(!showTimerSettings);
-                        }}
-                        title="Edit Timer Durations"
-                        style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)', padding: '4px', borderRadius: '4px' }}
-                      >
-                        <PlusIcon />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setTimerDropdownOpen(false)}
-                        title="Close Popup"
-                        style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)', padding: '4px', borderRadius: '4px', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      >
-                        ✕
-                      </button>
-                    </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          type="button"
+                          className="timer-settings-btn"
+                          onClick={() => {
+                            if (!showTimerSettings) setTempSettings(pomodoroSettings);
+                            setShowTimerSettings(!showTimerSettings);
+                          }}
+                          title="Edit Timer Durations"
+                          style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)', padding: '4px', borderRadius: '4px' }}
+                        >
+                          <PlusIcon />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTimerDropdownOpen(false)}
+                          title="Close Popup"
+                          style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)', padding: '4px', borderRadius: '4px', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </div>
                     {!showTimerSettings && (
                       <div className="timer-mode-tabs">
@@ -616,58 +617,64 @@ function Layout({ children }) {
 
                       <div className="timer-dropdown-footer">
                         <button
-                        type="button"
-                        className={`timer-action-btn ${isFocusRunning ? "running" : ""}`}
-                        onClick={() => isFocusRunning ? pauseTimer() : startTimer()}
-                        style={{
-                          background: isFocusRunning ? "transparent" : getModeColor(focusMode),
-                          color: isFocusRunning ? getModeColor(focusMode) : "#fff",
-                          borderColor: isFocusRunning ? getModeColor(focusMode) : "transparent",
-                          flex: 1
-                        }}
-                      >
-                        {isFocusRunning ? (
-                          <><PauseIcon /> Pause</>
-                        ) : (
-                          focusTimeLeft !== pomodoroSettings[focusMode] * 60 ? (
-                            <><PlayIcon /> Resume</>
+                          type="button"
+                          className={`timer-action-btn ${isFocusRunning ? "running" : ""}`}
+                          onClick={() => isFocusRunning ? pauseTimer() : startTimer()}
+                          style={{
+                            background: isFocusRunning ? "transparent" : getModeColor(focusMode),
+                            color: isFocusRunning ? getModeColor(focusMode) : "#fff",
+                            borderColor: isFocusRunning ? getModeColor(focusMode) : "transparent",
+                            flex: 1
+                          }}
+                        >
+                          {isFocusRunning ? (
+                            <><PauseIcon /> Pause</>
                           ) : (
-                            <><PlayIcon /> Start</>
-                          )
-                        )}
-                      </button>
+                            focusTimeLeft !== pomodoroSettings[focusMode] * 60 ? (
+                              <><PlayIcon /> Resume</>
+                            ) : (
+                              <><PlayIcon /> Start</>
+                            )
+                          )}
+                        </button>
                       </div>
-                    <button
-                        type="button"
-                        onClick={resetTimerToDefault}
-                        style={{
-                          width: '100%',
-                          padding: '10px',
-                          marginTop: '8px',
-                          background: 'rgba(239, 68, 68, 0.1)',
-                          color: '#ef4444',
-                          border: '1px solid rgba(239, 68, 68, 0.2)',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          fontWeight: '600',
-                          fontSize: '13px',
-                          transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = '#fff'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; e.currentTarget.style.color = '#ef4444'; }}
-                      >
-                        Reset to Default
-                      </button>
                     </>
                   )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetTimerToDefault();
+                      setTempSettings({ work: 25, shortBreak: 5, longBreak: 10 });
+                      setShowTimerSettings(false);
+                      toast.success("✅ Pomodoro timer has been reset to the default settings.", { duration: 4000 });
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      marginTop: '8px',
+                      background: 'rgba(239, 68, 68, 0.1)',
+                      color: '#ef4444',
+                      border: '1px solid rgba(239, 68, 68, 0.2)',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      fontSize: '13px',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = '#fff'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; e.currentTarget.style.color = '#ef4444'; }}
+                  >
+                    Reset to Default
+                  </button>
                 </div>
               )}
             </div>
           </div>
           {/* Right: Actions */}
           <div className="topbar-actions">
-            
-          {/* Notification Button & Dropdown */}
+
+            {/* Notification Button & Dropdown */}
             <div className="notification-wrapper" ref={notificationRef} style={{ position: "relative" }}>
               <button
                 type="button"
@@ -713,41 +720,78 @@ function Layout({ children }) {
                           displayTitle = linkedTask ? (linkedTask.text || linkedTask.title) : "Untitled Task";
                         }
                         return (
-                        <div key={n.id} className={`notification-item ${!n.read ? 'unread' : ''}`} onClick={() => {
-                          setNotificationDropdownOpen(false);
-                          if(n.taskId) navigate(`/tasks/${n.taskId}`);
-                        }}>
-                          <div className="notification-icon">
-                            {n.type === 'overdue' && '🔴'}
-                            {n.type === 'due_soon' && '🟡'}
-                            {n.type === 'completed' && '🟢'}
-                            {n.type === 'reminder' && '🔵'}
-                            {(!['overdue', 'due_soon', 'completed', 'reminder'].includes(n.type)) && '🟣'}
+                          <div key={n.id} className={`notification-item ${!n.read ? 'unread' : ''}`} onClick={() => {
+                            setNotificationDropdownOpen(false);
+                            if (n.taskId) navigate(`/tasks/${n.taskId}`);
+                          }}>
+                            {n.type === 'overdue' ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                                  <div className="notification-icon">🔴</div>
+                                  <div className="notification-content" style={{ flex: 1 }}>
+                                    <strong style={{ color: '#ef4444' }}>Status: Overdue Task</strong>
+                                    <p style={{ margin: '4px 0', fontSize: '14px', color: 'var(--text-primary)' }}>📝 Task: <strong>{displayTitle}</strong></p>
+                                    <p style={{ margin: '2px 0', fontSize: '13px' }}>📅 Due Date: {n.dueDate}</p>
+                                    <p style={{ margin: '2px 0', fontSize: '13px' }}>🕒 Due Time: {n.dueTime}</p>
+                                    {n.dueDate && n.dueTime && (
+                                      <p style={{ margin: '4px 0', fontSize: '13px', color: '#f59e0b', fontWeight: '500' }}>
+                                        ⏰ Overdue Duration: {(() => {
+                                          const diffMs = new Date() - new Date(`${n.dueDate}T${n.dueTime}`);
+                                          if (diffMs < 0) return '';
+                                          const diffHours = Math.floor(diffMs / 3600000);
+                                          const diffMins = Math.floor((diffMs % 3600000) / 60000);
+                                          if (diffHours > 24) return `Overdue by ${Math.floor(diffHours / 24)} days`;
+                                          if (diffHours > 0) return `Overdue by ${diffHours} hours`;
+                                          return `Overdue by ${diffMins} minutes`;
+                                        })()}
+                                      </p>
+                                    )}
+                                    <p style={{ margin: '6px 0', fontStyle: 'italic', color: 'var(--text-secondary)' }}>💬 "This task is overdue. Please complete or reschedule it."</p>
+                                    <p style={{ margin: '4px 0', fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                                      {` • ${formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}`}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }} onClick={(e) => e.stopPropagation()}>
+                                  <button onClick={() => { updateTask(n.taskId, { completed: true }); deleteNotification(n.id); }} style={{ flex: 1, padding: '6px', background: '#10b981', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>✅ Complete</button>
+                                  <button onClick={() => { setNotificationDropdownOpen(false); navigate(`/tasks/${n.taskId}`); }} style={{ flex: 1, padding: '6px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>📅 Reschedule</button>
+                                  <button onClick={() => deleteNotification(n.id)} style={{ flex: 1, padding: '6px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>❌ Dismiss</button>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="notification-icon">
+                                  {n.type === 'due_soon' && '🟡'}
+                                  {n.type === 'completed' && '🟢'}
+                                  {n.type === 'reminder' && '🔵'}
+                                  {(!['overdue', 'due_soon', 'completed', 'reminder'].includes(n.type)) && '🟣'}
+                                </div>
+                                <div className="notification-content">
+                                  <strong>{displayTitle || "Untitled Task"}</strong>
+                                  <p>
+                                    {n.type === 'due_soon' && 'Due in 10 minutes'}
+                                    {n.type === 'completed' && 'Completed'}
+                                    {n.type === 'reminder' && 'Reminder'}
+                                    {(!['overdue', 'due_soon', 'completed', 'reminder'].includes(n.type)) && 'Update'}
+                                    {n.dueDate && n.dueTime ? ` • ${formatNotificationDate(n.dueDate, n.dueTime)}` : ''}
+                                    {` • ${formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}`}
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  className="notification-delete"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    deleteNotification(n.id);
+                                  }}
+                                >
+                                  ×
+                                </button>
+                              </>
+                            )}
                           </div>
-                          <div className="notification-content">
-                            <strong>{displayTitle || "Untitled Task"}</strong>
-                            <p>
-                              {n.type === 'overdue' && 'Overdue'}
-                              {n.type === 'due_soon' && 'Due in 10 minutes'}
-                              {n.type === 'completed' && 'Completed'}
-                              {n.type === 'reminder' && 'Reminder'}
-                              {(!['overdue', 'due_soon', 'completed', 'reminder'].includes(n.type)) && 'Update'}
-                              {n.dueDate && n.dueTime ? ` • ${formatNotificationDate(n.dueDate, n.dueTime)}` : ''}
-                              {` • ${formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}`}
-                            </p>
-                          </div>
-                          <button 
-                            type="button"
-                            className="notification-delete" 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteNotification(n.id);
-                            }}
-                          >
-                            ×
-                          </button>
-                        </div>
-                      )})
+                        )
+                      })
                     )}
                   </div>
                 </div>

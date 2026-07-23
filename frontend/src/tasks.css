@@ -1241,3 +1241,15 @@
     grid-template-columns: 1fr;
   }
 }
+.view-all-task-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 420px);
+  gap: 16px;
+  justify-content: start;
+}
+@media (max-width: 950px) {
+  .view-all-task-grid {
+    grid-template-columns: 1fr;
+    justify-content: stretch;
+  }
+}
