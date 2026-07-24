@@ -14,11 +14,17 @@ import TaskDetailsModal from "./TaskDetailsModal";
 import toast from "react-hot-toast";
 import axios from "axios";
 import "../tasks.css";
+import {
+  createTask,
+  updateTask,
+  getTasks
+} from "../services/taskApi";
 
 
 function getEmptyStateMessage(status, filterCategory, filterPriority) {
   const isCategoryFiltered = filterCategory !== "All";
   const isPriorityFiltered = filterPriority !== "All";
+
 
   if (isCategoryFiltered && isPriorityFiltered) {
     return `No ${filterPriority} priority tasks found in "${filterCategory}" category.`;
@@ -37,10 +43,12 @@ function getEmptyStateMessage(status, filterCategory, filterPriority) {
   }
 }
 
-const IcoReset = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3 3 3 9 9 9"/></svg>;
+const IcoReset = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7" /><polyline points="3 3 3 9 9 9" /></svg>;
 
 function TaskPage() {
-  const { tasks, addTask, updateTask, deleteTask, toggleSubtask, geminiApiKey } = useTasks();
+    const [tasks, setTasks] = useState([]);
+const [loading, setLoading] = useState(true);
+  const { addTask, updateTask, deleteTask, toggleSubtask, geminiApiKey } = useTasks();
   const navigate = useNavigate();
   const { statusOrId } = useParams();
 
@@ -94,6 +102,31 @@ function TaskPage() {
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
+   
+  const fetchTasks = async () => {
+  try {
+    setLoading(true);
+
+    const res = await getTasks();
+
+    setTasks(res.data.tasks);
+
+  } catch (err) {
+  console.error("GET TASKS ERROR:", err);
+  console.error("Response:", err.response);
+
+  toast.error(
+    err.response?.data?.message || err.message || "Failed to load tasks"
+  );
+
+  } finally {
+    setLoading(false);
+  }
+};
+
+useEffect(() => {
+  fetchTasks();
+}, []);
 
   // Modal overlay scroll lock, position restoration, and element focus preservation
   useEffect(() => {
@@ -722,7 +755,7 @@ function TaskPage() {
     );
   };
 
-const saveDraftImmediately = () => {
+  const saveDraftImmediately = () => {
     const draftData = {
       modalView,
       originalTranscript,
@@ -794,7 +827,7 @@ const saveDraftImmediately = () => {
     const isVoiceMode = modalView === "voice" || modalView === "review";
 
     resetForm(false, false);
-    
+
     if (isVoiceMode) {
       toast.success("Transcript cleared successfully.", { position: "top-right", duration: 3000 });
       setModalView("voice");
@@ -803,7 +836,7 @@ const saveDraftImmediately = () => {
       toast.success("Draft cleared successfully.", { position: "top-right", duration: 3000 });
       setModalView("edit");
     }
-    
+
     setDraftStatus("");
     setTimeError("");
     setVoiceErrorText("");
@@ -1063,135 +1096,41 @@ const saveDraftImmediately = () => {
   };
 
   // Submit form handler
-  const handleSubmit = (e) => {
-    if (e && e.preventDefault) e.preventDefault();
-    if (!title.trim() || isSaving) return;
-
-    setIsSaving(true);
-
-    const taskObj = {
-      title: title.trim(),
-      description: description.trim(),
-      category: isAddingCategory ? (customCategory.trim() || "General") : category,
-      priority,
-      dueDate,
-      dueTime,
-      subtasks: subtasksList,
-      ...voiceExtractedData
-    };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
     try {
-      let createdTask = null;
-      if (editTaskId) {
-        const originalTask = tasks.find(t => t.id === editTaskId);
-        if (originalTask) {
-          const fieldsToCheck = ["title", "description", "category", "priority", "dueDate", "dueTime"];
-          let changes = [];
-          fieldsToCheck.forEach(field => {
-            const oldVal = originalTask[field] || "";
-            const newVal = taskObj[field] || "";
-            if (oldVal !== newVal) {
-              changes.push({
-                field: field.charAt(0).toUpperCase() + field.slice(1),
-                oldValue: oldVal,
-                newValue: newVal
-              });
-            }
-          });
-          if (JSON.stringify(originalTask.subtasks || []) !== JSON.stringify(taskObj.subtasks || [])) {
-            changes.push({ field: "Subtasks", oldValue: "Previous Subtasks", newValue: "Updated Subtasks" });
-          }
-          if (changes.length > 0) {
-            const now = new Date();
-            const updateEntry = {
-              date: format(now, "dd MMM yyyy"),
-              time: format(now, "hh:mm a"),
-              changes
-            };
-            const existingHistory = originalTask.updateHistory || [];
-            taskObj.updateHistory = [updateEntry, ...existingHistory];
-          }
-        }
-        createdTask = updateTask(editTaskId, taskObj);
-        toast.success("Task updated successfully.");
-      } else {
-        createdTask = addTask(taskObj);
+      const taskObj = {
+        title,
+        description,
+        category,
+        priority,
+        dueDate,
+        dueTime,
+        subtasks: subtasksList,
+      };
 
-        toast.custom((t) => (
-          <div
-            className={`${t.visible ? 'animate-enter' : 'animate-leave'}`}
-            style={{
-              background: "white",
-              color: "#0f172a",
-              padding: "16px 20px",
-              borderRadius: "16px",
-              border: "1px solid #e2e8f0",
-              boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-              display: "flex",
-              flexDirection: "column",
-              gap: "10px",
-              maxWidth: "360px",
-              width: "100%",
-              marginTop: "70px" // Spacing below main navbar
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div>
-                <div style={{ fontWeight: "700", fontSize: "0.95rem" }}>✅ Task added successfully.</div>
-                <div style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "2px" }}>
-                  Would you like to review this task?
-                </div>
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: "8px", borderTop: "1px solid #f1f5f9", paddingTop: "10px" }}>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setSelectedTask(createdTask);
-                  toast.dismiss(t.id);
-                }}
-                style={{
-                  flex: 1,
-                  background: "#4f46e5",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "8px",
-                  padding: "6px 12px",
-                  fontSize: "0.8rem",
-                  fontWeight: "600",
-                  cursor: "pointer"
-                }}
-              >
-                View Task
-              </button>
-            </div>
-          </div>
-        ), { duration: 3000 });
+      let createdTask;
+
+      if (editTaskId) {
+        const res = await updateTask(editTaskId, taskObj);
+
+        createdTask = res.data.task;
+
+        toast.success("Task Updated");
+      } else {
+        const res = await createTask(taskObj);
+
+        createdTask = res.data.task;
+
+        toast.success("Task Added");
       }
 
+      // ✅ Close and reset the form
       resetForm(false);
+
     } catch (err) {
-      toast.custom((t) => (
-        <div style={{ background: "#fef2f2", color: "#991b1b", padding: "12px 16px", borderRadius: "12px", border: "1px solid #fca5a5", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
-          <span>Failed to save task: {err.message}</span>
-          <button 
-            type="button"
-            onClick={(e) => { 
-              e.preventDefault();
-              e.stopPropagation();
-              toast.dismiss(t.id); 
-              handleSubmit(); 
-            }} 
-            style={{ background: "#991b1b", color: "white", border: "none", borderRadius: "6px", padding: "4px 8px", fontSize: "0.8rem", cursor: "pointer" }}
-          >
-            Retry
-          </button>
-        </div>
-      ));
-    } finally {
-      setIsSaving(false);
+      toast.error(err.response?.data?.message || err.message);
     }
   };
 
@@ -1371,7 +1310,7 @@ const saveDraftImmediately = () => {
     });
   }, [tasks, searchQuery, filterCategory, filterPriority]);
 
-  
+
   const totalPendingCount = useMemo(() => tasks.filter(task => getTaskStatus(task) === 'Pending').length, [tasks]);
   const totalOverdueCount = useMemo(() => tasks.filter(task => getTaskStatus(task) === 'Overdue').length, [tasks]);
   const totalCompletedCount = useMemo(() => tasks.filter(task => getTaskStatus(task) === 'Completed').length, [tasks]);
@@ -1548,7 +1487,7 @@ const saveDraftImmediately = () => {
       </section>
 
       {/* ── Always render the 4 status cards grid ── */}
-      
+
       {/* Reset Layout Button */}
       {/* <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "16px", width: "100%" }}>
         <button type="button" className="db-summary-trigger-btn" onClick={() => { clearLayout('tasks'); window.location.reload(); }} aria-label="Reset Layout" title="Reset Layout to Default">
@@ -1560,468 +1499,468 @@ const saveDraftImmediately = () => {
       <DraggableGrid page="tasks" defaultLayout={['pending', 'overdue', 'completed', 'incoming']}>
         {({ layout }) => {
           const renderCard = (id) => {
-            switch(id) {
+            switch (id) {
               case 'pending': return (
                 <DraggableCard id="pending" key="pending">
                   <div className="status-card pending" style={{ height: "350px", display: "flex", flexDirection: "column" }}>
-          <header className="status-card-header">
-            <div className="status-card-title-group">
-              <span className="status-card-icon">🕒</span>
+                    <header className="status-card-header">
+                      <div className="status-card-title-group">
+                        <span className="status-card-icon">🕒</span>
 
-              <h3 className="status-card-title">
-                Pending
-              </h3>
-            </div>
-
-            <span className="status-card-count">
-              {totalPendingCount} Tasks
-            </span>
-          </header>
-
-          <div className="status-card-previews" style={{ flex: 1, overflow: "hidden", paddingRight: "4px" }}>
-            {pendingTasksList.length === 0 ? (
-              <div className="status-card-empty">{getEmptyStateMessage("Pending", filterCategory, filterPriority)}</div>
-            ) : (
-              pendingTasksList.slice(0, 3).map((task) => {
-                  const progress =
-                    getSubtaskProgress(task);
-
-                  return (
-                    <div
-                      key={getTaskId(task)}
-                      className="task-preview-item"
-                    >
-                      {/* Top Row: Title & Due Date */}
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "4px" }}>
-                        <div className="task-title-checkbox-row" style={{ display: "flex", alignItems: "flex-start", gap: "4px", margin: 0, flex: 1, minWidth: 0 }}>
-                          
-                          <label
-                            className="task-complete-checkbox"
-                            style={{ flexShrink: 0, marginTop: "2px" }}
-                            title={
-                              areAllSubtasksCompleted(task)
-                                ? "Mark task as completed"
-                                : "Complete all subtasks first"
-                            }
-                          >
-                            <input
-                              type="checkbox"
-                              checked={false}
-                              onChange={() => handleCompleteTask(task)}
-                            />
-                            <span className="custom-checkmark" />
-                          </label>
-                          
-                          <h4 className="task-preview-title" style={{ margin: 0, lineHeight: 1.3 }}>
-                            {task.title}
-                          </h4>
-                        </div>
-                        <div className="task-preview-date" style={{ margin: 0, padding: 0, background: "none", flexShrink: 0, fontSize: "0.85rem", fontWeight: 600 }}>
-                          
-                          <span style={{ color: "var(--text-muted)", fontSize: "0.85rem", fontWeight: 600 }}>Due • </span>
-                          {formatTaskDate(task.dueDate)}
-                          
-                        </div>
+                        <h3 className="status-card-title">
+                          Pending
+                        </h3>
                       </div>
 
-                      {/* Bottom Row: Subtasks on left, View Details on right (or left if no subtasks) */}
-                      <div className="task-preview-actions" style={{ display: "flex", justifyContent: task.subtasks?.length > 0 ? "space-between" : "flex-start", alignItems: "center",gap: "8px" }}>
-                        {task.subtasks?.length > 0 ? (
-                          <>
-                            <button
-                              type="button"
-                              className="subtask-toggle-btn"
-                              style={{ margin: 0 }}
-                              onClick={() => setSubtaskPopupTask(task)}
+                      <span className="status-card-count">
+                        {totalPendingCount} Tasks
+                      </span>
+                    </header>
+
+                    <div className="status-card-previews" style={{ flex: 1, overflow: "hidden", paddingRight: "4px" }}>
+                      {pendingTasksList.length === 0 ? (
+                        <div className="status-card-empty">{getEmptyStateMessage("Pending", filterCategory, filterPriority)}</div>
+                      ) : (
+                        pendingTasksList.slice(0, 3).map((task) => {
+                          const progress =
+                            getSubtaskProgress(task);
+
+                          return (
+                            <div
+                              key={getTaskId(task)}
+                              className="task-preview-item"
                             >
-                              Subtasks: {progress.completed}/{progress.total}
-                            </button>
-                            <button
-                              type="button"
-                              className="status-card-viewall"
-                              style={{ margin: 0 }}
-                              onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
-                            >
-                              View Details →
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            type="button"
-                            className="status-card-viewall"
-                            style={{ margin: 0 }}
-                            onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
-                          >
-                            View Details →
-                          </button>
-                        )}
-                      </div>
+                              {/* Top Row: Title & Due Date */}
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "4px" }}>
+                                <div className="task-title-checkbox-row" style={{ display: "flex", alignItems: "flex-start", gap: "4px", margin: 0, flex: 1, minWidth: 0 }}>
+
+                                  <label
+                                    className="task-complete-checkbox"
+                                    style={{ flexShrink: 0, marginTop: "2px" }}
+                                    title={
+                                      areAllSubtasksCompleted(task)
+                                        ? "Mark task as completed"
+                                        : "Complete all subtasks first"
+                                    }
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={false}
+                                      onChange={() => handleCompleteTask(task)}
+                                    />
+                                    <span className="custom-checkmark" />
+                                  </label>
+
+                                  <h4 className="task-preview-title" style={{ margin: 0, lineHeight: 1.3 }}>
+                                    {task.title}
+                                  </h4>
+                                </div>
+                                <div className="task-preview-date" style={{ margin: 0, padding: 0, background: "none", flexShrink: 0, fontSize: "0.85rem", fontWeight: 600 }}>
+
+                                  <span style={{ color: "var(--text-muted)", fontSize: "0.85rem", fontWeight: 600 }}>Due • </span>
+                                  {formatTaskDate(task.dueDate)}
+
+                                </div>
+                              </div>
+
+                              {/* Bottom Row: Subtasks on left, View Details on right (or left if no subtasks) */}
+                              <div className="task-preview-actions" style={{ display: "flex", justifyContent: task.subtasks?.length > 0 ? "space-between" : "flex-start", alignItems: "center", gap: "8px" }}>
+                                {task.subtasks?.length > 0 ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="subtask-toggle-btn"
+                                      style={{ margin: 0 }}
+                                      onClick={() => setSubtaskPopupTask(task)}
+                                    >
+                                      Subtasks: {progress.completed}/{progress.total}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="status-card-viewall"
+                                      style={{ margin: 0 }}
+                                      onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
+                                    >
+                                      View Details →
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="status-card-viewall"
+                                    style={{ margin: 0 }}
+                                    onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
+                                  >
+                                    View Details →
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+
+
                     </div>
-                  );
-                })
-            )}
 
-            
-          </div>
-
-          <footer className="status-card-footer">
-            <button
-              type="button"
-              className="status-card-viewall"
-              onClick={() => {
-                setViewAllStatus("Pending");
-                setFilterStatus("Pending");
-              }}
-            >
-              View All →
-            </button>
-          </footer>
-        </div>
+                    <footer className="status-card-footer">
+                      <button
+                        type="button"
+                        className="status-card-viewall"
+                        onClick={() => {
+                          setViewAllStatus("Pending");
+                          setFilterStatus("Pending");
+                        }}
+                      >
+                        View All →
+                      </button>
+                    </footer>
+                  </div>
                 </DraggableCard>
               );
               case 'overdue': return (
                 <DraggableCard id="overdue" key="overdue">
                   <div className="status-card overdue" style={{ height: "350px", display: "flex", flexDirection: "column" }}>
-          <header className="status-card-header">
-            <div className="status-card-title-group">
-              <span className="status-card-icon">🔴</span>
+                    <header className="status-card-header">
+                      <div className="status-card-title-group">
+                        <span className="status-card-icon">🔴</span>
 
-              <h3 className="status-card-title">
-                Overdue
-              </h3>
-            </div>
-
-            <span className="status-card-count">
-              {totalOverdueCount} Tasks
-            </span>
-          </header>
-
-          <div className="status-card-previews" style={{ flex: 1, overflow: "hidden", paddingRight: "4px" }}>
-            {overdueTasksList.length === 0 ? (
-              <div className="status-card-empty">{getEmptyStateMessage("Overdue", filterCategory, filterPriority)}</div>
-            ) : (
-              overdueTasksList.slice(0, 3).map((task) => {
-                  const progress =
-                    getSubtaskProgress(task);
-
-                  return (
-                    <div
-                      key={getTaskId(task)}
-                      className="task-preview-item"
-                    >
-                      {/* Top Row: Title & Due Date */}
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
-                        <div className="task-title-checkbox-row" style={{ display: "flex", alignItems: "flex-start", gap: "8px", margin: 0, flex: 1, minWidth: 0 }}>
-                          
-                          <label
-                            className="task-complete-checkbox"
-                            style={{ flexShrink: 0 }}
-                            title={
-                              areAllSubtasksCompleted(task)
-                                ? "Mark task as completed"
-                                : "Complete all subtasks first"
-                            }
-                          >
-                            <input
-                              type="checkbox"
-                              checked={false}
-                              onChange={() => handleCompleteTask(task)}
-                            />
-                            <span className="custom-checkmark" />
-                          </label>
-                          
-                          <h4 className="task-preview-title" style={{ margin: 0, lineHeight: 1.3 }}>
-                            {task.title}
-                          </h4>
-                        </div>
-                        <div className="task-preview-date" style={{ margin: 0, padding: 0, background: "none", flexShrink: 0, fontSize: "0.85rem", fontWeight: 600 }}>
-                          
-                          <span style={{ color: "#ef4444", fontSize: "0.85rem", fontWeight: 600 }}>Overdue • </span>
-                          {formatTaskDate(task.dueDate)}
-                          
-                        </div>
+                        <h3 className="status-card-title">
+                          Overdue
+                        </h3>
                       </div>
 
-                      {/* Bottom Row: Subtasks on left, View Details on right (or left if no subtasks) */}
-                      <div className="task-preview-actions" style={{ display: "flex", justifyContent: task.subtasks?.length > 0 ? "space-between" : "flex-start", alignItems: "center", gap: "8px" }}>
-                        {task.subtasks?.length > 0 ? (
-                          <>
-                            <button
-                              type="button"
-                              className="subtask-toggle-btn"
-                              style={{ margin: 0 }}
-                              onClick={() => setSubtaskPopupTask(task)}
+                      <span className="status-card-count">
+                        {totalOverdueCount} Tasks
+                      </span>
+                    </header>
+
+                    <div className="status-card-previews" style={{ flex: 1, overflow: "hidden", paddingRight: "4px" }}>
+                      {overdueTasksList.length === 0 ? (
+                        <div className="status-card-empty">{getEmptyStateMessage("Overdue", filterCategory, filterPriority)}</div>
+                      ) : (
+                        overdueTasksList.slice(0, 3).map((task) => {
+                          const progress =
+                            getSubtaskProgress(task);
+
+                          return (
+                            <div
+                              key={getTaskId(task)}
+                              className="task-preview-item"
                             >
-                              Subtasks: {progress.completed}/{progress.total}
-                            </button>
-                            <button
-                              type="button"
-                              className="status-card-viewall"
-                              style={{ margin: 0 }}
-                              onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
-                            >
-                              View Details →
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            type="button"
-                            className="status-card-viewall"
-                            style={{ margin: 0 }}
-                            onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
-                          >
-                            View Details →
-                          </button>
-                        )}
-                      </div>
+                              {/* Top Row: Title & Due Date */}
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                                <div className="task-title-checkbox-row" style={{ display: "flex", alignItems: "flex-start", gap: "8px", margin: 0, flex: 1, minWidth: 0 }}>
+
+                                  <label
+                                    className="task-complete-checkbox"
+                                    style={{ flexShrink: 0 }}
+                                    title={
+                                      areAllSubtasksCompleted(task)
+                                        ? "Mark task as completed"
+                                        : "Complete all subtasks first"
+                                    }
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={false}
+                                      onChange={() => handleCompleteTask(task)}
+                                    />
+                                    <span className="custom-checkmark" />
+                                  </label>
+
+                                  <h4 className="task-preview-title" style={{ margin: 0, lineHeight: 1.3 }}>
+                                    {task.title}
+                                  </h4>
+                                </div>
+                                <div className="task-preview-date" style={{ margin: 0, padding: 0, background: "none", flexShrink: 0, fontSize: "0.85rem", fontWeight: 600 }}>
+
+                                  <span style={{ color: "#ef4444", fontSize: "0.85rem", fontWeight: 600 }}>Overdue • </span>
+                                  {formatTaskDate(task.dueDate)}
+
+                                </div>
+                              </div>
+
+                              {/* Bottom Row: Subtasks on left, View Details on right (or left if no subtasks) */}
+                              <div className="task-preview-actions" style={{ display: "flex", justifyContent: task.subtasks?.length > 0 ? "space-between" : "flex-start", alignItems: "center", gap: "8px" }}>
+                                {task.subtasks?.length > 0 ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="subtask-toggle-btn"
+                                      style={{ margin: 0 }}
+                                      onClick={() => setSubtaskPopupTask(task)}
+                                    >
+                                      Subtasks: {progress.completed}/{progress.total}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="status-card-viewall"
+                                      style={{ margin: 0 }}
+                                      onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
+                                    >
+                                      View Details →
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="status-card-viewall"
+                                    style={{ margin: 0 }}
+                                    onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
+                                  >
+                                    View Details →
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+
+
                     </div>
-                  );
-                })
-            )}
 
-            
-          </div>
-
-          <footer className="status-card-footer">
-            <button
-              type="button"
-              className="status-card-viewall"
-              onClick={() => {
-                setViewAllStatus("Overdue");
-                setFilterStatus("Overdue");
-              }}
-            >
-              View All →
-            </button>
-          </footer>
-        </div>
+                    <footer className="status-card-footer">
+                      <button
+                        type="button"
+                        className="status-card-viewall"
+                        onClick={() => {
+                          setViewAllStatus("Overdue");
+                          setFilterStatus("Overdue");
+                        }}
+                      >
+                        View All →
+                      </button>
+                    </footer>
+                  </div>
                 </DraggableCard>
               );
               case 'completed': return (
                 <DraggableCard id="completed" key="completed">
                   <div className="status-card completed" style={{ height: "350px", display: "flex", flexDirection: "column" }}>
-          <header className="status-card-header">
-            <div className="status-card-title-group">
-              <span className="status-card-icon">🟢</span>
+                    <header className="status-card-header">
+                      <div className="status-card-title-group">
+                        <span className="status-card-icon">🟢</span>
 
-              <h3 className="status-card-title">
-                Completed
-              </h3>
-            </div>
-
-            <span className="status-card-count">
-              {totalCompletedCount} Tasks
-            </span>
-          </header>
-
-          <div className="status-card-previews" style={{ flex: 1, overflow: "hidden", paddingRight: "4px" }}>
-            {completedTasksList.length === 0 ? (
-              <div className="status-card-empty">{getEmptyStateMessage("Completed", filterCategory, filterPriority)}</div>
-            ) : (
-              completedTasksList.slice(0, 3).map((task) => {
-                  const completedDate =
-                    task.completedAt ||
-                    task.completedDate;
-
-                  const progress =
-                    getSubtaskProgress(task);
-
-                  return (
-                    <div
-                      key={getTaskId(task)}
-                      className="task-preview-item"
-                    >
-                      {/* Top Row: Title & Due Date */}
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1px" }}>
-                        <div className="task-title-checkbox-row" style={{ display: "flex", alignItems: "flex-start", gap: "4px", margin: 0, flex: 1, minWidth: 0 }}>
-                          
-                          <div className="completed-static-checkbox" style={{ flexShrink: 0 }} title="Task completed">
-                            ✓
-                          </div>
-                          
-                          <h4 className="task-preview-title" style={{ margin: 0, lineHeight: 1.3 }}>
-                            {task.title}
-                          </h4>
-                        </div>
-                        <div className="task-preview-date" style={{ margin: 0, padding: 0, background: "none", flexShrink: 0, fontSize: "0.85rem", fontWeight: 600 }}>
-                          
-                          <span style={{ color: "var(--text-muted)", fontSize: "0.85rem", fontWeight: 600 }}>Completed • </span>
-                          {formatTaskDate(task.completedAt || task.completedDate || task.dueDate, Boolean(task.completedAt))}
-                          
-                        </div>
+                        <h3 className="status-card-title">
+                          Completed
+                        </h3>
                       </div>
 
-                      {/* Bottom Row: Subtasks on left, View Details on right (or left if no subtasks) */}
-                      <div className="task-preview-actions" style={{ display: "flex", justifyContent: task.subtasks?.length > 0 ? "space-between" : "flex-start", alignItems: "center", gap: "8px" }}>
-                        {task.subtasks?.length > 0 ? (
-                          <>
-                            <button
-                              type="button"
-                              className="subtask-toggle-btn"
-                              style={{ margin: 0 }}
-                              onClick={() => setSubtaskPopupTask(task)}
+                      <span className="status-card-count">
+                        {totalCompletedCount} Tasks
+                      </span>
+                    </header>
+
+                    <div className="status-card-previews" style={{ flex: 1, overflow: "hidden", paddingRight: "4px" }}>
+                      {completedTasksList.length === 0 ? (
+                        <div className="status-card-empty">{getEmptyStateMessage("Completed", filterCategory, filterPriority)}</div>
+                      ) : (
+                        completedTasksList.slice(0, 3).map((task) => {
+                          const completedDate =
+                            task.completedAt ||
+                            task.completedDate;
+
+                          const progress =
+                            getSubtaskProgress(task);
+
+                          return (
+                            <div
+                              key={getTaskId(task)}
+                              className="task-preview-item"
                             >
-                              Subtasks: {progress.completed}/{progress.total}
-                            </button>
-                            <button
-                              type="button"
-                              className="status-card-viewall"
-                              style={{ margin: 0 }}
-                              onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
-                            >
-                              View Details →
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            type="button"
-                            className="status-card-viewall"
-                            style={{ margin: 0 }}
-                            onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
-                          >
-                            View Details →
-                          </button>
-                        )}
-                      </div>
+                              {/* Top Row: Title & Due Date */}
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1px" }}>
+                                <div className="task-title-checkbox-row" style={{ display: "flex", alignItems: "flex-start", gap: "4px", margin: 0, flex: 1, minWidth: 0 }}>
+
+                                  <div className="completed-static-checkbox" style={{ flexShrink: 0 }} title="Task completed">
+                                    ✓
+                                  </div>
+
+                                  <h4 className="task-preview-title" style={{ margin: 0, lineHeight: 1.3 }}>
+                                    {task.title}
+                                  </h4>
+                                </div>
+                                <div className="task-preview-date" style={{ margin: 0, padding: 0, background: "none", flexShrink: 0, fontSize: "0.85rem", fontWeight: 600 }}>
+
+                                  <span style={{ color: "var(--text-muted)", fontSize: "0.85rem", fontWeight: 600 }}>Completed • </span>
+                                  {formatTaskDate(task.completedAt || task.completedDate || task.dueDate, Boolean(task.completedAt))}
+
+                                </div>
+                              </div>
+
+                              {/* Bottom Row: Subtasks on left, View Details on right (or left if no subtasks) */}
+                              <div className="task-preview-actions" style={{ display: "flex", justifyContent: task.subtasks?.length > 0 ? "space-between" : "flex-start", alignItems: "center", gap: "8px" }}>
+                                {task.subtasks?.length > 0 ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="subtask-toggle-btn"
+                                      style={{ margin: 0 }}
+                                      onClick={() => setSubtaskPopupTask(task)}
+                                    >
+                                      Subtasks: {progress.completed}/{progress.total}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="status-card-viewall"
+                                      style={{ margin: 0 }}
+                                      onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
+                                    >
+                                      View Details →
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="status-card-viewall"
+                                    style={{ margin: 0 }}
+                                    onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
+                                  >
+                                    View Details →
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+
+
                     </div>
-                  );
-                })
-            )}
 
-            
-          </div>
-
-          <footer className="status-card-footer">
-            <button
-              type="button"
-              className="status-card-viewall"
-              onClick={() => {
-                setViewAllStatus("Completed");
-                setFilterStatus("Completed");
-              }}
-            >
-              View All →
-            </button>
-          </footer>
-        </div>
+                    <footer className="status-card-footer">
+                      <button
+                        type="button"
+                        className="status-card-viewall"
+                        onClick={() => {
+                          setViewAllStatus("Completed");
+                          setFilterStatus("Completed");
+                        }}
+                      >
+                        View All →
+                      </button>
+                    </footer>
+                  </div>
                 </DraggableCard>
               );
               case 'incoming': return (
                 <DraggableCard id="incoming" key="incoming">
                   <div className="status-card incoming" style={{ height: "350px", display: "flex", flexDirection: "column" }}>
-          <header className="status-card-header">
-            <div className="status-card-title-group">
-              <span className="status-card-icon">🔵</span>
+                    <header className="status-card-header">
+                      <div className="status-card-title-group">
+                        <span className="status-card-icon">🔵</span>
 
-              <h3 className="status-card-title">
-                Incoming
-              </h3>
-            </div>
-
-            <span className="status-card-count">
-              {totalIncomingCount} Tasks
-            </span>
-          </header>
-
-          <div className="status-card-previews" style={{ flex: 1, overflow: "hidden", paddingRight: "4px" }}>
-            {incomingTasksList.length === 0 ? (
-              <div className="status-card-empty">{getEmptyStateMessage("Incoming", filterCategory, filterPriority)}</div>
-            ) : (
-              incomingTasksList.slice(0, 3).map((task) => {
-                  const progress =
-                    getSubtaskProgress(task);
-
-                  return (
-                    <div
-                      key={getTaskId(task)}
-                      className="task-preview-item"
-                    >
-                      {/* Top Row: Title & Due Date */}
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "4px" }}>
-                        <div className="task-title-checkbox-row" style={{ display: "flex", alignItems: "flex-start", gap: "4px", margin: 0, flex: 1, minWidth: 0 }}>
-                          
-                          <label
-                            className="task-complete-checkbox"
-                            style={{ flexShrink: 0 }}
-                            title={
-                              areAllSubtasksCompleted(task)
-                                ? "Mark task as completed"
-                                : "Complete all subtasks first"
-                            }
-                          >
-                            <input
-                              type="checkbox"
-                              checked={false}
-                              onChange={() => handleCompleteTask(task)}
-                            />
-                            <span className="custom-checkmark" />
-                          </label>
-                          
-                          <h4 className="task-preview-title" style={{ margin: 0, lineHeight: 1.3 }}>
-                            {task.title}
-                          </h4>
-                        </div>
-                        <div className="task-preview-date" style={{ margin: 0, padding: 0, background: "none", flexShrink: 0, fontSize: "0.85rem", fontWeight: 600 }}>
-                          
-                          <span style={{ color: "var(--text-muted)", fontSize: "0.85rem", fontWeight: 600 }}>Due • </span>
-                          {formatTaskDate(task.dueDate)}
-                          
-                        </div>
+                        <h3 className="status-card-title">
+                          Incoming
+                        </h3>
                       </div>
 
-                      {/* Bottom Row: Subtasks on left, View Details on right (or left if no subtasks) */}
-                      <div className="task-preview-actions" style={{ display: "flex", justifyContent: task.subtasks?.length > 0 ? "space-between" : "flex-start", alignItems: "center", gap: "8px" }}>
-                        {task.subtasks?.length > 0 ? (
-                          <>
-                            <button
-                              type="button"
-                              className="subtask-toggle-btn"
-                              style={{ margin: 0 }}
-                              onClick={() => setSubtaskPopupTask(task)}
+                      <span className="status-card-count">
+                        {totalIncomingCount} Tasks
+                      </span>
+                    </header>
+
+                    <div className="status-card-previews" style={{ flex: 1, overflow: "hidden", paddingRight: "4px" }}>
+                      {incomingTasksList.length === 0 ? (
+                        <div className="status-card-empty">{getEmptyStateMessage("Incoming", filterCategory, filterPriority)}</div>
+                      ) : (
+                        incomingTasksList.slice(0, 3).map((task) => {
+                          const progress =
+                            getSubtaskProgress(task);
+
+                          return (
+                            <div
+                              key={getTaskId(task)}
+                              className="task-preview-item"
                             >
-                              Subtasks: {progress.completed}/{progress.total}
-                            </button>
-                            <button
-                              type="button"
-                              className="status-card-viewall"
-                              style={{ margin: 0 }}
-                              onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
-                            >
-                              View Details →
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            type="button"
-                            className="status-card-viewall"
-                            style={{ margin: 0 }}
-                            onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
-                          >
-                            View Details →
-                          </button>
-                        )}
-                      </div>
+                              {/* Top Row: Title & Due Date */}
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "4px" }}>
+                                <div className="task-title-checkbox-row" style={{ display: "flex", alignItems: "flex-start", gap: "4px", margin: 0, flex: 1, minWidth: 0 }}>
+
+                                  <label
+                                    className="task-complete-checkbox"
+                                    style={{ flexShrink: 0 }}
+                                    title={
+                                      areAllSubtasksCompleted(task)
+                                        ? "Mark task as completed"
+                                        : "Complete all subtasks first"
+                                    }
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={false}
+                                      onChange={() => handleCompleteTask(task)}
+                                    />
+                                    <span className="custom-checkmark" />
+                                  </label>
+
+                                  <h4 className="task-preview-title" style={{ margin: 0, lineHeight: 1.3 }}>
+                                    {task.title}
+                                  </h4>
+                                </div>
+                                <div className="task-preview-date" style={{ margin: 0, padding: 0, background: "none", flexShrink: 0, fontSize: "0.85rem", fontWeight: 600 }}>
+
+                                  <span style={{ color: "var(--text-muted)", fontSize: "0.85rem", fontWeight: 600 }}>Due • </span>
+                                  {formatTaskDate(task.dueDate)}
+
+                                </div>
+                              </div>
+
+                              {/* Bottom Row: Subtasks on left, View Details on right (or left if no subtasks) */}
+                              <div className="task-preview-actions" style={{ display: "flex", justifyContent: task.subtasks?.length > 0 ? "space-between" : "flex-start", alignItems: "center", gap: "8px" }}>
+                                {task.subtasks?.length > 0 ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="subtask-toggle-btn"
+                                      style={{ margin: 0 }}
+                                      onClick={() => setSubtaskPopupTask(task)}
+                                    >
+                                      Subtasks: {progress.completed}/{progress.total}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="status-card-viewall"
+                                      style={{ margin: 0 }}
+                                      onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
+                                    >
+                                      View Details →
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="status-card-viewall"
+                                    style={{ margin: 0 }}
+                                    onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
+                                  >
+                                    View Details →
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+
+
                     </div>
-                  );
-                })
-            )}
 
-            
-          </div>
-
-          <footer className="status-card-footer">
-            <button
-              type="button"
-              className="status-card-viewall"
-              onClick={() => {
-                setViewAllStatus("Incoming");
-                setFilterStatus("Incoming");
-              }}
-            >
-              View All →
-            </button>
-          </footer>
-        </div>
+                    <footer className="status-card-footer">
+                      <button
+                        type="button"
+                        className="status-card-viewall"
+                        onClick={() => {
+                          setViewAllStatus("Incoming");
+                          setFilterStatus("Incoming");
+                        }}
+                      >
+                        View All →
+                      </button>
+                    </footer>
+                  </div>
                 </DraggableCard>
               );
               default: return null;
@@ -2035,7 +1974,7 @@ const saveDraftImmediately = () => {
           );
         }}
       </DraggableGrid>
-      
+
       {subtaskPopupTask && (
         <div
           className="subtask-popup-overlay"
@@ -2377,7 +2316,7 @@ const saveDraftImmediately = () => {
                                   try {
                                     await updateTask(task.id, { completed: true, status: "completed" });
                                     toast.success("✅ Task marked as completed.");
-                                  } catch (err) {}
+                                  } catch (err) { }
                                 }
                               }}
                             />
@@ -2410,7 +2349,7 @@ const saveDraftImmediately = () => {
                             onClick={() => handleEditClick(task)}
                             style={{ padding: "4px 10px", fontSize: "0.75rem", borderRadius: "6px" }}
                           >
-                             Edit
+                            Edit
                           </button>
                         )}
                         <button
@@ -2423,7 +2362,7 @@ const saveDraftImmediately = () => {
                           }}
                           style={{ padding: "4px 10px", fontSize: "0.75rem", borderRadius: "6px" }}
                         >
-                           Delete
+                          Delete
                         </button>
                       </div>
                     </div>
@@ -2801,8 +2740,8 @@ const saveDraftImmediately = () => {
                     )}
                   </details>
                 )}
-                <form 
-                  onSubmit={handleSubmit} 
+                <form
+                  onSubmit={handleSubmit}
                   style={{ display: "flex", flexDirection: "column", gap: "16px" }}
                   onKeyDown={(e) => {
                     if (e.key === 'Escape') {
@@ -2924,271 +2863,271 @@ const saveDraftImmediately = () => {
                     <>
                       {/* Task Description Input field */}
                       <div className="form-group">
-                    <label htmlFor="modal-task-desc" style={{ display: "flex", alignItems: "center" }}>
-                      Description
-                      {filledFields.description && <span style={{ color: "#3b82f6", fontSize: "0.7rem", fontWeight: "600", marginLeft: "6px" }}>✨ Detected from voice</span>}
-                    </label>
-                    <textarea
-                      ref={descInputRef}
-                      id="modal-task-desc"
-                      placeholder="Add task description here..."
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      className="form-input-styled"
-                      style={{ minHeight: "60px", resize: "vertical" }}
-                    />
-                  </div>
-
-                  <div className="form-row">
-                    <div className="form-group" style={{ flex: 1 }}>
-                      <label htmlFor="modal-task-cat" style={{ display: "flex", alignItems: "center" }}>
-                        Category
-                        {filledFields.category && <span style={{ color: "#3b82f6", fontSize: "0.7rem", fontWeight: "600", marginLeft: "6px" }}>✨ Detected from voice</span>}
-                      </label>
-                      {!isAddingCategory ? (
-                        <select
-                          ref={categorySelectRef}
-                          id="modal-task-cat"
-                          value={category}
-                          onChange={(e) => {
-                            const newCat = e.target.value;
-                            if (title.trim() !== "") {
-                              if (!isTitleSuggested) {
-                                const confirmed = window.confirm("Changing the category will clear your current title. Do you want to continue?");
-                                if (!confirmed) return;
-                              }
-                              setTitle("");
-                              setIsTitleSuggested(false);
-                              setCategoryChangeMsg("Category changed. Please select a title for the selected category.");
-                            }
-
-                            if (newCat === "Custom") {
-                              setIsAddingCategory(true);
-                            } else {
-                              setCategory(newCat);
-                            }
-                          }}
+                        <label htmlFor="modal-task-desc" style={{ display: "flex", alignItems: "center" }}>
+                          Description
+                          {filledFields.description && <span style={{ color: "#3b82f6", fontSize: "0.7rem", fontWeight: "600", marginLeft: "6px" }}>✨ Detected from voice</span>}
+                        </label>
+                        <textarea
+                          ref={descInputRef}
+                          id="modal-task-desc"
+                          placeholder="Add task description here..."
+                          value={description}
+                          onChange={(e) => setDescription(e.target.value)}
                           className="form-input-styled"
-                          style={{ width: "100%" }}
-                        >
-                          {allCategories.map(cat => (
-                            <option key={`opt-${cat}`} value={cat}>{cat}</option>
-                          ))}
-                          <option value="Custom" style={{ fontWeight: 'bold' }}>+ Add New Category</option>
-                        </select>
-                      ) : (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%" }}>
-                          <div style={{ display: "flex", gap: "8px" }}>
-                            <input
-                              type="text"
-                              placeholder="New category..."
-                              value={customCategory}
-                              onChange={(e) => setCustomCategory(e.target.value)}
-                              className="form-input-styled"
-                              style={{ flex: 1 }}
-                              autoFocus
-                            />
-                            <button
-                              type="button"
-                              onClick={() => { setIsAddingCategory(false); setCustomCategory(""); setCategory("Work"); }}
-                              style={{ background: "#e2e8f0", color: "#475569", border: "none", borderRadius: "8px", width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontWeight: "bold", flexShrink: 0 }}
-                              title="Cancel"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                          <div style={{
-                            display: "flex",
-                            alignItems: "flex-start",
-                            gap: "8px",
-                            background: "#eff6ff",
-                            border: "1px solid #bfdbfe",
-                            borderRadius: "8px",
-                            padding: "10px 12px",
-                            color: "#1e3a8a",
-                            fontSize: "0.75rem",
-                            lineHeight: "1.4",
-                            marginTop: "4px"
-                          }}>
-                            <span style={{ fontSize: "0.95rem", lineHeight: "1", flexShrink: 0 }}>ℹ️</span>
-                            <span>Once you create this category, it will be saved and automatically appear in the category list the next time you add a task.</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <div className="form-group" style={{ flex: 1 }}>
-                      <label htmlFor="modal-task-priority" style={{ display: "flex", alignItems: "center" }}>
-                        Priority
-                        {filledFields.priority && <span style={{ color: "#3b82f6", fontSize: "0.7rem", fontWeight: "600", marginLeft: "6px" }}>✨ Detected from voice</span>}
-                      </label>
-                      <select
-                        ref={prioritySelectRef}
-                        id="modal-task-priority"
-                        value={priority}
-                        onChange={(e) => setPriority(e.target.value)}
-                        className="form-input-styled"
-                      >
-                        <option value="High">High</option>
-                        <option value="Medium">Medium</option>
-                        <option value="Low">Low</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="form-row">
-                    <div className="form-group" style={{ flex: 1 }}>
-                      <label htmlFor="modal-task-date" style={{ display: "flex", alignItems: "center" }}>
-                        Due Date
-                        {filledFields.dueDate && <span style={{ color: "#3b82f6", fontSize: "0.7rem", fontWeight: "600", marginLeft: "6px" }}>✨ Detected from voice</span>}
-                      </label>
-                      <input
-                        ref={dateInputRef}
-                        type="date"
-                        id="modal-task-date"
-                        value={dueDate}
-                        min={todayStr}
-                        onChange={(e) => {
-                          const selectedDate = e.target.value;
-                          setDueDate(selectedDate);
-                          if (selectedDate === todayStr) {
-                            const nowTime = format(new Date(), "HH:mm");
-                            if (dueTime < nowTime) {
-                              setTimeError("You can't select a previous time for today.");
-                            } else {
-                              setTimeError("");
-                            }
-                          } else {
-                            setTimeError("");
-                          }
-                        }}
-                        onClick={(e) => {
-                          try {
-                            e.target.showPicker();
-                          } catch (err) {
-                            // ignore if browser doesn't support or blocks it
-                          }
-                        }}
-                        className="form-input-styled"
-                        required
-                      />
-                    </div>
-                    <div className="form-group" style={{ flex: 1 }}>
-                      <label htmlFor="modal-task-time" style={{ display: "flex", alignItems: "center" }}>
-                        Due Time
-                        {filledFields.dueTime && <span style={{ color: "#3b82f6", fontSize: "0.7rem", fontWeight: "600", marginLeft: "6px" }}>✨ Detected from voice</span>}
-                      </label>
-                      <input
-                        ref={timeInputRef}
-                        type="time"
-                        id="modal-task-time"
-                        value={dueTime}
-                        min={dueDate === todayStr ? currentTimeStr : undefined}
-                        onChange={(e) => {
-                          const selectedTime = e.target.value;
-                          setIsTimeManuallySet(true);
-                          if (dueDate === todayStr) {
-                            const nowTime = format(new Date(), "HH:mm");
-                            if (selectedTime < nowTime) {
-                              setTimeError("You can't select a previous time for today.");
-                              setDueTime(selectedTime);
-                              return;
-                            }
-                          }
-                          setTimeError("");
-                          setDueTime(selectedTime);
-                        }}
-                        onClick={(e) => {
-                          try {
-                            e.target.showPicker();
-                          } catch (err) {
-                            // ignore
-                          }
-                        }}
-                        className="form-input-styled"
-                        required
-                      />
-                      {timeError && (
-                        <div style={{ color: "#ef4444", fontSize: "0.8rem", marginTop: "4px" }}>
-                          {timeError}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Subtask Section */}
-                  <div style={{ borderTop: "1px solid #eee", paddingTop: "24px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                      <label style={{ display: "flex", alignItems: "center", gap: "10px", fontWeight: "700", fontSize: "0.95rem", cursor: "pointer", color: "#1e293b" }}>
-                        <input
-                          type="checkbox"
-                          checked={isLargeTask}
-                          onChange={(e) => setIsLargeTask(e.target.checked)}
-                          style={{ width: "18px", height: "18px", accentColor: "#4f46e5", cursor: "pointer" }}
+                          style={{ minHeight: "60px", resize: "vertical" }}
                         />
-                        Enable Subtasks
-                      </label>
-                      {isLargeTask && (
-                        <button
-                          type="button"
-                          onClick={handleAIBreakdown}
-                          disabled={loadingAI}
-                          style={{ padding: "6px 14px", fontSize: "0.85rem", background: "#eef2ff", color: "#4f46e5", border: "1px solid #c7d2fe", borderRadius: "10px", fontWeight: "700", cursor: "pointer", transition: "all 0.2s" }}
-                        >
-                          {loadingAI ? "⏳ Processing..." : "✨ Auto-Generate with AI"}
-                        </button>
-                      )}
-                    </div>
+                      </div>
 
-                    {isLargeTask && (
-                      <div style={{ background: "#f8fafc", padding: "20px", borderRadius: "16px", border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", gap: "16px", marginTop: "8px" }}>
+                      <div className="form-row">
+                        <div className="form-group" style={{ flex: 1 }}>
+                          <label htmlFor="modal-task-cat" style={{ display: "flex", alignItems: "center" }}>
+                            Category
+                            {filledFields.category && <span style={{ color: "#3b82f6", fontSize: "0.7rem", fontWeight: "600", marginLeft: "6px" }}>✨ Detected from voice</span>}
+                          </label>
+                          {!isAddingCategory ? (
+                            <select
+                              ref={categorySelectRef}
+                              id="modal-task-cat"
+                              value={category}
+                              onChange={(e) => {
+                                const newCat = e.target.value;
+                                if (title.trim() !== "") {
+                                  if (!isTitleSuggested) {
+                                    const confirmed = window.confirm("Changing the category will clear your current title. Do you want to continue?");
+                                    if (!confirmed) return;
+                                  }
+                                  setTitle("");
+                                  setIsTitleSuggested(false);
+                                  setCategoryChangeMsg("Category changed. Please select a title for the selected category.");
+                                }
 
-                        {/* Manual Subtask Input */}
-                        <div style={{ display: "flex", gap: "10px" }}>
-                          <input
-                            type="text"
-                            placeholder="Add subtask manually..."
-                            value={newSubtaskTitle}
-                            onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                            className="form-input-styled"
-                            style={{ padding: "12px 16px", flex: 1 }}
-                          />
-                          <button
-                            type="button"
-                            onClick={addSubtaskItem}
-                            style={{ border: "none", background: "#4f46e5", color: "white", padding: "0 20px", borderRadius: "12px", fontSize: "1.25rem", fontWeight: "800", cursor: "pointer", boxShadow: "0 4px 12px rgba(79, 70, 229, 0.2)" }}
-                          >
-                            +
-                          </button>
-                        </div>
-
-                        {/* Subtasks List */}
-                        {subtasksList.length > 0 && (
-                          <ul style={{ padding: "0", margin: "0", listStyle: "none", display: "flex", flexDirection: "column", gap: "10px" }}>
-                            {subtasksList.map((sub) => (
-                              <li key={sub.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "white", padding: "12px 16px", borderRadius: "12px", border: "1px solid #cbd5e1", boxShadow: "0 2px 6px rgba(0,0,0,0.02)" }}>
-                                <span style={{ fontWeight: 600, color: "#1e293b", fontSize: "0.95rem" }}>{sub.title}</span>
+                                if (newCat === "Custom") {
+                                  setIsAddingCategory(true);
+                                } else {
+                                  setCategory(newCat);
+                                }
+                              }}
+                              className="form-input-styled"
+                              style={{ width: "100%" }}
+                            >
+                              {allCategories.map(cat => (
+                                <option key={`opt-${cat}`} value={cat}>{cat}</option>
+                              ))}
+                              <option value="Custom" style={{ fontWeight: 'bold' }}>+ Add New Category</option>
+                            </select>
+                          ) : (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%" }}>
+                              <div style={{ display: "flex", gap: "8px" }}>
+                                <input
+                                  type="text"
+                                  placeholder="New category..."
+                                  value={customCategory}
+                                  onChange={(e) => setCustomCategory(e.target.value)}
+                                  className="form-input-styled"
+                                  style={{ flex: 1 }}
+                                  autoFocus
+                                />
                                 <button
                                   type="button"
-                                  onClick={() => removeSubtaskItem(sub.id)}
-                                  style={{ border: "none", background: "#fee2e2", color: "#ef4444", padding: "4px 8px", borderRadius: "8px", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1 }}
+                                  onClick={() => { setIsAddingCategory(false); setCustomCategory(""); setCategory("Work"); }}
+                                  style={{ background: "#e2e8f0", color: "#475569", border: "none", borderRadius: "8px", width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontWeight: "bold", flexShrink: 0 }}
+                                  title="Cancel"
                                 >
                                   ✕
                                 </button>
-                              </li>
-                            ))}
-                          </ul>
+                              </div>
+                              <div style={{
+                                display: "flex",
+                                alignItems: "flex-start",
+                                gap: "8px",
+                                background: "#eff6ff",
+                                border: "1px solid #bfdbfe",
+                                borderRadius: "8px",
+                                padding: "10px 12px",
+                                color: "#1e3a8a",
+                                fontSize: "0.75rem",
+                                lineHeight: "1.4",
+                                marginTop: "4px"
+                              }}>
+                                <span style={{ fontSize: "0.95rem", lineHeight: "1", flexShrink: 0 }}>ℹ️</span>
+                                <span>Once you create this category, it will be saved and automatically appear in the category list the next time you add a task.</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="form-group" style={{ flex: 1 }}>
+                          <label htmlFor="modal-task-priority" style={{ display: "flex", alignItems: "center" }}>
+                            Priority
+                            {filledFields.priority && <span style={{ color: "#3b82f6", fontSize: "0.7rem", fontWeight: "600", marginLeft: "6px" }}>✨ Detected from voice</span>}
+                          </label>
+                          <select
+                            ref={prioritySelectRef}
+                            id="modal-task-priority"
+                            value={priority}
+                            onChange={(e) => setPriority(e.target.value)}
+                            className="form-input-styled"
+                          >
+                            <option value="High">High</option>
+                            <option value="Medium">Medium</option>
+                            <option value="Low">Low</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="form-row">
+                        <div className="form-group" style={{ flex: 1 }}>
+                          <label htmlFor="modal-task-date" style={{ display: "flex", alignItems: "center" }}>
+                            Due Date
+                            {filledFields.dueDate && <span style={{ color: "#3b82f6", fontSize: "0.7rem", fontWeight: "600", marginLeft: "6px" }}>✨ Detected from voice</span>}
+                          </label>
+                          <input
+                            ref={dateInputRef}
+                            type="date"
+                            id="modal-task-date"
+                            value={dueDate}
+                            min={todayStr}
+                            onChange={(e) => {
+                              const selectedDate = e.target.value;
+                              setDueDate(selectedDate);
+                              if (selectedDate === todayStr) {
+                                const nowTime = format(new Date(), "HH:mm");
+                                if (dueTime < nowTime) {
+                                  setTimeError("You can't select a previous time for today.");
+                                } else {
+                                  setTimeError("");
+                                }
+                              } else {
+                                setTimeError("");
+                              }
+                            }}
+                            onClick={(e) => {
+                              try {
+                                e.target.showPicker();
+                              } catch (err) {
+                                // ignore if browser doesn't support or blocks it
+                              }
+                            }}
+                            className="form-input-styled"
+                            required
+                          />
+                        </div>
+                        <div className="form-group" style={{ flex: 1 }}>
+                          <label htmlFor="modal-task-time" style={{ display: "flex", alignItems: "center" }}>
+                            Due Time
+                            {filledFields.dueTime && <span style={{ color: "#3b82f6", fontSize: "0.7rem", fontWeight: "600", marginLeft: "6px" }}>✨ Detected from voice</span>}
+                          </label>
+                          <input
+                            ref={timeInputRef}
+                            type="time"
+                            id="modal-task-time"
+                            value={dueTime}
+                            min={dueDate === todayStr ? currentTimeStr : undefined}
+                            onChange={(e) => {
+                              const selectedTime = e.target.value;
+                              setIsTimeManuallySet(true);
+                              if (dueDate === todayStr) {
+                                const nowTime = format(new Date(), "HH:mm");
+                                if (selectedTime < nowTime) {
+                                  setTimeError("You can't select a previous time for today.");
+                                  setDueTime(selectedTime);
+                                  return;
+                                }
+                              }
+                              setTimeError("");
+                              setDueTime(selectedTime);
+                            }}
+                            onClick={(e) => {
+                              try {
+                                e.target.showPicker();
+                              } catch (err) {
+                                // ignore
+                              }
+                            }}
+                            className="form-input-styled"
+                            required
+                          />
+                          {timeError && (
+                            <div style={{ color: "#ef4444", fontSize: "0.8rem", marginTop: "4px" }}>
+                              {timeError}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Subtask Section */}
+                      <div style={{ borderTop: "1px solid #eee", paddingTop: "24px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                          <label style={{ display: "flex", alignItems: "center", gap: "10px", fontWeight: "700", fontSize: "0.95rem", cursor: "pointer", color: "#1e293b" }}>
+                            <input
+                              type="checkbox"
+                              checked={isLargeTask}
+                              onChange={(e) => setIsLargeTask(e.target.checked)}
+                              style={{ width: "18px", height: "18px", accentColor: "#4f46e5", cursor: "pointer" }}
+                            />
+                            Enable Subtasks
+                          </label>
+                          {isLargeTask && (
+                            <button
+                              type="button"
+                              onClick={handleAIBreakdown}
+                              disabled={loadingAI}
+                              style={{ padding: "6px 14px", fontSize: "0.85rem", background: "#eef2ff", color: "#4f46e5", border: "1px solid #c7d2fe", borderRadius: "10px", fontWeight: "700", cursor: "pointer", transition: "all 0.2s" }}
+                            >
+                              {loadingAI ? "⏳ Processing..." : "✨ Auto-Generate with AI"}
+                            </button>
+                          )}
+                        </div>
+
+                        {isLargeTask && (
+                          <div style={{ background: "#f8fafc", padding: "20px", borderRadius: "16px", border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", gap: "16px", marginTop: "8px" }}>
+
+                            {/* Manual Subtask Input */}
+                            <div style={{ display: "flex", gap: "10px" }}>
+                              <input
+                                type="text"
+                                placeholder="Add subtask manually..."
+                                value={newSubtaskTitle}
+                                onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                                className="form-input-styled"
+                                style={{ padding: "12px 16px", flex: 1 }}
+                              />
+                              <button
+                                type="button"
+                                onClick={addSubtaskItem}
+                                style={{ border: "none", background: "#4f46e5", color: "white", padding: "0 20px", borderRadius: "12px", fontSize: "1.25rem", fontWeight: "800", cursor: "pointer", boxShadow: "0 4px 12px rgba(79, 70, 229, 0.2)" }}
+                              >
+                                +
+                              </button>
+                            </div>
+
+                            {/* Subtasks List */}
+                            {subtasksList.length > 0 && (
+                              <ul style={{ padding: "0", margin: "0", listStyle: "none", display: "flex", flexDirection: "column", gap: "10px" }}>
+                                {subtasksList.map((sub) => (
+                                  <li key={sub.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "white", padding: "12px 16px", borderRadius: "12px", border: "1px solid #cbd5e1", boxShadow: "0 2px 6px rgba(0,0,0,0.02)" }}>
+                                    <span style={{ fontWeight: 600, color: "#1e293b", fontSize: "0.95rem" }}>{sub.title}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeSubtaskItem(sub.id)}
+                                      style={{ border: "none", background: "#fee2e2", color: "#ef4444", padding: "4px 8px", borderRadius: "8px", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1 }}
+                                    >
+                                      ✕
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
                         )}
                       </div>
-                    )}
-                  </div>
 
-                  <div className="btn-group" style={{ borderTop: "1px solid #e2e8f0", paddingTop: "20px", marginTop: "16px" }}>
-                    <button type="button" className="secondary-button" onClick={handleClearAllAction}>Clear All</button>
-                    <button type="button" className="secondary-button" onClick={() => closeModalCleanly(true)}>Cancel</button>
-                    <button type="submit" className="primary-btn" style={{ color: "black", fontWeight: "bold", opacity: timeError ? 0.5 : 1 }} disabled={!!timeError}>
-                      {editTaskId ? "Save Changes" : "Create Task"}
-                    </button>
-                  </div>
+                      <div className="btn-group" style={{ borderTop: "1px solid #e2e8f0", paddingTop: "20px", marginTop: "16px" }}>
+                        <button type="button" className="secondary-button" onClick={handleClearAllAction}>Clear All</button>
+                        <button type="button" className="secondary-button" onClick={() => closeModalCleanly(true)}>Cancel</button>
+                        <button type="submit" className="primary-btn" style={{ color: "black", fontWeight: "bold", opacity: timeError ? 0.5 : 1 }} disabled={!!timeError}>
+                          {editTaskId ? "Save Changes" : "Create Task"}
+                        </button>
+                      </div>
                     </>
                   )}
                 </form>

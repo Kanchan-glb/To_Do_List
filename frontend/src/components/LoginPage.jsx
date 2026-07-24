@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import API from "../api/authApi";
 
 function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -23,9 +24,7 @@ function LoginPage() {
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const isPasswordValid = passwordRules.every((rule) => rule.valid);
   const shouldShowPasswordRules = !isLogin;
-  const storedUsers = JSON.parse(localStorage.getItem("smartUsers") || "[]");
-
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     if (!isEmailValid) {
@@ -39,31 +38,54 @@ function LoginPage() {
     }
 
     if (!isLogin && !name.trim()) {
-      setMessage("Please enter your name to create an account.");
+      setMessage("Please enter your name.");
       return;
     }
 
-    if (!isLogin) {
-      const nextUsers = [...storedUsers, { name: name.trim(), email, password }];
-      localStorage.setItem("smartUsers", JSON.stringify(nextUsers));
-      setIsLogin(true);
-      setName("");
-      setPassword("");
-      setMessage("Account created successfully. Please login now.");
-      return;
-    }
+    try {
+      if (!isLogin) {
+        // Register
+        const response = await API.post("/auth/register", {
+          name,
+          email,
+          password,
+        });
 
-    const validUser = storedUsers.find((user) => user.email === email && user.password === password);
-    if (!validUser) {
-      setMessage("Invalid email or password.");
-      return;
-    }
+        setMessage(response.data.message || "Account created successfully.");
 
-    localStorage.setItem("smartAuth", "true");
-    localStorage.setItem("smartEmail", email);
-    localStorage.setItem("smartName", validUser.name || email.split("@")[0]);
-    window.location.href = "/dashboard";
+        setIsLogin(true);
+        setName("");
+        setEmail("");
+        setPassword("");
+        return;
+      }
+
+      // Login
+      // Login
+const response = await API.post("/auth/login", {
+  email,
+  password,
+});
+
+// JWT
+localStorage.setItem("token", response.data.token);
+
+// User
+localStorage.setItem("user", JSON.stringify(response.data.user));
+
+// Old project compatibility
+localStorage.setItem("smartAuth", "true");
+localStorage.setItem("smartName", response.data.user.name);
+localStorage.setItem("smartEmail", response.data.user.email);
+
+window.location.href = "/dashboard";
+    } catch (error) {
+      setMessage(
+        error.response?.data?.message || "Something went wrong."
+      );
+    }
   };
+
 
   return (
     <div className="login-page">
@@ -164,8 +186,18 @@ function LoginPage() {
                 </ul>
               ) : null}
 
-              {message ? <p className={`form-message ${message.includes("successful") ? "success" : "error"}`}>{message}</p> : null}
-
+             {message && (
+  <p
+    className={`form-message ${
+      message.toLowerCase().includes("success") ||
+      message.toLowerCase().includes("registered")
+        ? "success"
+        : "error"
+    }`}
+  >
+    {message}
+  </p>
+)}
               <button className="login-button" type="submit">
                 {isLogin ? "Login" : "Create account"}
               </button>
