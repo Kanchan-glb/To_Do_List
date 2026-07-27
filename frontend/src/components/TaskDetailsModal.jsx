@@ -5,7 +5,13 @@ import { toast } from "react-hot-toast";
 
 export default function TaskDetailsModal({ task, onClose, onEdit, onDelete }) {
   const { updateTask } = useTasks();
+  const [isHistoryExpanded, setIsHistoryExpanded] = React.useState(false);
   if (!task) return null;
+  console.log({
+    dueDate: task.dueDate,
+    dueTime: task.dueTime,
+    createdAt: task.createdAt,
+  });
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -41,31 +47,54 @@ export default function TaskDetailsModal({ task, onClose, onEdit, onDelete }) {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
-              <strong style={{ color: 'var(--text-primary)' }}>Created At:</strong>
-              <div style={{ marginTop: '2px' }}>{task.createdDate || 'Unknown'} {task.createdTime ? `• ${task.createdTime}` : ''}</div>
+              <strong>Created At:</strong>
+              <div style={{ marginTop: "2px" }}>
+                {task.createdAt
+                  ? format(new Date(task.createdAt), "dd MMM yyyy • hh:mm a")
+                  : "Unknown"}
+              </div>
             </div>
             <div>
               <strong style={{ color: 'var(--text-primary)' }}>Status:</strong>
               <div style={{ marginTop: '4px', fontWeight: '600', fontSize: '0.95rem' }}>
                 {(() => {
-                  if (task.completed) return <span style={{ color: '#10b981' }}>🟢 Completed</span>;
+                  if (task.status === "Completed") {
+                    return <span style={{ color: "#10b981" }}>🟢 Completed</span>;
+                  }
+
                   const now = new Date();
-                  const today = format(now, 'yyyy-MM-dd');
-                  const taskDateObj = new Date(`${task.dueDate}T${task.dueTime || "23:59"}`);
-                  if (taskDateObj < now) return <span style={{ color: '#ef4444' }}>🔴 Overdue</span>;
-                  if (task.dueDate === today) return <span style={{ color: '#eab308' }}>🟡 Pending</span>;
-                  return <span style={{ color: '#3b82f6' }}>🔵 Incoming</span>;
+
+                  const due = new Date(task.dueDate);
+
+                  if (task.dueTime) {
+                    const [h, m] = task.dueTime.split(":");
+                    due.setHours(+h, +m, 0, 0);
+                  } else {
+                    due.setHours(23, 59, 59, 999);
+                  }
+
+                  if (due < now) {
+                    return <span style={{ color: "#ef4444" }}>🔴 Overdue</span>;
+                  }
+
+                  if (
+                    due.getFullYear() === now.getFullYear() &&
+                    due.getMonth() === now.getMonth() &&
+                    due.getDate() === now.getDate()
+                  ) {
+                    return <span style={{ color: "#eab308" }}>🟡 Pending</span>;
+                  }
+
+                  return <span style={{ color: "#3b82f6" }}>🔵 Incoming</span>;
                 })()}
               </div>
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div><strong style={{ color: 'var(--text-primary)' }}>Due Date:</strong> <div style={{ marginTop: '2px' }}>{task.dueDate}</div></div>
-            <div>
-              <strong style={{ color: 'var(--text-primary)' }}>Due Time:</strong>
-              <div style={{ marginTop: '2px' }}>{task.dueTime || 'N/A'}</div>
-            </div>
+          <div>
+            <strong>Due:</strong>
+
+            {format(new Date(task.dueDate), "dd MMM yyyy")} • {task.dueTime}
           </div>
 
           {/* Time Span & Duration */}
@@ -138,22 +167,31 @@ export default function TaskDetailsModal({ task, onClose, onEdit, onDelete }) {
             </div>
           )}
 
-          {task.rescheduleCount > 0 && (
+          {(task.rescheduleCount > 0 || (task.rescheduleHistory && task.rescheduleHistory.length > 0)) && (
             <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
-              <strong style={{ color: 'var(--text-primary)' }}>Reschedule History ({task.rescheduleCount}):</strong>
+              <strong style={{ color: 'var(--text-primary)' }}>Reschedule History ({task.rescheduleHistory?.length || task.rescheduleCount}):</strong>
               {task.rescheduleHistory && task.rescheduleHistory.length > 0 ? (
                 <ul style={{ paddingLeft: '0', listStyle: 'none', margin: '8px 0 0', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85rem' }}>
                   {task.rescheduleHistory.map((h, i) => (
                     <li key={i} style={{ background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                       <div style={{ marginBottom: '4px', fontWeight: '600', color: '#475569' }}>
-                        Rescheduled on: {h.rescheduledAtDate} at {h.rescheduledAtTime}
+                        Rescheduled on: {h.rescheduledAt ? new Date(h.rescheduledAt).toLocaleString() : `${h.rescheduledAtDate || ''} ${h.rescheduledAtTime || ''}`}
                       </div>
-                      <div style={{ color: '#64748b' }}>
-                        From: <span style={{ textDecoration: 'line-through' }}>{h.previousDate} {h.previousTime}</span>
-                      </div>
-                      <div style={{ color: '#0f172a' }}>
-                        To: {h.newDate} {h.newTime}
-                      </div>
+                      {h.oldDate && (
+                        <div style={{ color: '#64748b' }}>
+                          From: <span style={{ textDecoration: 'line-through' }}>{new Date(h.oldDate).toLocaleDateString()}</span>
+                        </div>
+                      )}
+                      {h.newDate && (
+                        <div style={{ color: '#0f172a' }}>
+                          To: {new Date(h.newDate).toLocaleDateString()}
+                        </div>
+                      )}
+                      {h.reason && (
+                        <div style={{ color: '#64748b', fontSize: '0.8rem', marginTop: '2px' }}>
+                          Reason: {h.reason}
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -163,33 +201,111 @@ export default function TaskDetailsModal({ task, onClose, onEdit, onDelete }) {
             </div>
           )}
 
-          {task.updateHistory && task.updateHistory.length > 0 && (
-            <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
-              <strong style={{ color: 'var(--text-primary)' }}>📝 Update History ({task.updateHistory.length}):</strong>
-              <ul style={{ paddingLeft: '0', listStyle: 'none', margin: '8px 0 0', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85rem' }}>
-                {task.updateHistory.map((entry, i) => (
-                  <li key={i} style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                    <div style={{ marginBottom: '8px', fontWeight: '600', color: '#475569', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px' }}>
-                      Updated on: {entry.date} • {entry.time}
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {entry.changes.map((change, j) => (
-                        <div key={j}>
-                          <strong style={{ color: '#0f172a' }}>{change.field}:</strong>
-                          <div style={{ color: '#64748b', marginLeft: '4px' }}>
-                            From: <span style={{ textDecoration: 'line-through' }}>{change.oldValue || '(empty)'}</span>
-                          </div>
-                          <div style={{ color: '#10b981', marginLeft: '4px' }}>
-                            To: {change.newValue || '(empty)'}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </li>
-                ))}
-              </ul>
+          <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
+            <div
+              onClick={() => setIsHistoryExpanded(prev => !prev)}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                cursor: 'pointer',
+                userSelect: 'none'
+              }}
+            >
+              <strong style={{ color: 'var(--text-primary)' }}>
+                📝 Update History ({task.updateHistory?.length || 0})
+              </strong>
+              <span
+                style={{
+                  fontSize: '0.85rem',
+                  color: '#64748b',
+                  transition: 'transform 0.2s ease',
+                  transform: isHistoryExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                  display: 'inline-block'
+                }}
+              >
+                ▼
+              </span>
             </div>
-          )}
+
+            <div
+              style={{
+                maxHeight: isHistoryExpanded ? '1200px' : '0px',
+                opacity: isHistoryExpanded ? 1 : 0,
+                overflow: 'hidden',
+                transition: 'max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease',
+                marginTop: isHistoryExpanded ? '8px' : '0px'
+              }}
+            >
+              {(!task.updateHistory || task.updateHistory.length === 0) ? (
+                <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '6px' }}>
+                  No update history available.
+                </div>
+              ) : (
+                <ul style={{ paddingLeft: '0', listStyle: 'none', margin: '8px 0 0', display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.85rem' }}>
+                  {[...task.updateHistory].reverse().map((entry, i) => {
+                    let formattedDate = "";
+                    try {
+                      const dateObj = entry.updatedAt ? new Date(entry.updatedAt) : (entry.date ? new Date(`${entry.date}T${entry.time || '00:00'}`) : null);
+                      if (dateObj && !isNaN(dateObj.getTime())) {
+                        formattedDate = format(dateObj, "dd MMM yyyy '•' hh:mm a");
+                      } else if (entry.date) {
+                        formattedDate = `${entry.date} ${entry.time || ''}`;
+                      } else {
+                        formattedDate = "Unknown Date";
+                      }
+                    } catch (e) {
+                      formattedDate = "Unknown Date";
+                    }
+
+                    const renderChangeItem = (change, idx) => {
+                      let text = "";
+                      if (typeof change === "string") {
+                        text = change;
+                      } else if (change && typeof change === "object") {
+                        if (change.field) {
+                          if (change.field === "Description") {
+                            text = "Description updated";
+                          } else {
+                            text = `${change.field} changed from ${change.oldValue || '(empty)'} → ${change.newValue || '(empty)'}`;
+                          }
+                        } else {
+                          text = JSON.stringify(change);
+                        }
+                      }
+                      return (
+                        <li key={idx} style={{ listStyleType: 'none', margin: '2px 0' }}>
+                          • {text}
+                        </li>
+                      );
+                    };
+
+                    return (
+                      <li key={i} style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                        <div style={{ fontWeight: '700', color: '#1e293b', marginBottom: '2px' }}>
+                          Updated On
+                        </div>
+                        <div style={{ color: '#64748b', marginBottom: '8px', fontSize: '0.8rem' }}>
+                          {formattedDate}
+                        </div>
+
+                        <div style={{ fontWeight: '700', color: '#1e293b', marginTop: '6px', marginBottom: '4px' }}>
+                          Changes Made
+                        </div>
+                        <ul style={{ paddingLeft: '4px', margin: 0, color: '#334155' }}>
+                          {Array.isArray(entry.changes) ? (
+                            entry.changes.map((ch, j) => renderChangeItem(ch, j))
+                          ) : (
+                            renderChangeItem(entry.changes, 0)
+                          )}
+                        </ul>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </div>
 
           {(task.completedAt || task.completedDate) && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -201,8 +317,8 @@ export default function TaskDetailsModal({ task, onClose, onEdit, onDelete }) {
               </div>
               {(() => {
                 try {
-                  if (!task.createdDate) return null;
-                  const createdStr = `${task.createdDate}T${task.createdTime || "00:00:00"}`;
+                  if (!task.createdAt) return null;
+                  const createdStr = `${task.createdAt}T${task.createdAt || "00:00:00"}`;
                   const start = new Date(createdStr);
                   let end = task.completedAt ? new Date(task.completedAt) : (task.completedDate ? new Date(task.completedDate) : new Date());
                   const diffMs = end - start;
@@ -222,7 +338,7 @@ export default function TaskDetailsModal({ task, onClose, onEdit, onDelete }) {
                       </div>
                     );
                   }
-                } catch (e) {}
+                } catch (e) { }
                 return null;
               })()}
             </div>
@@ -244,7 +360,7 @@ export default function TaskDetailsModal({ task, onClose, onEdit, onDelete }) {
 
           {/* Action Buttons */}
           <div style={{ display: "flex", gap: "8px", borderTop: "1px solid #e2e8f0", paddingTop: "16px", marginTop: "8px" }}>
-            {!task.completed && (
+            {task.status !== "Completed" && (
               <button
                 onClick={() => onEdit(task)}
                 style={{
@@ -265,7 +381,7 @@ export default function TaskDetailsModal({ task, onClose, onEdit, onDelete }) {
             <button
               onClick={() => {
                 if (window.confirm("Are you sure you want to delete this task?")) {
-                  onDelete(task.id);
+                  onDelete(task._id || task.id);
                 }
               }}
               style={{

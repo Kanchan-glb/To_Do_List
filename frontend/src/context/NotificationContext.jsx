@@ -10,29 +10,11 @@ export function useNotification() {
 
 export function NotificationProvider({ children }) {
   const { tasks } = useTasks();
-  const userEmail = localStorage.getItem("smartEmail") || "guest";
 
-  const getStorageKey = (key) => `${key}_${userEmail}`;
+  const [notifications, setNotifications] = useState([]);
 
-  const [notifications, setNotifications] = useState(() => {
-    const stored = localStorage.getItem(getStorageKey("smartNotifications"));
-    return stored ? JSON.parse(stored) : [];
-  });
+  const [notifiedEvents, setNotifiedEvents] = useState([]);
 
-  const [notifiedEvents, setNotifiedEvents] = useState(() => {
-    const stored = localStorage.getItem(getStorageKey("smartNotifiedEvents"));
-    return stored ? JSON.parse(stored) : [];
-  });
-
-  // Persist notifications
-  useEffect(() => {
-    localStorage.setItem(getStorageKey("smartNotifications"), JSON.stringify(notifications));
-  }, [notifications, userEmail]);
-
-  // Persist notified events
-  useEffect(() => {
-    localStorage.setItem(getStorageKey("smartNotifiedEvents"), JSON.stringify(notifiedEvents));
-  }, [notifiedEvents, userEmail]);
 
   const addNotification = useCallback((notification) => {
     setNotifications(prev => [
@@ -101,14 +83,14 @@ export function NotificationProvider({ children }) {
 
       tasks.forEach(task => {
         if (task.completed) return;
-        
+
         if (task.dueDate && task.dueTime) {
           // Parse "yyyy-MM-dd" and "HH:mm"
           const dateTimeStr = `${task.dueDate} ${task.dueTime}`;
           let taskDateTime;
           try {
-             taskDateTime = parse(dateTimeStr, "yyyy-MM-dd HH:mm", new Date());
-          } catch(e) {
+            taskDateTime = parse(dateTimeStr, "yyyy-MM-dd HH:mm", new Date());
+          } catch (e) {
             return;
           }
 

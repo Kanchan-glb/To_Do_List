@@ -29,7 +29,7 @@ const Ico = ({ children, size = 24 }) => (
   </svg>
 );
 const IcoSettings = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>;
-const IcoReset = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3 3 3 9 9 9"/></svg>;
+const IcoReset = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7" /><polyline points="3 3 3 9 9 9" /></svg>;
 const IcoTarget = () => <Ico><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></Ico>;
 const IcoClock = () => (
   <svg
@@ -83,6 +83,7 @@ const PRIORITY_COLORS = {
   Medium: { bg: "#fffbeb", color: "#d97706", border: "#fde68a" },
   Low: { bg: "#f0fdf4", color: "#16a34a", border: "#bbf7d0" },
 };
+
 
 /* ── Format due date for compact display ── */
 function formatDueDisplay(dueDate, dueTime) {
@@ -241,17 +242,18 @@ function TaskPreviewSection({
 function DashboardPage() {
   const navigate = useNavigate();
   const {
-    tasks,
-    getDailyProgress,
-    morningPlannerCompleted,
-    nightReviewCompleted,
-    focusTimeLeft,
-    isFocusRunning,
-    setIsFocusRunning,
-    focusMode,
-    focusStats,
-    switchFocusMode
-  } = useTasks();
+  tasks,
+  getDailyProgress,
+  morningPlannerCompleted,
+  nightReviewCompleted,
+  focusTimeLeft,
+  isFocusRunning,
+  setIsFocusRunning,
+  focusMode,
+  focusStats,
+  switchFocusMode,
+  deleteTask
+} = useTasks();
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedTask, setSelectedTask] = useState(null);
@@ -301,14 +303,7 @@ function DashboardPage() {
   const timeLabel = format(currentTime, "h:mm a");
 
   const getTaskStatus = (task) => {
-    if (task.completed) return "Completed";
-    const now = new Date();
-    const today = format(now, "yyyy-MM-dd");
-    const taskTime = task.dueTime || "23:59";
-    const taskDateObj = new Date(`${task.dueDate}T${taskTime}`);
-    if (taskDateObj < now) return "Overdue";
-    if (task.dueDate === today) return "Pending";
-    return "Incoming";
+    return task.status || (task.completed ? "Completed" : "Pending");
   };
 
   /* ── Task preview data (memoized) ── */
@@ -353,8 +348,9 @@ function DashboardPage() {
     let taskDateObj;
     try { taskDateObj = parseISO(taskDueStr); } catch { taskDateObj = new Date(); }
 
-    const isCompleted = task.completed;
-    const isCompletedToday = task.completedDate === todayStr;
+    const isCompleted = task.status === "Completed";
+    const isCompletedToday = task.
+completedAt === todayStr;
     const isDueToday = task.dueDate === todayStr;
     const isOverdue = !isCompleted && taskDueStr < todayStr;
     const isCarryForward = taskDueStr < todayStr && (!isCompleted || isCompletedToday);
@@ -370,7 +366,9 @@ function DashboardPage() {
     remainingToday = pendingToday + carryForward;
 
     const dueThisWeek = isThisWeek(taskDateObj, { weekStartsOn: 1 });
-    const completedThisWeekFlag = isCompleted && task.completedDate && isThisWeek(parseISO(task.completedDate), { weekStartsOn: 1 });
+    const completedThisWeekFlag = isCompleted && task.
+completedAt && isThisWeek(parseISO(task.
+completedAt), { weekStartsOn: 1 });
 
     if (dueThisWeek || isOverdue) totalThisWeek++;
     if (completedThisWeekFlag) completedThisWeek++;
@@ -378,7 +376,8 @@ function DashboardPage() {
     if (isOverdue) overdueThisWeek++;
 
     if (completedThisWeekFlag) {
-      const dayName = format(parseISO(task.completedDate), "EEE");
+      const dayName = format(parseISO(task.
+completedAt), "EEE");
       if (weeklyCompletions[dayName] !== undefined) weeklyCompletions[dayName]++;
     }
   });
@@ -411,173 +410,181 @@ function DashboardPage() {
   };
 
   return (
-    <DraggableGrid 
-      page="dashboard" 
+    <DraggableGrid
+      page="dashboard"
       defaultLayout={['pending', 'overdue', 'completed', 'activity', 'analytics']}
       renderOverlay={(id) => renderWidget(id)}
     >
       {({ layout, resetLayout }) => (
         <div className="page-fade-in dashboard-page">
-      <div className="dashboard-summary-buttons">
-        {/* Today's Summary */}
-        <div className="today-summary-trigger" onMouseEnter={handleTodayEnter} onMouseLeave={handleTodayLeave} onClick={e => e.stopPropagation()}>
-          <button type="button" className={`db-summary-trigger-btn ${todayOpen ? "active" : ""}`} onClick={handleTodayClick} aria-label="View Today's Summary" title="View Today's Summary">
-            <IcoCalendarCheck />
-            <span className="db-summary-trigger-label">Today</span>
-          </button>
-          {todayOpen && (
-            <div className="db-hover-panel-dropdown" onMouseEnter={handleTodayPanelEnter} onMouseLeave={handleTodayLeave}>
-              <h3 className="db-summary-title" style={{ marginBottom: "16px", fontSize: "1.1rem", borderBottom: "1px solid var(--border-light)", paddingBottom: "8px" }}>Today's Summary</h3>
-              <section className="db-stats-row compact panel-layout">
-                {[
-                  { icon: <IcoTasks />, label: "Total Work Today", value: totalWorkToday, color: "#6366f1", bg: "#e0e7ff" },
-                  { icon: <IcoCheck />, label: "Completed Today", value: completedToday, color: "#10b981", bg: "#d1fae5" },
-                  { icon: <IcoClock />, label: "Pending Today", value: pendingToday, color: "#f59e0b", bg: "#fef3c7" },
-                  { icon: <IcoAlert />, label: "Carry Forward", value: carryForward, color: "#ef4444", bg: "#fef2f2" },
-                  { icon: <IcoZap />, label: "Remaining Today", value: remainingToday, color: "#d97706", bg: "#ffedd5" },
-                  { icon: <IcoRepeat />, label: "Rescheduled Today", value: rescheduledToday, color: "#3b82f6", bg: "#eff6ff" },
-                ].map(({ icon, label, value, color, bg }) => (
-                  <div className="db-stat-card" key={label}>
-                    <div className="db-stat-icon" style={{ background: bg, color }}>{icon}</div>
-                    <div className="db-stat-body">
-                      <p className="db-stat-value" style={{ color }}>{value}</p>
-                      <p className="db-stat-label">{label}</p>
-                    </div>
-                  </div>
-                ))}
-              </section>
+          <div className="dashboard-summary-buttons">
+            {/* Today's Summary */}
+            <div className="today-summary-trigger" onMouseEnter={handleTodayEnter} onMouseLeave={handleTodayLeave} onClick={e => e.stopPropagation()}>
+              <button type="button" className={`db-summary-trigger-btn ${todayOpen ? "active" : ""}`} onClick={handleTodayClick} aria-label="View Today's Summary" title="View Today's Summary">
+                <IcoCalendarCheck />
+                <span className="db-summary-trigger-label">Today</span>
+              </button>
+              {todayOpen && (
+                <div className="db-hover-panel-dropdown" onMouseEnter={handleTodayPanelEnter} onMouseLeave={handleTodayLeave}>
+                  <h3 className="db-summary-title" style={{ marginBottom: "16px", fontSize: "1.1rem", borderBottom: "1px solid var(--border-light)", paddingBottom: "8px" }}>Today's Summary</h3>
+                  <section className="db-stats-row compact panel-layout">
+                    {[
+                      { icon: <IcoTasks />, label: "Total Work Today", value: totalWorkToday, color: "#6366f1", bg: "#e0e7ff" },
+                      { icon: <IcoCheck />, label: "Completed Today", value: completedToday, color: "#10b981", bg: "#d1fae5" },
+                      { icon: <IcoClock />, label: "Pending Today", value: pendingToday, color: "#f59e0b", bg: "#fef3c7" },
+                      { icon: <IcoAlert />, label: "Carry Forward", value: carryForward, color: "#ef4444", bg: "#fef2f2" },
+                      { icon: <IcoZap />, label: "Remaining Today", value: remainingToday, color: "#d97706", bg: "#ffedd5" },
+                      { icon: <IcoRepeat />, label: "Rescheduled Today", value: rescheduledToday, color: "#3b82f6", bg: "#eff6ff" },
+                    ].map(({ icon, label, value, color, bg }) => (
+                      <div className="db-stat-card" key={label}>
+                        <div className="db-stat-icon" style={{ background: bg, color }}>{icon}</div>
+                        <div className="db-stat-body">
+                          <p className="db-stat-value" style={{ color }}>{value}</p>
+                          <p className="db-stat-label">{label}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </section>
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* Week's Summary */}
-        <div className="week-summary-trigger" onMouseEnter={handleWeekEnter} onMouseLeave={handleWeekLeave} onClick={e => e.stopPropagation()}>
-          <button type="button" className={`db-summary-trigger-btn ${weekOpen ? "active" : ""}`} onClick={handleWeekClick} aria-label="View This Week Summary" title="View This Week Summary">
-            <IcoCalendarRange />
-            <span className="db-summary-trigger-label">Week</span>
-          </button>
-          {weekOpen && (
-            <div className="db-hover-panel-dropdown" onMouseEnter={handleWeekPanelEnter} onMouseLeave={handleWeekLeave}>
-              <h3 className="db-summary-title" style={{ marginBottom: "16px", fontSize: "1.1rem", borderBottom: "1px solid var(--border-light)", paddingBottom: "8px" }}>This Week Summary</h3>
-              <section className="db-stats-row compact panel-layout">
-                {[
-                  { icon: <IcoCalendar />, label: "Total This Week", value: totalThisWeek, color: "#3b82f6", bg: "#eff6ff" },
-                  { icon: <IcoCheck />, label: "Completed This Week", value: completedThisWeek, color: "#10b981", bg: "#d1fae5" },
-                  { icon: <IcoClock />, label: "Remaining This Week", value: remainingThisWeek, color: "#f59e0b", bg: "#fef3c7" },
-                  { icon: <IcoAlert />, label: "Overdue This Week", value: overdueThisWeek, color: "#ef4444", bg: "#fef2f2" },
-                  { icon: <IcoTarget />, label: "Weekly Completion", value: `${weeklyCompletionPct}%`, color: "#a855f7", bg: "#faf5ff" },
-                  { icon: <IcoStar />, label: "Most Productive Day", value: mostProductiveDay, color: "#0ea5e9", bg: "#e0f2fe" },
-                ].map(({ icon, label, value, color, bg }) => (
-                  <div className="db-stat-card" key={label}>
-                    <div className="db-stat-icon" style={{ background: bg, color }}>{icon}</div>
-                    <div className="db-stat-body">
-                      <p className="db-stat-value" style={{ color }}>{value}</p>
-                      <p className="db-stat-label">{label}</p>
-                    </div>
-                  </div>
-                ))}
-              </section>
+            {/* Week's Summary */}
+            <div className="week-summary-trigger" onMouseEnter={handleWeekEnter} onMouseLeave={handleWeekLeave} onClick={e => e.stopPropagation()}>
+              <button type="button" className={`db-summary-trigger-btn ${weekOpen ? "active" : ""}`} onClick={handleWeekClick} aria-label="View This Week Summary" title="View This Week Summary">
+                <IcoCalendarRange />
+                <span className="db-summary-trigger-label">Week</span>
+              </button>
+              {weekOpen && (
+                <div className="db-hover-panel-dropdown" onMouseEnter={handleWeekPanelEnter} onMouseLeave={handleWeekLeave}>
+                  <h3 className="db-summary-title" style={{ marginBottom: "16px", fontSize: "1.1rem", borderBottom: "1px solid var(--border-light)", paddingBottom: "8px" }}>This Week Summary</h3>
+                  <section className="db-stats-row compact panel-layout">
+                    {[
+                      { icon: <IcoCalendar />, label: "Total This Week", value: totalThisWeek, color: "#3b82f6", bg: "#eff6ff" },
+                      { icon: <IcoCheck />, label: "Completed This Week", value: completedThisWeek, color: "#10b981", bg: "#d1fae5" },
+                      { icon: <IcoClock />, label: "Remaining This Week", value: remainingThisWeek, color: "#f59e0b", bg: "#fef3c7" },
+                      { icon: <IcoAlert />, label: "Overdue This Week", value: overdueThisWeek, color: "#ef4444", bg: "#fef2f2" },
+                      { icon: <IcoTarget />, label: "Weekly Completion", value: `${weeklyCompletionPct}%`, color: "#a855f7", bg: "#faf5ff" },
+                      { icon: <IcoStar />, label: "Most Productive Day", value: mostProductiveDay, color: "#0ea5e9", bg: "#e0f2fe" },
+                    ].map(({ icon, label, value, color, bg }) => (
+                      <div className="db-stat-card" key={label}>
+                        <div className="db-stat-icon" style={{ background: bg, color }}>{icon}</div>
+                        <div className="db-stat-body">
+                          <p className="db-stat-value" style={{ color }}>{value}</p>
+                          <p className="db-stat-label">{label}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </section>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        
-        {/* Reset Layout */}
-        {/* <button type="button" className="db-summary-trigger-btn" onClick={resetLayout} aria-label="Reset Layout" title="Reset Layout to Default">
+
+            {/* Reset Layout */}
+            {/* <button type="button" className="db-summary-trigger-btn" onClick={resetLayout} aria-label="Reset Layout" title="Reset Layout to Default">
           <IcoReset />
           <span className="db-summary-trigger-label">Reset Layout</span>
         </button> */}
-      </div>
-
-      {/* ── Notification banners ── */}
-      <div className="db-top-section" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-        {notificationStatus === "default" && (
-          <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", padding: "12px 16px", borderRadius: "12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div>
-              <strong style={{ color: "#1e40af", display: "block", marginBottom: "4px" }}>Enable Native Notifications</strong>
-              <span style={{ color: "#3b82f6", fontSize: "0.9rem" }}>Never miss a task reminder! Allow browser notifications to see alerts even when the app is minimized.</span>
-            </div>
-            <button onClick={handleRequestPermission} style={{ background: "#2563eb", color: "white", border: "none", padding: "8px 16px", borderRadius: "8px", fontWeight: "600", cursor: "pointer", flexShrink: 0, marginLeft: "16px" }}>
-              Enable
-            </button>
           </div>
-        )}
-        {notificationStatus === "denied" && (
-          <div style={{ background: "#fef2f2", border: "1px solid #fecaca", padding: "12px 16px", borderRadius: "12px" }}>
-            <strong style={{ color: "#991b1b", display: "block", marginBottom: "4px" }}>Notifications Blocked</strong>
-            <span style={{ color: "#ef4444", fontSize: "0.9rem" }}>You have blocked notifications. Please allow them in your browser settings to receive native task reminders.</span>
+
+          {/* ── Notification banners ── */}
+          <div className="db-top-section" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            {notificationStatus === "default" && (
+              <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", padding: "12px 16px", borderRadius: "12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <strong style={{ color: "#1e40af", display: "block", marginBottom: "4px" }}>Enable Native Notifications</strong>
+                  <span style={{ color: "#3b82f6", fontSize: "0.9rem" }}>Never miss a task reminder! Allow browser notifications to see alerts even when the app is minimized.</span>
+                </div>
+                <button onClick={handleRequestPermission} style={{ background: "#2563eb", color: "white", border: "none", padding: "8px 16px", borderRadius: "8px", fontWeight: "600", cursor: "pointer", flexShrink: 0, marginLeft: "16px" }}>
+                  Enable
+                </button>
+              </div>
+            )}
+            {notificationStatus === "denied" && (
+              <div style={{ background: "#fef2f2", border: "1px solid #fecaca", padding: "12px 16px", borderRadius: "12px" }}>
+                <strong style={{ color: "#991b1b", display: "block", marginBottom: "4px" }}>Notifications Blocked</strong>
+                <span style={{ color: "#ef4444", fontSize: "0.9rem" }}>You have blocked notifications. Please allow them in your browser settings to receive native task reminders.</span>
+              </div>
+            )}
+
+            {/* ── Hero banner ── */}
+            <section className="db-hero">
+              <div className="db-hero-left">
+                <p className="db-hero-eyebrow">{todayLabel} &nbsp;•&nbsp; {timeLabel}</p>
+                <h1 className="db-hero-title">{greeting}, {userName} 👋</h1>
+                <p className="db-hero-sub">
+                  You have <strong>{todayCount} tasks</strong> today — {todayCompleted} done, {pendingCount} remaining.
+                </p>
+                <div className="db-hero-tags">
+                  <span className="db-tag indigo"><IcoFire /> {streak} day streak</span>
+                  <span className="db-tag emerald"><IcoCheck /> {completionRate}% complete</span>
+                  {overdueCount > 0 && <span className="db-tag rose"><IcoAlert /> {overdueCount} overdue</span>}
+                </div>
+              </div>
+              <div className="db-hero-right">
+                <div className="db-hero-ring-wrap">
+                  <svg width="80" height="80" viewBox="0 0 110 110">
+                    <circle cx="55" cy="55" r="46" fill="none" stroke="#e2e8f0" strokeWidth="8" />
+                    <circle
+                      cx="55" cy="55" r="46" fill="none"
+                      stroke="url(#heroGrad)" strokeWidth="8"
+                      strokeLinecap="round"
+                      strokeDasharray={`${(completionRate / 100) * 289.0} 289.0`}
+                      transform="rotate(-90 55 55)"
+                    />
+                    <defs>
+                      <linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#4f46e5" />
+                        <stop offset="100%" stopColor="#10b981" />
+                      </linearGradient>
+                    </defs>
+                    <text x="55" y="49" textAnchor="middle" fill="#0d1b2a" fontSize="18" fontWeight="800" fontFamily="Outfit,sans-serif">{completionRate}%</text>
+                    <text x="55" y="64" textAnchor="middle" fill="#8fa3b1" fontSize="9" fontFamily="Inter,sans-serif">Today</text>
+                  </svg>
+                </div>
+              </div>
+            </section>
           </div>
-        )}
 
-        {/* ── Hero banner ── */}
-        <section className="db-hero">
-          <div className="db-hero-left">
-            <p className="db-hero-eyebrow">{todayLabel} &nbsp;•&nbsp; {timeLabel}</p>
-            <h1 className="db-hero-title">{greeting}, {userName} 👋</h1>
-            <p className="db-hero-sub">
-              You have <strong>{todayCount} tasks</strong> today — {todayCompleted} done, {pendingCount} remaining.
-            </p>
-            <div className="db-hero-tags">
-              <span className="db-tag indigo"><IcoFire /> {streak} day streak</span>
-              <span className="db-tag emerald"><IcoCheck /> {completionRate}% complete</span>
-              {overdueCount > 0 && <span className="db-tag rose"><IcoAlert /> {overdueCount} overdue</span>}
-            </div>
-          </div>
-          <div className="db-hero-right">
-            <div className="db-hero-ring-wrap">
-              <svg width="80" height="80" viewBox="0 0 110 110">
-                <circle cx="55" cy="55" r="46" fill="none" stroke="#e2e8f0" strokeWidth="8" />
-                <circle
-                  cx="55" cy="55" r="46" fill="none"
-                  stroke="url(#heroGrad)" strokeWidth="8"
-                  strokeLinecap="round"
-                  strokeDasharray={`${(completionRate / 100) * 289.0} 289.0`}
-                  transform="rotate(-90 55 55)"
-                />
-                <defs>
-                  <linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#4f46e5" />
-                    <stop offset="100%" stopColor="#10b981" />
-                  </linearGradient>
-                </defs>
-                <text x="55" y="49" textAnchor="middle" fill="#0d1b2a" fontSize="18" fontWeight="800" fontFamily="Outfit,sans-serif">{completionRate}%</text>
-                <text x="55" y="64" textAnchor="middle" fill="#8fa3b1" fontSize="9" fontFamily="Inter,sans-serif">Today</text>
-              </svg>
-            </div>
-          </div>
-        </section>
-      </div>
+          {/* ══════════ TASK PREVIEW SECTIONS ══════════ */}
+          <section className="db-task-preview-grid">
+            {layout.slice(0, 3).map(id => (
+              <DraggableCard key={id} id={id}>
+                {renderWidget(id)}
+              </DraggableCard>
+            ))}
+          </section>
 
-      {/* ══════════ TASK PREVIEW SECTIONS ══════════ */}
-      <section className="db-task-preview-grid">
-        {layout.slice(0, 3).map(id => (
-          <DraggableCard key={id} id={id}>
-            {renderWidget(id)}
-          </DraggableCard>
-        ))}
-      </section>
+          {/* ══════════ BOTTOM GRID (Activity + Analytics) ══════════ */}
+          <section className="dashboard-bottom-grid">
+            {layout.slice(3).map(id => (
+              <DraggableCard key={id} id={id}>
+                {renderWidget(id)}
+              </DraggableCard>
+            ))}
+          </section>
 
-      {/* ══════════ BOTTOM GRID (Activity + Analytics) ══════════ */}
-      <section className="dashboard-bottom-grid">
-        {layout.slice(3).map(id => (
-          <DraggableCard key={id} id={id}>
-            {renderWidget(id)}
-          </DraggableCard>
-        ))}
-      </section>
-
-      {/* ══════════ FLOATING SUMMARY WIDGETS ══════════ */}
+          {/* ══════════ FLOATING SUMMARY WIDGETS ══════════ */}
 
 
-      {selectedTask && (
-        <TaskDetailsModal
-          task={selectedTask}
-          onClose={() => setSelectedTask(null)}
-          onEdit={() => {}}
-        />
+          {selectedTask && (
+            <TaskDetailsModal
+              task={selectedTask}
+              onClose={() => setSelectedTask(null)}
+              onEdit={(taskToEdit) => {
+                const target = taskToEdit || selectedTask;
+                setSelectedTask(null);
+                navigate("/tasks", { state: { editTask: target } });
+              }}
+              onDelete={(id) => {
+                deleteTask(id);
+                setSelectedTask(null);
+              }}
+            />
+          )}
+        </div>
       )}
-    </div>
-    )}
-  </DraggableGrid>
+    </DraggableGrid>
   );
 }
 

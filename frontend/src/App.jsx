@@ -28,40 +28,17 @@ function GlobalReminderEngine() {
   const { addOrUpdateOverdueNotification } = useNotification();
   const { tasks, updateTask, rescheduleTask } = useTasks();
   const [activeReminder, setActiveReminder] = useState(null);
-  const userEmail = localStorage.getItem("smartEmail") || "guest";
-  
-  const [notifiedTaskIds, setNotifiedTaskIds] = useState(() => {
-    try {
-      const userKey = `smartNotifiedTasks_${userEmail}`;
-      const userStored = localStorage.getItem(userKey);
-      if (userStored) return JSON.parse(userStored);
-      
-      const stored = localStorage.getItem("smartNotifiedTasks");
-      if (stored) {
-        localStorage.setItem(userKey, stored);
-        localStorage.removeItem("smartNotifiedTasks");
-        return JSON.parse(stored);
-      }
-      return [];
-    } catch (e) {
-      return [];
-    }
-  });
 
-  const [overdueTaskRecords, setOverdueTaskRecords] = useState(() => {
-    try {
-      const stored = localStorage.getItem(`smartOverdueNotified_${userEmail}`);
-      if (stored) return JSON.parse(stored);
-      return {};
-    } catch (e) {
-      return {};
-    }
-  });
+  const [notifiedTaskIds, setNotifiedTaskIds] = useState([]);
+
+  const [overdueTaskRecords, setOverdueTaskRecords] = useState({});
 
   const tasksRef = useRef(tasks);
   const notifiedTaskIdsRef = useRef(notifiedTaskIds);
   const updateTaskRef = useRef(updateTask);
   const overdueTaskRecordsRef = useRef(overdueTaskRecords);
+  const morningNotifiedRef = useRef(new Set());
+  const nightNotifiedRef = useRef(new Set());
 
   useEffect(() => {
     tasksRef.current = tasks;
@@ -116,12 +93,10 @@ function GlobalReminderEngine() {
         setIsTimeManuallySet(false);
         setCustomStartTime(format(new Date(), "HH:mm"));
         setCustomDate(format(new Date(), "yyyy-MM-dd"));
-        
+
         setNotifiedTaskIds(prev => {
           if (prev.includes(signature)) return prev;
-          const next = [...prev, signature];
-          localStorage.setItem(`smartNotifiedTasks_${userEmail}`, JSON.stringify(next));
-          return next;
+          return [...prev, signature];
         });
       });
 
@@ -130,11 +105,7 @@ function GlobalReminderEngine() {
         tasksRef.current,
         (taskId) => overdueTaskRecordsRef.current[taskId],
         (taskId, timeMs) => {
-          setOverdueTaskRecords(prev => {
-            const next = { ...prev, [taskId]: timeMs };
-            localStorage.setItem(`smartOverdueNotified_${userEmail}`, JSON.stringify(next));
-            return next;
-          });
+          setOverdueTaskRecords(prev => ({ ...prev, [taskId]: timeMs }));
         },
         (task) => {
           sendBrowserNotification("⏰ Overdue Task Reminder", {
@@ -151,23 +122,21 @@ function GlobalReminderEngine() {
       // Smart Morning Planner OS Notification
       const now = new Date();
       const currentHour = now.getHours();
-
-      if (currentHour === 8 && now.getMinutes() === 0) {
+      if (currentHour === 9 && now.getMinutes() === 0) {
         const todayDateStr = format(now, "yyyy-MM-dd");
-        const morningKey = `morning_notified_${todayDateStr}_${userEmail}`;
-        if (!localStorage.getItem(morningKey)) {
+        if (!morningNotifiedRef.current.has(todayDateStr)) {
           const pendingTasks = tasks.filter(t => !t.completed && (t.dueDate <= todayDateStr || t.rescheduleCount > 0));
           const pendingCount = pendingTasks.length;
-          
+
           let overdueCount = 0;
           let highestPriority = "None";
-          
+
           if (pendingCount > 0) {
             overdueCount = pendingTasks.filter(t => {
               const d = new Date(t.dueDate + "T23:59");
               return d < now && t.dueDate !== todayDateStr;
             }).length;
-            
+
             const highPrio = pendingTasks.find(t => t.priority === "High");
             const medPrio = pendingTasks.find(t => t.priority === "Medium");
             if (highPrio) highestPriority = highPrio.title;
@@ -182,24 +151,23 @@ function GlobalReminderEngine() {
               { action: 'plan', title: '📋 Plan My Day' }
             ]
           });
-          
-          localStorage.setItem(morningKey, "true");
+
+          morningNotifiedRef.current.add(todayDateStr);
         }
       }
 
       // Smart Night Review OS Notification
       if (currentHour === 22 && now.getMinutes() === 0) {
         const todayDateStr = format(now, "yyyy-MM-dd");
-        const nightKey = `night_notified_${todayDateStr}_${userEmail}`;
-        if (!localStorage.getItem(nightKey)) {
+        if (!nightNotifiedRef.current.has(todayDateStr)) {
           const pendingCount = tasks.filter(t => !t.completed && t.dueDate === todayDateStr).length;
-          
+
           let overdueCount = tasks.filter(t => {
             if (t.completed) return false;
             const d = new Date(t.dueDate + "T23:59");
             return d < now && t.dueDate !== todayDateStr;
           }).length;
-          
+
           sendBrowserNotification("🌙 Night Review", {
             body: `You have:\n• ${pendingCount} Pending Tasks\n• ${overdueCount} Overdue Tasks\n\nReview your remaining tasks before ending the day.`,
             data: { isNight: true },
@@ -207,8 +175,8 @@ function GlobalReminderEngine() {
               { action: 'review', title: '🌙 Review Tasks' }
             ]
           });
-          
-          localStorage.setItem(nightKey, "true");
+
+          nightNotifiedRef.current.add(todayDateStr);
         }
       }
 

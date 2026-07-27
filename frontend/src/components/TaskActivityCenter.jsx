@@ -1,9 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useTasks } from "../context/TaskContext";
 import { format, isThisWeek, isThisMonth, parseISO, subDays, addDays } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import TaskDetailsModal from "./TaskDetailsModal";
 import DateHistoryModal from "./DateHistoryModal";
+import { filterTasks } from "../api/authApi";
 
 /* ── Micro SVG Icons ── */
 const Ico = ({ children, size = 16, className = "" }) => (
@@ -19,7 +20,13 @@ const IcoEdit = () => <Ico><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0
 const IcoTrash = () => <Ico><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></Ico>;
 
 export default function TaskActivityCenter() {
-  const { tasks, updateTask, deleteTask } = useTasks();
+  const {
+    tasks,
+    updateTask,
+    deleteTask,
+
+  } = useTasks();
+  // const { tasks, updateTask, deleteTask,} = useTasks();
   const navigate = useNavigate();
 
   const [selectedTask, setSelectedTask] = useState(null);
@@ -50,7 +57,11 @@ export default function TaskActivityCenter() {
       ...Array.from(new Set([...defaultCategories, ...taskCategories]))
     ];
   }, [tasks]);
+  const handleUpdate = async (id, data) => {
+    await updateTask(id, data);
 
+    await fetchTasks();
+  };
   // Derived Data
   const dateOnlyTasks = useMemo(() => {
     return tasks.filter((task) => {
@@ -93,102 +104,103 @@ export default function TaskActivityCenter() {
     });
   }, [tasks, quickFilter, customDate]);
 
-  const filteredTasks = useMemo(() => {
-    return dateOnlyTasks.filter((task) => {
-      // 1. Search
-      if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-
-      // 2. Status Filter
-      const isCompleted = task.completed;
-      const isOverdue = !isCompleted && task.dueDate < format(new Date(), "yyyy-MM-dd");
-      const isRescheduled = task.rescheduleCount > 0;
-
-      if (statusFilter === "Pending" && (isCompleted || isOverdue)) return false;
-      if (statusFilter === "Completed" && !isCompleted) return false;
-      if (statusFilter === "Overdue" && !isOverdue) return false;
-      if (statusFilter === "Rescheduled" && !isRescheduled) return false;
-      if (statusFilter === "Missed" && !isOverdue) return false; // Treating missed as overdue for now
-
-      // 4. Priority Filter
-      if (priorityFilter !== "All" && task.priority !== priorityFilter) return false;
-
-      // 5. Category Filter
-      if (categoryFilter !== "All" && task.category !== categoryFilter) return false;
-
-      return true;
-    }).sort((a, b) => {
-      // 6. Sort By
-      if (sortBy === "Alphabetical") return a.title.localeCompare(b.title);
-      if (sortBy === "Due Time") {
-        const timeA = a.dueTime || "23:59";
-        const timeB = b.dueTime || "23:59";
-        return timeA.localeCompare(timeB);
-      }
-      if (sortBy === "Priority") {
-        const pMap = { High: 3, Medium: 2, Low: 1 };
-        return (pMap[b.priority] || 0) - (pMap[a.priority] || 0);
-      }
-      if (sortBy === "Newest") return (b.id || "").localeCompare(a.id || "");
-      if (sortBy === "Oldest") return (a.id || "").localeCompare(b.id || "");
-      return 0;
-    });
-  }, [dateOnlyTasks, searchQuery, statusFilter, priorityFilter, categoryFilter, sortBy]);
-
+  const [filteredTasks, setFilteredTasks] = useState([]);
   // Summaries (Only based on Date, totally independent of search/status filters)
   const stats = useMemo(() => {
-    let completed = 0, pending = 0, overdue = 0, rescheduled = 0;
-    let totalWork = 0;
-    const todayStr = format(new Date(), "yyyy-MM-dd");
 
-    filteredTasks.forEach((t) => {
-      const taskDue = t.dueDate || t.createdDate || "2099-01-01";
-      const isCompletedToday = t.completedDate === todayStr;
-      const isDueToday = taskDue === todayStr;
-      const isCarryForward = taskDue < todayStr && (!t.completed || isCompletedToday);
+    let completed = 0;
+    let pending = 0;
+    let overdue = 0;
+    let rescheduled = 0;
 
-      if (quickFilter === "Today") {
-        if (isDueToday || isCarryForward) {
-          totalWork++;
-          if (t.completed) completed++;
-          else if (taskDue < todayStr) overdue++;
-          else pending++;
+    // Always use filtered data
+    const data = filteredTasks;
+
+    data.forEach((t) => {
+
+      if (t.status === "Completed") {
+        completed++;
+      }
+      else {
+
+        const due = new Date(
+          `${t.dueDate}T${t.dueTime || "23:59"}`
+        );
+
+        if (due < new Date()) {
+          overdue++;
         }
-      } else {
-        totalWork++;
-        if (t.completed) completed++;
-        else if (taskDue < todayStr) overdue++; // This might need refinement for past dates, but matches general logic
-        else pending++;
+        else {
+          pending++;
+        }
       }
 
-      let isRescheduledInPeriod = false;
-      if (quickFilter === "Today") {
-        isRescheduledInPeriod = t.rescheduleHistory?.some(h => h.rescheduledAtDate === todayStr);
-      } else if (quickFilter === "Yesterday") {
-        const yDay = format(subDays(new Date(), 1), "yyyy-MM-dd");
-        isRescheduledInPeriod = t.rescheduleHistory?.some(h => h.rescheduledAtDate === yDay);
-      } else if (quickFilter === "Tomorrow") {
-        const tDay = format(addDays(new Date(), 1), "yyyy-MM-dd");
-        isRescheduledInPeriod = t.rescheduleHistory?.some(h => h.rescheduledAtDate === tDay);
-      } else if (quickFilter === "Custom Date") {
-        isRescheduledInPeriod = t.rescheduleHistory?.some(h => h.rescheduledAtDate === customDate);
-      } else if (quickFilter === "This Week") {
-        isRescheduledInPeriod = t.rescheduleHistory?.some(h => {
-          try { return isThisWeek(parseISO(h.rescheduledAtDate)); } catch (e) { return false; }
-        });
-      } else if (quickFilter === "This Month") {
-        isRescheduledInPeriod = t.rescheduleHistory?.some(h => {
-          try { return isThisMonth(parseISO(h.rescheduledAtDate)); } catch (e) { return false; }
-        });
-      } else if (quickFilter === "All Tasks") {
-        isRescheduledInPeriod = t.rescheduleHistory && t.rescheduleHistory.length > 0;
+      if (t.rescheduleHistory?.length) {
+        rescheduled++;
       }
 
-      if (isRescheduledInPeriod) rescheduled++;
     });
 
-    const compPercent = totalWork === 0 ? 0 : Math.round((completed / totalWork) * 100);
-    return { total: totalWork, completed, pending, overdue, rescheduled, compPercent };
-  }, [filteredTasks, quickFilter, customDate]);
+
+    const total = data.length;
+
+
+    return {
+
+      total,
+
+      completed,
+
+      pending,
+
+      overdue,
+
+      rescheduled,
+
+      compPercent:
+        total === 0
+          ? 0
+          : Math.round((completed / total) * 100)
+
+    };
+
+
+  }, [filteredTasks]);
+  const loadTasks = async () => {
+    try {
+
+      const res = await filterTasks({
+        search: searchQuery,
+        quickFilter,
+        customDate,
+        status: statusFilter,
+        priority: priorityFilter,
+        category: categoryFilter,
+        sortBy,
+      });
+
+
+      console.log(res.data);
+
+      setFilteredTasks(res.data.tasks || []);
+
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  useEffect(() => {
+    loadTasks();
+  }, [
+    tasks,
+    searchQuery,
+    quickFilter,
+    customDate,
+    statusFilter,
+    priorityFilter,
+    categoryFilter,
+    sortBy,
+  ]);
 
   return (
     <div className="tac-container">

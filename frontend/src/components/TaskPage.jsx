@@ -46,9 +46,7 @@ function getEmptyStateMessage(status, filterCategory, filterPriority) {
 const IcoReset = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7" /><polyline points="3 3 3 9 9 9" /></svg>;
 
 function TaskPage() {
-    const [tasks, setTasks] = useState([]);
-const [loading, setLoading] = useState(true);
-  const { addTask, updateTask, deleteTask, toggleSubtask, geminiApiKey } = useTasks();
+  const { tasks, loading, addTask, updateTask, deleteTask, toggleSubtask, fetchTasks, geminiApiKey } = useTasks();
   const navigate = useNavigate();
   const { statusOrId } = useParams();
 
@@ -92,7 +90,10 @@ const [loading, setLoading] = useState(true);
   }, [statusOrId, tasks]);
 
   useEffect(() => {
-    if (location.state?.openAddTaskModal) {
+    if (location.state?.editTask) {
+      handleEditClick(location.state.editTask);
+      window.history.replaceState({}, document.title);
+    } else if (location.state?.openAddTaskModal) {
       setShowAddModal(true);
       window.history.replaceState({}, document.title);
     }
@@ -102,32 +103,6 @@ const [loading, setLoading] = useState(true);
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
-   
-  const fetchTasks = async () => {
-  try {
-    setLoading(true);
-
-    const res = await getTasks();
-
-    setTasks(res.data.tasks);
-
-  } catch (err) {
-  console.error("GET TASKS ERROR:", err);
-  console.error("Response:", err.response);
-
-  toast.error(
-    err.response?.data?.message || err.message || "Failed to load tasks"
-  );
-
-  } finally {
-    setLoading(false);
-  }
-};
-
-useEffect(() => {
-  fetchTasks();
-}, []);
-
   // Modal overlay scroll lock, position restoration, and element focus preservation
   useEffect(() => {
     if (showAddModal || viewAllStatus) {
@@ -775,11 +750,7 @@ useEffect(() => {
       updatedAt: new Date().toISOString()
     };
 
-    if (isDraftEmpty(draftData)) {
-      localStorage.removeItem(`smartPlanner_addTaskDraft_${userEmail}`);
-    } else {
-      localStorage.setItem(`smartPlanner_addTaskDraft_${userEmail}`, JSON.stringify(draftData));
-    }
+    // Draft kept in component memory state
   };
 
   const closeModalCleanly = (shouldSaveDraft = true) => {
@@ -822,7 +793,6 @@ useEffect(() => {
 
   const handleClearAllAction = () => {
     stopVoiceRecording();
-    localStorage.removeItem(`smartPlanner_addTaskDraft_${userEmail}`);
 
     const isVoiceMode = modalView === "voice" || modalView === "review";
 
@@ -847,62 +817,6 @@ useEffect(() => {
       }
     }, 50);
   };
-
-  // Load draft on mount (Automatically restores)
-  useEffect(() => {
-    if (showAddModal) {
-      const stored = localStorage.getItem(`smartPlanner_addTaskDraft_${userEmail}`);
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          if (!isDraftEmpty(parsed)) {
-            isRestoringDraftRef.current = true;
-
-            setModalView(parsed.modalView || "edit");
-            setOriginalTranscript(parsed.originalTranscript || "");
-            setTranslatedTranscript(parsed.translatedTranscript || "");
-            setTitle(parsed.title || "");
-            setDescription(parsed.description || "");
-            setCategory(parsed.category || "Work");
-            setPriority(parsed.priority || "Medium");
-            setDueDate(parsed.dueDate || todayStr);
-            setDueTime(parsed.dueTime || calculateDefaultDueTime(parsed.category || "Work"));
-            setSubtasksList(parsed.subtasksList || []);
-            setFilledFields(parsed.filledFields || {});
-            setVoiceExtractedData(parsed.voiceExtractedData || {
-              startTime: null,
-              endTime: null,
-              reminder: null,
-              person: null,
-              location: null,
-              tags: [],
-              recurrence: null,
-              notes: null,
-              originalTranscript: null,
-              translatedTranscript: null
-            });
-            setIsAddingCategory(parsed.isAddingCategory || false);
-            setCustomCategory(parsed.customCategory || "");
-            setIsLargeTask(parsed.isLargeTask || false);
-
-            setDraftStatus("Draft restored");
-
-            setTimeout(() => {
-              isRestoringDraftRef.current = false;
-              focusFirstField();
-            }, 120);
-
-            // Auto-dismiss indicator message after 3 seconds
-            setTimeout(() => {
-              setDraftStatus("");
-            }, 3000);
-          }
-        } catch (e) {
-          console.error("Failed to parse draft:", e);
-        }
-      }
-    }
-  }, [showAddModal, userEmail]);
 
   // Esc key down listener
   useEffect(() => {
@@ -944,19 +858,11 @@ useEffect(() => {
     };
 
     if (isDraftEmpty(draftData)) {
-      localStorage.removeItem(`smartPlanner_addTaskDraft_${userEmail}`);
       setDraftStatus("");
       return;
     }
 
-    setDraftStatus("Saving draft...");
-
-    const handler = setTimeout(() => {
-      localStorage.setItem(`smartPlanner_addTaskDraft_${userEmail}`, JSON.stringify(draftData));
-      setDraftStatus("Draft saved");
-    }, 300);
-
-    return () => clearTimeout(handler);
+    setDraftStatus("Draft saved");
   }, [
     showAddModal,
     modalView,
@@ -1114,15 +1020,11 @@ useEffect(() => {
 
       if (editTaskId) {
         const res = await updateTask(editTaskId, taskObj);
-
-        createdTask = res.data.task;
-
+        createdTask = res?.data?.task;
         toast.success("Task Updated");
       } else {
-        const res = await createTask(taskObj);
-
-        createdTask = res.data.task;
-
+        const res = await addTask(taskObj);
+        createdTask = res?.data?.task;
         toast.success("Task Added");
       }
 
@@ -1158,8 +1060,6 @@ useEffect(() => {
         if (!isDraftEmpty(draftData)) {
           toast.success("Your task has been saved as a draft.");
         }
-      } else {
-        localStorage.removeItem(`smartPlanner_addTaskDraft_${userEmail}`);
       }
     }
 
@@ -1235,13 +1135,7 @@ useEffect(() => {
   };
 
   const getTaskStatus = (task) => {
-    if (task.completed) return "Completed";
-    const now = new Date();
-    const today = format(now, "yyyy-MM-dd");
-    const taskDateObj = new Date(`${task.dueDate}T${task.dueTime || "23:59"}`);
-    if (taskDateObj < now) return "Overdue";
-    if (task.dueDate === today) return "Pending";
-    return "Incoming";
+    return task.status || (task.completed ? "Completed" : "Pending");
   };
 
   // Helper to determine task status, color, and sort priority

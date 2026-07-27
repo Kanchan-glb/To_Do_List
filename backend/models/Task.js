@@ -49,7 +49,7 @@ const taskSchema = new mongoose.Schema(
       type: String,
       enum: [
         "Pending",
-        "Running",
+        "Incoming",
         "Completed",
         "Overdue",
       ],
@@ -59,6 +59,11 @@ const taskSchema = new mongoose.Schema(
     dueDate: {
       type: Date,
       default: null,
+    },
+
+    dueTime: {
+      type: String,
+      default: "",
     },
 
     completedAt: {
@@ -83,7 +88,7 @@ const taskSchema = new mongoose.Schema(
     updateHistory: [
       {
         changes: {
-          type: String,
+          type: mongoose.Schema.Types.Mixed,
         },
 
         updatedBy: {

@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef } from "react";
-import { format, isToday, isYesterday, differenceInDays, addHours, subDays } from "date-fns";
-import { calculateDefaultDueTime } from "../utils/taskUtils";
+import { format, subDays, differenceInDays } from "date-fns";
+import * as api from "../api/authApi";
 
 const TaskContext = createContext();
 
@@ -9,90 +9,56 @@ export function useTasks() {
 }
 
 export function TaskProvider({ children }) {
-  const userEmail = localStorage.getItem("smartEmail") || "guest";
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [geminiApiKey, setGeminiApiKey] = useState("");
 
-  const getScopedData = (key, defaultValue, isJson = false) => {
-    const userKey = `${key}_${userEmail}`;
-    const userStored = localStorage.getItem(userKey);
-    if (userStored !== null) {
-      return isJson ? JSON.parse(userStored) : userStored;
-    }
-
-    // Migration logic for existing users
-    const globalStored = localStorage.getItem(key);
-    if (globalStored !== null) {
-      localStorage.setItem(userKey, globalStored);
-      localStorage.removeItem(key);
-      return isJson ? JSON.parse(globalStored) : globalStored;
-    }
-
-    return defaultValue;
-  };
-
-  const formatCategory = (cat) => {
-    if (!cat) return "General";
-    return cat
-      .split(/[\s_]+/)
-      .map(word => word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : "")
-      .join('');
-  };
-
-  // Load initial tasks
-  const [tasks, setTasks] = useState(() => {
-    const loadedTasks = getScopedData("smartTasks", [], true);
-    return loadedTasks.map(task => ({
-      ...task,
-      category: formatCategory(task.category)
-    }));
-  });
-  const [geminiApiKey, setGeminiApiKey] = useState(() => getScopedData("smartGeminiKey", ""));
   const [streak, setStreak] = useState(0);
-  const [longestStreak, setLongestStreak] = useState(() => parseInt(getScopedData("smartLongestStreak", "0"), 10));
-  const [lastActiveDate, setLastActiveDate] = useState(() => getScopedData("smartLastActiveDate", format(new Date(), "yyyy-MM-dd")));
+  const [longestStreak, setLongestStreak] = useState(0);
+  const [lastActiveDate, setLastActiveDate] = useState(format(new Date(), "yyyy-MM-dd"));
 
-  const [morningPlannerCompleted, setMorningPlannerCompleted] = useState(() => {
-    const completedDay = getScopedData("smartMorningDay", "");
-    return completedDay === format(new Date(), "yyyy-MM-dd");
-  });
+  const [morningPlannerCompleted, setMorningPlannerCompleted] = useState(false);
+  const [nightReviewCompleted, setNightReviewCompleted] = useState(false);
 
-  const [nightReviewCompleted, setNightReviewCompleted] = useState(() => {
-    const completedDay = getScopedData("smartNightDay", "");
-    return completedDay === format(new Date(), "yyyy-MM-dd");
-  });
+  const [history, setHistory] = useState([]);
 
-  const [history, setHistory] = useState(() => getScopedData("smartHistory", [], true));
-
-  const [pomodoroSettings, setPomodoroSettings] = useState(() => getScopedData("smartPomodoroSettings", {
+  const [pomodoroSettings, setPomodoroSettings] = useState({
     work: 25,
     shortBreak: 5,
     longBreak: 15
-  }, true));
-
-  useEffect(() => {
-    localStorage.setItem(`smartPomodoroSettings_${userEmail}`, JSON.stringify(pomodoroSettings));
-  }, [pomodoroSettings, userEmail]);
+  });
 
   // Pomodoro Focus Timer State
-  const [pomodoroState, setPomodoroState] = useState(() => {
-    const defaultSettings = getScopedData("smartPomodoroSettings", { work: 25, shortBreak: 5, longBreak: 15 }, true);
-    return getScopedData("smartPomodoroState", {
-      focusMode: "work",
-      focusTimeLeft: defaultSettings.work * 60,
-      isFocusRunning: false,
-      targetTime: null
-    }, true);
+  const [pomodoroState, setPomodoroState] = useState({
+    focusMode: "work",
+    focusTimeLeft: 25 * 60,
+    isFocusRunning: false,
+    targetTime: null
   });
 
   const focusTimeLeft = pomodoroState.focusTimeLeft;
   const isFocusRunning = pomodoroState.isFocusRunning;
   const focusMode = pomodoroState.focusMode;
 
-  const [focusStats, setFocusStats] = useState(() => getScopedData("smartFocusStats", { workMinutes: 0, completedSessions: 0 }, true));
+  const [focusStats, setFocusStats] = useState({ workMinutes: 0, completedSessions: 0 });
 
-  // Persist Pomodoro State
+  const fetchTasks = async () => {
+    setLoading(true);
+    try {
+      const { data } = await api.getTasks();
+      if (data && data.tasks) {
+        setTasks(data.tasks);
+      }
+    } catch (err) {
+      console.error("Error fetching tasks from backend:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    localStorage.setItem(`smartPomodoroState_${userEmail}`, JSON.stringify(pomodoroState));
-  }, [pomodoroState, userEmail]);
+    fetchTasks();
+  }, []);
 
   const updatePomodoroSettings = (newSettings) => {
     setPomodoroSettings(newSettings);
@@ -103,6 +69,7 @@ export function TaskProvider({ children }) {
       }));
     }
   };
+
   const startTimer = () => {
     if (pomodoroState.isFocusRunning) return;
     setPomodoroState(prev => ({
@@ -136,25 +103,7 @@ export function TaskProvider({ children }) {
     }));
   };
 
-
   const timerRef = useRef(null);
-
-  // Persistence triggers
-  useEffect(() => {
-    localStorage.setItem(`smartTasks_${userEmail}`, JSON.stringify(tasks));
-  }, [tasks, userEmail]);
-
-  useEffect(() => {
-    localStorage.setItem(`smartGeminiKey_${userEmail}`, geminiApiKey);
-  }, [geminiApiKey, userEmail]);
-
-  useEffect(() => {
-    localStorage.setItem(`smartHistory_${userEmail}`, JSON.stringify(history));
-  }, [history, userEmail]);
-
-  useEffect(() => {
-    localStorage.setItem(`smartFocusStats_${userEmail}`, JSON.stringify(focusStats));
-  }, [focusStats, userEmail]);
 
   // Request Notification Permissions
   useEffect(() => {
@@ -163,25 +112,24 @@ export function TaskProvider({ children }) {
     }
   }, []);
 
-  // System Notification Reminders for Tasks (Handled globally in App.jsx via GlobalReminderEngine)
-  // Cleaned up duplicate state here.
-
-
-  // Dynamic Streak & Longest Streak Calculation from Completed Task Dates
+  // Compute streak from backend tasks
   useEffect(() => {
-    const completedTasks = tasks.filter(t => t.completed && t.completedDate);
-    const uniqueDates = [...new Set(completedTasks.map(t => t.completedDate))];
+    const completedTasks = tasks.filter(t => t.status === "Completed" || t.completed);
+    const uniqueDates = [...new Set(completedTasks.map(t => {
+      if (t.completedAt) return format(new Date(t.completedAt), "yyyy-MM-dd");
+      if (t.completedDate) return t.completedDate;
+      if (t.dueDate) return t.dueDate;
+      return null;
+    }).filter(Boolean))];
+
     const sortedDates = uniqueDates.sort();
 
     if (sortedDates.length === 0) {
       setStreak(0);
       setLongestStreak(0);
-      localStorage.setItem(`smartStreak_${userEmail}`, "0");
-      localStorage.setItem(`smartLongestStreak_${userEmail}`, "0");
       return;
     }
 
-    // Calculate maximum consecutive streak in history
     let maxStreak = 0;
     let tempStreak = 0;
     let lastDate = null;
@@ -207,7 +155,6 @@ export function TaskProvider({ children }) {
       maxStreak = tempStreak;
     }
 
-    // Calculate active streak ending today or yesterday
     const todayStr = format(new Date(), "yyyy-MM-dd");
     const yesterdayStr = format(subDays(new Date(), 1), "yyyy-MM-dd");
 
@@ -231,36 +178,30 @@ export function TaskProvider({ children }) {
     const finalLongest = Math.max(maxStreak, currentStreak);
     setStreak(currentStreak);
     setLongestStreak(finalLongest);
-    localStorage.setItem(`smartStreak_${userEmail}`, currentStreak.toString());
-    localStorage.setItem(`smartLongestStreak_${userEmail}`, finalLongest.toString());
-  }, [tasks, userEmail]);
+  }, [tasks]);
 
   // Handle Daily resets & Auto-History logs
   useEffect(() => {
     const todayStr = format(new Date(), "yyyy-MM-dd");
     if (lastActiveDate !== todayStr) {
-      // Automatically save history for the lastActiveDate
       let completedCount = 0, pendingCount = 0, overdueCount = 0, totalCount = 0, rescheduledCount = 0;
 
       tasks.forEach(t => {
-        const taskDue = t.dueDate || t.createdDate || "2099-01-01";
-        const isCompletedOnOrBefore = t.completed && t.completedDate && t.completedDate <= lastActiveDate;
-        const isCompletedOnDay = t.completed && t.completedDate === lastActiveDate;
-        const isDueOnDay = taskDue === lastActiveDate;
-        const isCarryForward = taskDue < lastActiveDate && (!isCompletedOnOrBefore || isCompletedOnDay);
+        const taskDue = t.dueDate || "2099-01-01";
+        const isCompletedOnDay = t.status === "Completed" && t.completedAt && format(new Date(t.completedAt), "yyyy-MM-dd") === lastActiveDate;
 
-        if (isDueOnDay || isCarryForward) {
+        if (taskDue === lastActiveDate || isCompletedOnDay) {
           totalCount++;
           if (isCompletedOnDay) {
             completedCount++;
-          } else if (taskDue < lastActiveDate) {
+          } else if (t.status === "Overdue") {
             overdueCount++;
           } else {
             pendingCount++;
           }
         }
 
-        if (t.rescheduleHistory?.some(h => h.rescheduledAtDate === lastActiveDate)) {
+        if (t.rescheduleHistory?.some(h => h.rescheduledAt && format(new Date(h.rescheduledAt), "yyyy-MM-dd") === lastActiveDate)) {
           rescheduledCount++;
         }
       });
@@ -290,22 +231,19 @@ export function TaskProvider({ children }) {
       });
 
       setLastActiveDate(todayStr);
-      localStorage.setItem(`smartLastActiveDate_${userEmail}`, todayStr);
-
       setMorningPlannerCompleted(false);
       setNightReviewCompleted(false);
     }
-  }, [lastActiveDate, streak, tasks, userEmail]);
+  }, [lastActiveDate, streak, tasks]);
 
   // Pomodoro timer tick logic
   useEffect(() => {
-    // If we just loaded and it's supposedly running, check if it expired while away
     if (pomodoroState.isFocusRunning && pomodoroState.targetTime) {
       const remaining = Math.round((pomodoroState.targetTime - Date.now()) / 1000);
       if (remaining <= 0) {
-         setIsFocusRunning(false); // We need to define this helper for handleFocusTimerComplete backwards compatibility
-         handleFocusTimerComplete();
-         return;
+        setIsFocusRunning(false);
+        handleFocusTimerComplete();
+        return;
       }
     }
 
@@ -313,7 +251,7 @@ export function TaskProvider({ children }) {
       timerRef.current = setInterval(() => {
         setPomodoroState((prev) => {
           if (!prev.isFocusRunning || !prev.targetTime) return prev;
-          
+
           const remaining = Math.round((prev.targetTime - Date.now()) / 1000);
           if (remaining <= 0) {
             clearInterval(timerRef.current);
@@ -373,20 +311,19 @@ export function TaskProvider({ children }) {
     }
   };
 
-  
   const setIsFocusRunning = (running) => {
     if (running) {
-       startTimer();
+      startTimer();
     } else {
-       pauseTimer();
+      pauseTimer();
     }
   };
-  
+
   const setFocusTimeLeft = (timeOrFn) => {
-     setPomodoroState(prev => {
-        const newTime = typeof timeOrFn === 'function' ? timeOrFn(prev.focusTimeLeft) : timeOrFn;
-        return { ...prev, focusTimeLeft: newTime };
-     });
+    setPomodoroState(prev => {
+      const newTime = typeof timeOrFn === 'function' ? timeOrFn(prev.focusTimeLeft) : timeOrFn;
+      return { ...prev, focusTimeLeft: newTime };
+    });
   };
 
   const switchFocusMode = (mode) => {
@@ -399,179 +336,78 @@ export function TaskProvider({ children }) {
     }));
   };
 
-
-  // Task Actions
-  const addTask = (taskData) => {
-    // Request permission on user gesture if not already granted/denied
-    if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
+  const addTask = async (taskData) => {
+    try {
+      const res = await api.createTask(taskData);
+      await fetchTasks();
+      return res;
+    } catch (err) {
+      console.error("Error creating task:", err);
+      throw err;
     }
-
-    const newTask = {
-      id: Date.now().toString(),
-      title: taskData.title,
-      description: taskData.description || "",
-      category: formatCategory(taskData.category),
-      priority: taskData.priority || "Medium",
-      dueDate: taskData.dueDate || format(new Date(), "yyyy-MM-dd"),
-      dueTime: taskData.dueTime || calculateDefaultDueTime(formatCategory(taskData.category)),
-      completed: false,
-      subtasks: taskData.subtasks || [],
-      rescheduleCount: 0,
-      rescheduleHistory: [],
-      createdDate: format(new Date(), "yyyy-MM-dd"),
-      createdTime: format(new Date(), "HH:mm:ss"),
-      // Extra Voice / Offline Extracted Details
-      startTime: taskData.startTime || null,
-      endTime: taskData.endTime || null,
-      reminder: taskData.reminder || null,
-      person: taskData.person || null,
-      location: taskData.location || null,
-      tags: taskData.tags || [],
-      recurrence: taskData.recurrence || null,
-      notes: taskData.notes || null,
-      originalTranscript: taskData.originalTranscript || null,
-      translatedTranscript: taskData.translatedTranscript || null
-    };
-
-    console.log(`[Reminder System] Reminder scheduled for task: "${newTask.title}" at ${newTask.dueDate} ${newTask.dueTime}`);
-    setTasks((prev) => [newTask, ...prev]);
-    return newTask;
   };
 
-  const updateTask = (taskId, updatedData) => {
-    if (updatedData.dueTime || updatedData.dueDate) {
-      localStorage.removeItem("reminded_" + taskId);
+  const updateTask = async (id, updatedData) => {
+    try {
+      const res = await api.updateTask(id, updatedData);
+      await fetchTasks();
+      return res;
+    } catch (err) {
+      console.error("Error updating task:", err);
+      throw err;
     }
-    setTasks((prev) =>
-      prev.map((t) => {
-        if (t.id === taskId) {
-          let rescheduleUpdates = {};
-          if ((updatedData.dueDate && updatedData.dueDate !== t.dueDate) ||
-            (updatedData.dueTime && updatedData.dueTime !== t.dueTime)) {
-            const historyItem = {
-              previousDate: t.dueDate,
-              previousTime: t.dueTime,
-              newDate: updatedData.dueDate || t.dueDate,
-              newTime: updatedData.dueTime || t.dueTime,
-              rescheduledAtDate: format(new Date(), "yyyy-MM-dd"),
-              rescheduledAtTime: format(new Date(), "HH:mm:ss")
-            };
-            rescheduleUpdates = {
-              rescheduleCount: (t.rescheduleCount || 0) + 1,
-              rescheduleHistory: [...(t.rescheduleHistory || []), historyItem]
-            };
-          }
+  };
 
-          const newTask = { ...t, ...updatedData, ...rescheduleUpdates };
-          if (updatedData.category) {
-            newTask.category = formatCategory(updatedData.category);
-          }
-          if (updatedData.completed !== undefined && updatedData.completed !== t.completed) {
-            newTask.completedDate = updatedData.completed ? format(new Date(), "yyyy-MM-dd") : null;
-            newTask.completedAt = updatedData.completed ? new Date().toISOString() : null;
-            if (updatedData.completed) {
-              console.log(`[Reminder System] Reminder cancelled for completed task: "${t.title}"`);
-            }
-          }
-          if (updatedData.dueDate || updatedData.dueTime) {
-            console.log(`[Reminder System] Reminder rescheduled for task: "${t.title}" to ${newTask.dueDate} ${newTask.dueTime}`);
-          }
-          return newTask;
-        }
-        return t;
-      })
+  const deleteTask = async (id) => {
+    try {
+      const res = await api.deleteTask(id);
+      await fetchTasks();
+      return res;
+    } catch (err) {
+      console.error("Error deleting task:", err);
+      throw err;
+    }
+  };
+
+  const toggleSubtask = async (taskId, subtaskId) => {
+    const task = tasks.find(t => t.id === taskId || t._id === taskId);
+    if (!task) return;
+
+    const updatedSubtasks = (task.subtasks || []).map((st) =>
+      (st.id === subtaskId || st._id === subtaskId) ? { ...st, completed: !st.completed } : st
     );
+
+    try {
+      const res = await api.updateTask(taskId || task._id, { subtasks: updatedSubtasks });
+      await fetchTasks();
+      return res;
+    } catch (err) {
+      console.error("Error toggling subtask:", err);
+      throw err;
+    }
   };
 
-
-  const deleteTask = (taskId) => {
-    setTasks((prev) => {
-      const taskToDelete = prev.find(t => t.id === taskId);
-      if (taskToDelete && !taskToDelete.completed) {
-        console.log(`[Reminder System] Reminder cancelled for deleted task: "${taskToDelete.title}"`);
-      }
-      return prev.filter((t) => t.id !== taskId);
-    });
+  const rescheduleTask = async (id, newDate, reason) => {
+    try {
+      const res = await api.rescheduleTask(id, {
+        newDate,
+        reason,
+      });
+      await fetchTasks();
+      return res;
+    } catch (err) {
+      console.error("Error rescheduling task:", err);
+      throw err;
+    }
   };
 
-  const toggleSubtask = (taskId, subtaskId) => {
-    setTasks((prev) =>
-      prev.map((t) => {
-        if (t.id === taskId) {
-          const updatedSubtasks = t.subtasks.map((st) =>
-            st.id === subtaskId ? { ...st, completed: !st.completed } : st
-          );
-
-          const hasSubtasks = updatedSubtasks.length > 0;
-          const allCompleted = hasSubtasks && updatedSubtasks.every(st => st.completed);
-
-          const isNowCompleted = hasSubtasks ? allCompleted : t.completed;
-          let newCompletedDate = t.completedDate;
-          let newCompletedAt = t.completedAt;
-          if (isNowCompleted && !t.completed) {
-            newCompletedDate = format(new Date(), "yyyy-MM-dd");
-            newCompletedAt = new Date().toISOString();
-            console.log(`[Reminder System] Reminder cancelled for completed task: "${t.title}"`);
-          } else if (!isNowCompleted && t.completed) {
-            newCompletedDate = null;
-            newCompletedAt = null;
-          }
-
-          return {
-            ...t,
-            subtasks: updatedSubtasks,
-            completed: isNowCompleted,
-            completedDate: newCompletedDate,
-            completedAt: newCompletedAt
-          };
-        }
-        return t;
-      })
-    );
-  };
-
-  const rescheduleTask = (taskId, newDate, newTime) => {
-    localStorage.removeItem("reminded_" + taskId);
-    setTasks((prev) =>
-      prev.map((t) => {
-        if (t.id === taskId) {
-          console.log(`[Reminder System] Reminder rescheduled for task: "${t.title}" to ${newDate} ${newTime || t.dueTime}`);
-
-          const historyItem = {
-            previousDate: t.dueDate,
-            previousTime: t.dueTime,
-            newDate: newDate,
-            newTime: newTime || t.dueTime,
-            rescheduledAtDate: format(new Date(), "yyyy-MM-dd"),
-            rescheduledAtTime: format(new Date(), "HH:mm:ss")
-          };
-
-          return {
-            ...t,
-            dueDate: newDate,
-            dueTime: newTime || t.dueTime,
-            rescheduleCount: (t.rescheduleCount || 0) + 1,
-            rescheduleHistory: [...(t.rescheduleHistory || []), historyItem]
-          };
-        }
-        return t;
-      })
-    );
-  };
-
-  // Mark Morning Planner Done
   const completeMorningPlanning = () => {
-    const todayStr = format(new Date(), "yyyy-MM-dd");
     setMorningPlannerCompleted(true);
-    localStorage.setItem(`smartMorningDay_${userEmail}`, todayStr);
   };
 
-  // Mark Night Review Done
   const completeNightReview = (summaryData) => {
     const todayStr = format(new Date(), "yyyy-MM-dd");
     setNightReviewCompleted(true);
-    localStorage.setItem(`smartNightDay_${userEmail}`, todayStr);
 
     setHistory((prev) => [
       {
@@ -584,7 +420,6 @@ export function TaskProvider({ children }) {
     ]);
   };
 
-  // Mark Weekly Review Done
   const saveWeeklyReview = (reviewData) => {
     const todayStr = format(new Date(), "yyyy-MM-dd");
     setHistory((prev) => [
@@ -599,27 +434,18 @@ export function TaskProvider({ children }) {
   };
 
   const getDailyProgress = () => {
-    const todayStr = format(new Date(), "yyyy-MM-dd");
-    const completed = tasks.filter(t => t.completed && (t.completedDate || t.dueDate) === todayStr).length;
-    const pending = tasks.filter((t) => !t.completed && t.dueDate <= todayStr).length;
+    const completed = tasks.filter(t => t.status === "Completed" || t.completed).length;
+    const pending = tasks.filter(t => t.status === "Pending").length;
+    const overdue = tasks.filter(t => t.status === "Overdue").length;
     const total = completed + pending;
     const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
-
-    const allPending = tasks.filter(t => !t.completed).length;
-    const allCompleted = tasks.filter(t => t.completed).length;
-
-    const overdue = tasks.filter(t => {
-      if (t.completed) return false;
-      const tDate = new Date(t.dueDate + "T" + (t.dueTime || "23:59"));
-      return tDate < new Date();
-    }).length;
 
     return {
       todayCount: total,
       todayCompleted: completed,
       completionRate: rate,
       pendingCount: pending,
-      completedCount: allCompleted,
+      completedCount: completed,
       overdueCount: overdue,
       streak
     };
@@ -629,6 +455,8 @@ export function TaskProvider({ children }) {
     <TaskContext.Provider
       value={{
         tasks,
+        loading,
+        fetchTasks,
         geminiApiKey,
         setGeminiApiKey,
         streak,
@@ -639,6 +467,8 @@ export function TaskProvider({ children }) {
         completeNightReview,
         saveWeeklyReview,
         history,
+        fetchTasks,
+        loading,
         addTask,
         updateTask,
         deleteTask,
@@ -655,12 +485,13 @@ export function TaskProvider({ children }) {
         switchFocusMode,
         pomodoroSettings,
         updatePomodoroSettings,
-    startTimer,
-    pauseTimer,
-    resetTimerToDefault
+        startTimer,
+        pauseTimer,
+        resetTimerToDefault
       }}
     >
       {children}
     </TaskContext.Provider>
   );
 }
+
