@@ -23,7 +23,9 @@ const options = {
     },
     servers: [
       {
-        url: "http://localhost:5000",
+        url: process.env.NODE_ENV === "production"
+          ? "https://to-do-list-1-t1i2.onrender.com"
+          : "http://localhost:5000",
       },
     ],
   },
@@ -37,7 +39,7 @@ app.use(express.json());
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.get("/", (req, res) => {
-    res.send("Backend Running");
+  res.send("Backend Running");
 });
 
 app.use("/api/auth", authRoutes);
@@ -46,5 +48,5 @@ app.use("/api/tasks", taskRoutes);
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-    console.log(`Server Running on Port ${PORT}`);
+  console.log(`Server Running on Port ${PORT}`);
 });
