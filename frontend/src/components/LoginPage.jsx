@@ -62,23 +62,23 @@ function LoginPage() {
 
       // Login
       // Login
-const response = await API.post("/auth/login", {
-  email,
-  password,
-});
+      const response = await API.post("/auth/login", {
+        email,
+        password,
+      });
 
-// JWT
-localStorage.setItem("token", response.data.token);
+      // JWT
+      localStorage.setItem("token", response.data.token);
 
-// User
-localStorage.setItem("user", JSON.stringify(response.data.user));
+      // User
+      localStorage.setItem("user", JSON.stringify(response.data.user));
 
-// Old project compatibility
-localStorage.setItem("smartAuth", "true");
-localStorage.setItem("smartName", response.data.user.name);
-localStorage.setItem("smartEmail", response.data.user.email);
+      // Old project compatibility
+      localStorage.setItem("smartAuth", "true");
+      localStorage.setItem("smartName", response.data.user.name);
+      localStorage.setItem("smartEmail", response.data.user.email);
 
-window.location.href = "/dashboard";
+      window.location.href = "/dashboard";
     } catch (error) {
       setMessage(
         error.response?.data?.message || "Something went wrong."
@@ -186,18 +186,17 @@ window.location.href = "/dashboard";
                 </ul>
               ) : null}
 
-             {message && (
-  <p
-    className={`form-message ${
-      message.toLowerCase().includes("success") ||
-      message.toLowerCase().includes("registered")
-        ? "success"
-        : "error"
-    }`}
-  >
-    {message}
-  </p>
-)}
+              {message && (
+                <p
+                  className={`form-message ${message.toLowerCase().includes("success") ||
+                      message.toLowerCase().includes("registered")
+                      ? "success"
+                      : "error"
+                    }`}
+                >
+                  {message}
+                </p>
+              )}
               <button className="login-button" type="submit">
                 {isLogin ? "Login" : "Create account"}
               </button>
