@@ -2,6 +2,9 @@ import { useState, useEffect, useMemo, useRef } from "react";
 
 import DraggableGrid from "./dnd/DraggableGrid";
 import DraggableCard from "./dnd/DraggableCard";
+import NeumorphicSelect from "./NeumorphicSelect";
+import NeumorphicComboSelect from "./NeumorphicComboSelect";
+import NeumorphicFilterPill from "./NeumorphicFilterPill";
 import { clearLayout } from "../utils/layoutStorage";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useTasks } from "../context/TaskContext";
@@ -54,9 +57,28 @@ function TaskPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("All");
   const [filterPriority, setFilterPriority] = useState("All");
+  const [selectedTopCategories, setSelectedTopCategories] = useState([]);
+  const [selectedTopPriorities, setSelectedTopPriorities] = useState([]);
   const [filterStatus, setFilterStatus] = useState("All"); // All, Pending, Completed, Overdue
   const [filterLimit, setFilterLimit] = useState("5");
   const [viewAllStatus, setViewAllStatus] = useState(null); // null, Pending, Overdue, Completed, Incoming
+
+  // Dedicated Search & Category/Priority Filter Pills inside Each Status Card
+  const [pendingSearchQuery, setPendingSearchQuery] = useState("");
+  const [selectedPendingCategories, setSelectedPendingCategories] = useState([]);
+  const [selectedPendingPriorities, setSelectedPendingPriorities] = useState([]);
+
+  const [overdueSearchQuery, setOverdueSearchQuery] = useState("");
+  const [selectedOverdueCategories, setSelectedOverdueCategories] = useState([]);
+  const [selectedOverduePriorities, setSelectedOverduePriorities] = useState([]);
+
+  const [completedSearchQuery, setCompletedSearchQuery] = useState("");
+  const [selectedCompletedCategories, setSelectedCompletedCategories] = useState([]);
+  const [selectedCompletedPriorities, setSelectedCompletedPriorities] = useState([]);
+
+  const [incomingSearchQuery, setIncomingSearchQuery] = useState("");
+  const [selectedIncomingCategories, setSelectedIncomingCategories] = useState([]);
+  const [selectedIncomingPriorities, setSelectedIncomingPriorities] = useState([]);
 
   const [selectedTask, setSelectedTask] = useState(null);
 
@@ -1003,7 +1025,7 @@ function TaskPage() {
 
   // Submit form handler
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
 
     try {
       const taskObj = {
@@ -1029,6 +1051,7 @@ function TaskPage() {
       }
 
       // ✅ Close and reset the form
+      setShowAddModal(false);
       resetForm(false);
 
     } catch (err) {
@@ -1135,7 +1158,36 @@ function TaskPage() {
   };
 
   const getTaskStatus = (task) => {
-    return task.status || (task.completed ? "Completed" : "Pending");
+    if (!task) return "Pending";
+    if (task.completed || task.status === "Completed") return "Completed";
+
+    const todayStr = format(new Date(), "yyyy-MM-dd");
+    const nowTimeStr = format(new Date(), "HH:mm");
+
+    let taskDue = todayStr;
+    if (task.dueDate) {
+      try {
+        const rawDate = typeof task.dueDate === "string" ? task.dueDate.split("T")[0] : task.dueDate;
+        taskDue = rawDate;
+      } catch (e) {
+        taskDue = todayStr;
+      }
+    } else if (task.status === "Incoming") {
+      return "Incoming";
+    }
+
+    const taskTime = task.dueTime || "23:59";
+
+    // 1. Overdue: past date or past time today
+    if (taskDue < todayStr) return "Overdue";
+    if (taskDue === todayStr && taskTime < nowTimeStr) return "Overdue";
+    if (task.status === "Overdue") return "Overdue";
+
+    // 2. Incoming: due date is TOMORROW or FUTURE (kal ka task / upcoming date)
+    if (taskDue > todayStr || task.status === "Incoming") return "Incoming";
+
+    // 3. Pending: due today
+    return "Pending";
   };
 
   // Helper to determine task status, color, and sort priority
@@ -1195,14 +1247,18 @@ function TaskPage() {
         (task.description || "").toLowerCase().includes(searchQuery.toLowerCase());
 
       // Category filter
-      const matchesCategory = filterCategory === "All" || task.category === filterCategory;
+      const matchesCategory =
+        (selectedTopCategories.length === 0 || selectedTopCategories.includes(task.category)) &&
+        (filterCategory === "All" || task.category === filterCategory);
 
       // Priority filter
-      const matchesPriority = filterPriority === "All" || task.priority === filterPriority;
+      const matchesPriority =
+        (selectedTopPriorities.length === 0 || selectedTopPriorities.includes(task.priority)) &&
+        (filterPriority === "All" || task.priority === filterPriority);
 
       return matchesSearch && matchesCategory && matchesPriority;
     });
-  }, [tasks, searchQuery, filterCategory, filterPriority]);
+  }, [tasks, searchQuery, filterCategory, filterPriority, selectedTopCategories, selectedTopPriorities]);
 
 
   const totalPendingCount = useMemo(() => tasks.filter(task => getTaskStatus(task) === 'Pending').length, [tasks]);
@@ -1225,6 +1281,66 @@ function TaskPage() {
   const incomingTasksList = useMemo(() => {
     return baseFilteredTasks.filter(task => getTaskStatus(task) === "Incoming");
   }, [baseFilteredTasks]);
+
+  const filteredPendingList = useMemo(() => {
+    return pendingTasksList.filter(task => {
+      if (pendingSearchQuery.trim()) {
+        const q = pendingSearchQuery.toLowerCase();
+        if (!(task.title || "").toLowerCase().includes(q) && !(task.description || "").toLowerCase().includes(q)) return false;
+      }
+      if (selectedPendingCategories.length > 0 && !selectedPendingCategories.includes(task.category)) return false;
+      if (selectedPendingPriorities.length > 0 && !selectedPendingPriorities.includes(task.priority)) return false;
+      return true;
+    });
+  }, [pendingTasksList, pendingSearchQuery, selectedPendingCategories, selectedPendingPriorities]);
+
+  const filteredOverdueList = useMemo(() => {
+    return overdueTasksList.filter(task => {
+      if (overdueSearchQuery.trim()) {
+        const q = overdueSearchQuery.toLowerCase();
+        if (!(task.title || "").toLowerCase().includes(q) && !(task.description || "").toLowerCase().includes(q)) return false;
+      }
+      if (selectedOverdueCategories.length > 0 && !selectedOverdueCategories.includes(task.category)) return false;
+      if (selectedOverduePriorities.length > 0 && !selectedOverduePriorities.includes(task.priority)) return false;
+      return true;
+    });
+  }, [overdueTasksList, overdueSearchQuery, selectedOverdueCategories, selectedOverduePriorities]);
+
+  const filteredCompletedList = useMemo(() => {
+    return completedTasksList.filter(task => {
+      if (completedSearchQuery.trim()) {
+        const q = completedSearchQuery.toLowerCase();
+        if (!(task.title || "").toLowerCase().includes(q) && !(task.description || "").toLowerCase().includes(q)) return false;
+      }
+      if (selectedCompletedCategories.length > 0 && !selectedCompletedCategories.includes(task.category)) return false;
+      if (selectedCompletedPriorities.length > 0 && !selectedCompletedPriorities.includes(task.priority)) return false;
+      return true;
+    });
+  }, [completedTasksList, completedSearchQuery, selectedCompletedCategories, selectedCompletedPriorities]);
+
+  const filteredIncomingList = useMemo(() => {
+    return incomingTasksList.filter(task => {
+      // 1. In-card Search Query
+      if (incomingSearchQuery.trim()) {
+        const q = incomingSearchQuery.toLowerCase();
+        const titleMatch = (task.title || "").toLowerCase().includes(q);
+        const descMatch = (task.description || "").toLowerCase().includes(q);
+        if (!titleMatch && !descMatch) return false;
+      }
+
+      // 2. Category Filter Pill (Matching screenshot!)
+      if (selectedIncomingCategories && selectedIncomingCategories.length > 0) {
+        if (!selectedIncomingCategories.includes(task.category)) return false;
+      }
+
+      // 3. Priority Filter Pill (Matching screenshot!)
+      if (selectedIncomingPriorities && selectedIncomingPriorities.length > 0) {
+        if (!selectedIncomingPriorities.includes(task.priority)) return false;
+      }
+
+      return true;
+    });
+  }, [incomingTasksList, incomingSearchQuery, selectedIncomingCategories, selectedIncomingPriorities]);
 
   // Intelligent Chronological Sorting Logic
   const sortedTasks = useMemo(() => {
@@ -1303,8 +1419,13 @@ function TaskPage() {
         task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (task.description || "").toLowerCase().includes(searchQuery.toLowerCase());
 
-      const matchesCategory = filterCategory === "All" || task.category === filterCategory;
-      const matchesPriority = filterPriority === "All" || task.priority === filterPriority;
+      const matchesCategory =
+        (selectedTopCategories.length === 0 || selectedTopCategories.includes(task.category)) &&
+        (filterCategory === "All" || task.category === filterCategory);
+
+      const matchesPriority =
+        (selectedTopPriorities.length === 0 || selectedTopPriorities.includes(task.priority)) &&
+        (filterPriority === "All" || task.priority === filterPriority);
 
       return matchesSearch && matchesCategory && matchesPriority;
     });
@@ -1323,15 +1444,14 @@ function TaskPage() {
       const pB = priorityWeight[b.priority] || 0;
       return pB - pA;
     });
-  }, [tasks, viewAllStatus, searchQuery, filterCategory, filterPriority]);
+  }, [tasks, viewAllStatus, searchQuery, filterCategory, filterPriority, selectedTopCategories, selectedTopPriorities]);
 
   return (
     <div className="tasks-page">
-      <section className="tasks-hero">
+      {/* <section className="tasks-hero">
         <div className="tasks-hero-content">
           <p className="tasks-eyebrow">Task Management</p>
           <h1 className="tasks-title">Keep your work moving</h1>
-          {/* <p className="tasks-sub">Organize priorities, break down large tasks, and stay on track with interactive check-offs.</p> */}
         </div>
         <button
           type="button"
@@ -1340,164 +1460,169 @@ function TaskPage() {
         >
           + New Task
         </button>
-      </section>
+      </section> */}
 
-      {/* Filter and Search Bar */}
-      <section className="tasks-filter-bar">
-        <div className="tasks-search-wrapper">
-          <span className="tasks-search-icon">🔍</span>
-          <input
-            type="text"
-            placeholder="Search tasks..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="tasks-search-input"
-          />
-        </div>
-
-        <div className="tasks-filters-group">
-          <select
-            value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-            className="tasks-select"
-          >
-            <option value="All">All Categories</option>
-            {allCategories.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-          <select
-            value={filterPriority}
-            onChange={(e) => setFilterPriority(e.target.value)}
-            className="tasks-select"
-          >
-            <option value="All">All Priorities</option>
-            <option value="High">High</option>
-            <option value="Medium">Medium</option>
-            <option value="Low">Low</option>
-          </select>
-
-        </div>
-      </section>
-
-      {/* ── Always render the 4 status cards grid ── */}
-
-      {/* Reset Layout Button */}
-      {/* <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "16px", width: "100%" }}>
-        <button type="button" className="db-summary-trigger-btn" onClick={() => { clearLayout('tasks'); window.location.reload(); }} aria-label="Reset Layout" title="Reset Layout to Default">
-          <IcoReset />
-          <span className="db-summary-trigger-label">Reset Layout</span>
-        </button>
-      </div> */}
-
-      <DraggableGrid page="tasks" defaultLayout={['pending', 'overdue', 'completed', 'incoming']}>
+      <DraggableGrid page="tasks" defaultLayout={['filter-bar', 'pending', 'overdue', 'completed', 'incoming']}>
         {({ layout }) => {
           const renderCard = (id) => {
             switch (id) {
+              case 'filter-bar': return (
+                <DraggableCard id="filter-bar" key="filter-bar" style={{ gridColumn: "1 / -1", zIndex: 100 }}>
+                  <section className="tasks-filter-bar" style={{ width: "100%", marginTop: 0 }}>
+                    <div className="tasks-search-wrapper">
+                      <span className="tasks-search-icon">🔍</span>
+                      <input
+                        type="text"
+                        placeholder="Search tasks..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="tasks-search-input"
+                      />
+                    </div>
+
+                    <div className="tasks-filters-group" style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                      <NeumorphicFilterPill
+                        label="Category"
+                        selectedValues={selectedTopCategories}
+                        onSelectionChange={(vals) => setSelectedTopCategories(vals)}
+                        options={allCategories.filter(c => c !== "All")}
+                      />
+                      <NeumorphicFilterPill
+                        label="Priority"
+                        selectedValues={selectedTopPriorities}
+                        onSelectionChange={(vals) => setSelectedTopPriorities(vals)}
+                        options={["High", "Medium", "Low"]}
+                        alignRight={true}
+                      />
+                    </div>
+                  </section>
+                </DraggableCard>
+              );
               case 'pending': return (
                 <DraggableCard id="pending" key="pending">
-                  <div className="status-card pending" style={{ height: "350px", display: "flex", flexDirection: "column" }}>
-                    <header className="status-card-header">
-                      <div className="status-card-title-group">
+                  <div className="status-card pending" style={{ height: "235px", display: "flex", flexDirection: "column" }}>
+                    <header className="status-card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                      <div className="status-card-title-group" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         <span className="status-card-icon">🕒</span>
-
-                        <h3 className="status-card-title">
+                        <h3 className="status-card-title" style={{ fontSize: "1.15rem", fontWeight: 800, color: "#1e293b", margin: 0 }}>
                           Pending
                         </h3>
                       </div>
-
                       <span className="status-card-count">
                         {totalPendingCount} Tasks
                       </span>
                     </header>
 
-                    <div className="status-card-previews" style={{ flex: 1, overflow: "hidden", paddingRight: "4px" }}>
-                      {pendingTasksList.length === 0 ? (
-                        <div className="status-card-empty">{getEmptyStateMessage("Pending", filterCategory, filterPriority)}</div>
+                    {/* Embedded Search & Category/Priority Filter Pills */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px", overflow: "visible", zIndex: 50 }}>
+                      <div className="incoming-card-search" style={{
+                        flex: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        background: "#edf2f8",
+                        borderRadius: "999px",
+                        padding: "2px 14px",
+                        boxShadow: "inset 3px 3px 6px #b8c6d9, inset -3px -3px 6px #ffffff",
+                        border: "1px solid rgba(255,255,255,0.7)"
+                      }}>
+                        <input
+                          type="text"
+                          placeholder="Search pending..."
+                          value={pendingSearchQuery}
+                          onChange={(e) => setPendingSearchQuery(e.target.value)}
+                          style={{
+                            width: "100%",
+                            border: "none",
+                            background: "transparent",
+                            outline: "none",
+                            fontSize: "0.82rem",
+                            fontWeight: 500,
+                            color: "#2d3748",
+                            padding: "6px 4px"
+                          }}
+                        />
+                        <span style={{ color: "#718096", fontSize: "0.85rem" }}>🔍</span>
+                      </div>
+
+                      <NeumorphicFilterPill
+                        label="Category"
+                        selectedValues={selectedPendingCategories}
+                        onSelectionChange={(vals) => setSelectedPendingCategories(vals)}
+                        options={allCategories.filter(c => c !== "All")}
+                      />
+                      <NeumorphicFilterPill
+                        label="Priority"
+                        selectedValues={selectedPendingPriorities}
+                        onSelectionChange={(vals) => setSelectedPendingPriorities(vals)}
+                        options={["High", "Medium", "Low"]}
+                        alignRight={true}
+                      />
+                    </div>
+
+                    {/* Horizontal Tasks Row matching image layout */}
+                    <div className="incoming-horizontal-grid" style={{ flex: 1 }}>
+                      {filteredPendingList.length === 0 ? (
+                        <div className="status-card-empty" style={{ width: "100%" }}>{getEmptyStateMessage("Pending", filterCategory, filterPriority)}</div>
                       ) : (
-                        pendingTasksList.slice(0, 3).map((task) => {
-                          const progress =
-                            getSubtaskProgress(task);
+                        filteredPendingList.slice(0, 6).map((task, idx) => {
+                          const iconGradients = [
+                            "linear-gradient(135deg, #6000ff 0%, #3b82f6 100%)",
+                            "linear-gradient(135deg, #3b82f6 0%, #00c6ff 100%)",
+                            "linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)",
+                            "linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)"
+                          ];
+                          const icons = ["🕒", "⚡", "🎯", "📊"];
 
                           return (
                             <div
                               key={getTaskId(task)}
-                              className="task-preview-item"
+                              className="incoming-task-pill-card"
+                              onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
+                              title="Click to view details"
                             >
-                              {/* Top Row: Title & Due Date */}
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "4px" }}>
-                                <div className="task-title-checkbox-row" style={{ display: "flex", alignItems: "flex-start", gap: "4px", margin: 0, flex: 1, minWidth: 0 }}>
-
-                                  <label
-                                    className="task-complete-checkbox"
-                                    style={{ flexShrink: 0, marginTop: "2px" }}
-                                    title={
-                                      areAllSubtasksCompleted(task)
-                                        ? "Mark task as completed"
-                                        : "Complete all subtasks first"
-                                    }
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={false}
-                                      onChange={() => handleCompleteTask(task)}
-                                    />
-                                    <span className="custom-checkmark" />
-                                  </label>
-
-                                  <h4 className="task-preview-title" style={{ margin: 0, lineHeight: 1.3 }}>
-                                    {task.title}
-                                  </h4>
-                                </div>
-                                <div className="task-preview-date" style={{ margin: 0, padding: 0, background: "none", flexShrink: 0, fontSize: "0.85rem", fontWeight: 600 }}>
-
-                                  <span style={{ color: "var(--text-muted)", fontSize: "0.85rem", fontWeight: 600 }}>Due • </span>
-                                  {formatTaskDate(task.dueDate)}
-
-                                </div>
+                              <div className="incoming-pill-icon-badge" style={{ background: iconGradients[idx % iconGradients.length] }}>
+                                <span>{icons[idx % icons.length]}</span>
                               </div>
 
-                              {/* Bottom Row: Subtasks on left, View Details on right (or left if no subtasks) */}
-                              <div className="task-preview-actions" style={{ display: "flex", justifyContent: task.subtasks?.length > 0 ? "space-between" : "flex-start", alignItems: "center", gap: "8px" }}>
-                                {task.subtasks?.length > 0 ? (
-                                  <>
-                                    <button
-                                      type="button"
-                                      className="subtask-toggle-btn"
-                                      style={{ margin: 0 }}
-                                      onClick={() => setSubtaskPopupTask(task)}
-                                    >
-                                      Subtasks: {progress.completed}/{progress.total}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="status-card-viewall"
-                                      style={{ margin: 0 }}
-                                      onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
-                                    >
-                                      View Details →
-                                    </button>
-                                  </>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    className="status-card-viewall"
-                                    style={{ margin: 0 }}
-                                    onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
-                                  >
-                                    View Details →
-                                  </button>
+                              <div className="incoming-pill-title">
+                                {task.title}
+                              </div>
+
+                              <div style={{ display: "flex", alignItems: "center", gap: "5px", justifyContent: "center" }}>
+                                {task.subtasks?.length > 0 && (
+                                  <div className="pill-subtask-badge" title={`${task.subtasks.filter(s => s.completed).length} of ${task.subtasks.length} subtasks done`} onClick={(e) => { e.stopPropagation(); setSubtaskPopupTask(task); }} style={{ cursor: "pointer" }}>
+                                    <span className="pill-subtask-icon">≡</span>
+                                    <span className="pill-subtask-count">{task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}</span>
+                                  </div>
                                 )}
+                                <button
+                                  type="button"
+                                  className="incoming-check-btn"
+                                  title="Mark task completed"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCompleteTask(task);
+                                  }}
+                                >
+                                  ✓
+                                </button>
                               </div>
                             </div>
                           );
                         })
                       )}
 
-
+                      <button
+                        type="button"
+                        className="incoming-plus-card"
+                        title="Add task"
+                        onClick={() => setShowAddModal(true)}
+                      >
+                        +
+                      </button>
                     </div>
 
-                    <footer className="status-card-footer">
+                    <footer className="status-card-footer" style={{ marginTop: "0px", paddingTop: "2px" }}>
                       <button
                         type="button"
                         className="status-card-viewall"
@@ -1514,108 +1639,129 @@ function TaskPage() {
               );
               case 'overdue': return (
                 <DraggableCard id="overdue" key="overdue">
-                  <div className="status-card overdue" style={{ height: "350px", display: "flex", flexDirection: "column" }}>
-                    <header className="status-card-header">
-                      <div className="status-card-title-group">
+                  <div className="status-card overdue" style={{ height: "235px", display: "flex", flexDirection: "column" }}>
+                    <header className="status-card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                      <div className="status-card-title-group" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         <span className="status-card-icon">🔴</span>
-
-                        <h3 className="status-card-title">
+                        <h3 className="status-card-title" style={{ fontSize: "1.15rem", fontWeight: 800, color: "#1e293b", margin: 0 }}>
                           Overdue
                         </h3>
                       </div>
-
                       <span className="status-card-count">
                         {totalOverdueCount} Tasks
                       </span>
                     </header>
 
-                    <div className="status-card-previews" style={{ flex: 1, overflow: "hidden", paddingRight: "4px" }}>
-                      {overdueTasksList.length === 0 ? (
-                        <div className="status-card-empty">{getEmptyStateMessage("Overdue", filterCategory, filterPriority)}</div>
+                    {/* Embedded Search & Category/Priority Filter Pills */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px", overflow: "visible", zIndex: 50 }}>
+                      <div className="incoming-card-search" style={{
+                        flex: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        background: "#edf2f8",
+                        borderRadius: "999px",
+                        padding: "2px 14px",
+                        boxShadow: "inset 3px 3px 6px #b8c6d9, inset -3px -3px 6px #ffffff",
+                        border: "1px solid rgba(255,255,255,0.7)"
+                      }}>
+                        <input
+                          type="text"
+                          placeholder="Search overdue..."
+                          value={overdueSearchQuery}
+                          onChange={(e) => setOverdueSearchQuery(e.target.value)}
+                          style={{
+                            width: "100%",
+                            border: "none",
+                            background: "transparent",
+                            outline: "none",
+                            fontSize: "0.82rem",
+                            fontWeight: 500,
+                            color: "#2d3748",
+                            padding: "6px 4px"
+                          }}
+                        />
+                        <span style={{ color: "#718096", fontSize: "0.85rem" }}>🔍</span>
+                      </div>
+
+                      <NeumorphicFilterPill
+                        label="Category"
+                        selectedValues={selectedOverdueCategories}
+                        onSelectionChange={(vals) => setSelectedOverdueCategories(vals)}
+                        options={allCategories.filter(c => c !== "All")}
+                      />
+                      <NeumorphicFilterPill
+                        label="Priority"
+                        selectedValues={selectedOverduePriorities}
+                        onSelectionChange={(vals) => setSelectedOverduePriorities(vals)}
+                        options={["High", "Medium", "Low"]}
+                        alignRight={true}
+                      />
+                    </div>
+
+                    {/* Horizontal Tasks Row matching image layout */}
+                    <div className="incoming-horizontal-grid" style={{ flex: 1 }}>
+                      {filteredOverdueList.length === 0 ? (
+                        <div className="status-card-empty" style={{ width: "100%" }}>{getEmptyStateMessage("Overdue", filterCategory, filterPriority)}</div>
                       ) : (
-                        overdueTasksList.slice(0, 3).map((task) => {
-                          const progress =
-                            getSubtaskProgress(task);
+                        filteredOverdueList.slice(0, 6).map((task, idx) => {
+                          const iconGradients = [
+                            "linear-gradient(135deg, #ef4444 0%, #f97316 100%)",
+                            "linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)",
+                            "linear-gradient(135deg, #ec4899 0%, #ef4444 100%)",
+                            "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)"
+                          ];
+                          const icons = ["🔴", "⚠️", "⏰", "⚡"];
 
                           return (
                             <div
                               key={getTaskId(task)}
-                              className="task-preview-item"
+                              className="incoming-task-pill-card"
+                              onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
+                              title="Click to view details"
                             >
-                              {/* Top Row: Title & Due Date */}
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
-                                <div className="task-title-checkbox-row" style={{ display: "flex", alignItems: "flex-start", gap: "8px", margin: 0, flex: 1, minWidth: 0 }}>
-
-                                  <label
-                                    className="task-complete-checkbox"
-                                    style={{ flexShrink: 0 }}
-                                    title={
-                                      areAllSubtasksCompleted(task)
-                                        ? "Mark task as completed"
-                                        : "Complete all subtasks first"
-                                    }
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={false}
-                                      onChange={() => handleCompleteTask(task)}
-                                    />
-                                    <span className="custom-checkmark" />
-                                  </label>
-
-                                  <h4 className="task-preview-title" style={{ margin: 0, lineHeight: 1.3 }}>
-                                    {task.title}
-                                  </h4>
-                                </div>
-                                <div className="task-preview-date" style={{ margin: 0, padding: 0, background: "none", flexShrink: 0, fontSize: "0.85rem", fontWeight: 600 }}>
-
-                                  <span style={{ color: "#ef4444", fontSize: "0.85rem", fontWeight: 600 }}>Overdue • </span>
-                                  {formatTaskDate(task.dueDate)}
-
-                                </div>
+                              <div className="incoming-pill-icon-badge" style={{ background: iconGradients[idx % iconGradients.length] }}>
+                                <span>{icons[idx % icons.length]}</span>
                               </div>
 
-                              {/* Bottom Row: Subtasks on left, View Details on right (or left if no subtasks) */}
-                              <div className="task-preview-actions" style={{ display: "flex", justifyContent: task.subtasks?.length > 0 ? "space-between" : "flex-start", alignItems: "center", gap: "8px" }}>
-                                {task.subtasks?.length > 0 ? (
-                                  <>
-                                    <button
-                                      type="button"
-                                      className="subtask-toggle-btn"
-                                      style={{ margin: 0 }}
-                                      onClick={() => setSubtaskPopupTask(task)}
-                                    >
-                                      Subtasks: {progress.completed}/{progress.total}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="status-card-viewall"
-                                      style={{ margin: 0 }}
-                                      onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
-                                    >
-                                      View Details →
-                                    </button>
-                                  </>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    className="status-card-viewall"
-                                    style={{ margin: 0 }}
-                                    onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
-                                  >
-                                    View Details →
-                                  </button>
+                              <div className="incoming-pill-title">
+                                {task.title}
+                              </div>
+
+                              <div style={{ display: "flex", alignItems: "center", gap: "5px", justifyContent: "center" }}>
+                                {task.subtasks?.length > 0 && (
+                                  <div className="pill-subtask-badge" title={`${task.subtasks.filter(s => s.completed).length} of ${task.subtasks.length} subtasks done`} onClick={(e) => { e.stopPropagation(); setSubtaskPopupTask(task); }} style={{ cursor: "pointer" }}>
+                                    <span className="pill-subtask-icon">≡</span>
+                                    <span className="pill-subtask-count">{task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}</span>
+                                  </div>
                                 )}
+                                <button
+                                  type="button"
+                                  className="incoming-check-btn"
+                                  title="Mark task completed"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCompleteTask(task);
+                                  }}
+                                >
+                                  ✓
+                                </button>
                               </div>
                             </div>
                           );
                         })
                       )}
 
-
+                      <button
+                        type="button"
+                        className="incoming-plus-card"
+                        title="Add task"
+                        onClick={() => setShowAddModal(true)}
+                      >
+                        +
+                      </button>
                     </div>
 
-                    <footer className="status-card-footer">
+                    <footer className="status-card-footer" style={{ marginTop: "0px", paddingTop: "2px" }}>
                       <button
                         type="button"
                         className="status-card-viewall"
@@ -1632,99 +1778,118 @@ function TaskPage() {
               );
               case 'completed': return (
                 <DraggableCard id="completed" key="completed">
-                  <div className="status-card completed" style={{ height: "350px", display: "flex", flexDirection: "column" }}>
-                    <header className="status-card-header">
-                      <div className="status-card-title-group">
+                  <div className="status-card completed" style={{ height: "235px", display: "flex", flexDirection: "column" }}>
+                    <header className="status-card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                      <div className="status-card-title-group" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         <span className="status-card-icon">🟢</span>
-
-                        <h3 className="status-card-title">
+                        <h3 className="status-card-title" style={{ fontSize: "1.15rem", fontWeight: 800, color: "#1e293b", margin: 0 }}>
                           Completed
                         </h3>
                       </div>
-
                       <span className="status-card-count">
                         {totalCompletedCount} Tasks
                       </span>
                     </header>
 
-                    <div className="status-card-previews" style={{ flex: 1, overflow: "hidden", paddingRight: "4px" }}>
-                      {completedTasksList.length === 0 ? (
-                        <div className="status-card-empty">{getEmptyStateMessage("Completed", filterCategory, filterPriority)}</div>
-                      ) : (
-                        completedTasksList.slice(0, 3).map((task) => {
-                          const completedDate =
-                            task.completedAt ||
-                            task.completedDate;
+                    {/* Embedded Search & Category/Priority Filter Pills */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px", overflow: "visible", zIndex: 50 }}>
+                      <div className="incoming-card-search" style={{
+                        flex: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        background: "#edf2f8",
+                        borderRadius: "999px",
+                        padding: "2px 14px",
+                        boxShadow: "inset 3px 3px 6px #b8c6d9, inset -3px -3px 6px #ffffff",
+                        border: "1px solid rgba(255,255,255,0.7)"
+                      }}>
+                        <input
+                          type="text"
+                          placeholder="Search completed..."
+                          value={completedSearchQuery}
+                          onChange={(e) => setCompletedSearchQuery(e.target.value)}
+                          style={{
+                            width: "100%",
+                            border: "none",
+                            background: "transparent",
+                            outline: "none",
+                            fontSize: "0.82rem",
+                            fontWeight: 500,
+                            color: "#2d3748",
+                            padding: "6px 4px"
+                          }}
+                        />
+                        <span style={{ color: "#718096", fontSize: "0.85rem" }}>🔍</span>
+                      </div>
 
-                          const progress =
-                            getSubtaskProgress(task);
+                      <NeumorphicFilterPill
+                        label="Category"
+                        selectedValues={selectedCompletedCategories}
+                        onSelectionChange={(vals) => setSelectedCompletedCategories(vals)}
+                        options={allCategories.filter(c => c !== "All")}
+                      />
+                      <NeumorphicFilterPill
+                        label="Priority"
+                        selectedValues={selectedCompletedPriorities}
+                        onSelectionChange={(vals) => setSelectedCompletedPriorities(vals)}
+                        options={["High", "Medium", "Low"]}
+                        alignRight={true}
+                      />
+                    </div>
+
+                    {/* Horizontal Tasks Row matching image layout */}
+                    <div className="incoming-horizontal-grid" style={{ flex: 1 }}>
+                      {filteredCompletedList.length === 0 ? (
+                        <div className="status-card-empty" style={{ width: "100%" }}>{getEmptyStateMessage("Completed", filterCategory, filterPriority)}</div>
+                      ) : (
+                        filteredCompletedList.slice(0, 6).map((task, idx) => {
+                          const iconGradients = [
+                            "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                            "linear-gradient(135deg, #059669 0%, #047857 100%)",
+                            "linear-gradient(135deg, #34d399 0%, #10b981 100%)",
+                            "linear-gradient(135deg, #10b981 0%, #3b82f6 100%)"
+                          ];
+                          const icons = ["🟢", "✨", "🎉", "✓"];
 
                           return (
                             <div
                               key={getTaskId(task)}
-                              className="task-preview-item"
+                              className="incoming-task-pill-card"
+                              onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
+                              title="Click to view details"
                             >
-                              {/* Top Row: Title & Due Date */}
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1px" }}>
-                                <div className="task-title-checkbox-row" style={{ display: "flex", alignItems: "flex-start", gap: "4px", margin: 0, flex: 1, minWidth: 0 }}>
-
-                                  <div className="completed-static-checkbox" style={{ flexShrink: 0 }} title="Task completed">
-                                    ✓
-                                  </div>
-
-                                  <h4 className="task-preview-title" style={{ margin: 0, lineHeight: 1.3 }}>
-                                    {task.title}
-                                  </h4>
-                                </div>
-                                <div className="task-preview-date" style={{ margin: 0, padding: 0, background: "none", flexShrink: 0, fontSize: "0.85rem", fontWeight: 600 }}>
-
-                                  <span style={{ color: "var(--text-muted)", fontSize: "0.85rem", fontWeight: 600 }}>Completed • </span>
-                                  {formatTaskDate(task.completedAt || task.completedDate || task.dueDate, Boolean(task.completedAt))}
-
-                                </div>
+                              <div className="incoming-pill-icon-badge" style={{ background: iconGradients[idx % iconGradients.length] }}>
+                                <span>{icons[idx % icons.length]}</span>
                               </div>
 
-                              {/* Bottom Row: Subtasks on left, View Details on right (or left if no subtasks) */}
-                              <div className="task-preview-actions" style={{ display: "flex", justifyContent: task.subtasks?.length > 0 ? "space-between" : "flex-start", alignItems: "center", gap: "8px" }}>
-                                {task.subtasks?.length > 0 ? (
-                                  <>
-                                    <button
-                                      type="button"
-                                      className="subtask-toggle-btn"
-                                      style={{ margin: 0 }}
-                                      onClick={() => setSubtaskPopupTask(task)}
-                                    >
-                                      Subtasks: {progress.completed}/{progress.total}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="status-card-viewall"
-                                      style={{ margin: 0 }}
-                                      onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
-                                    >
-                                      View Details →
-                                    </button>
-                                  </>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    className="status-card-viewall"
-                                    style={{ margin: 0 }}
-                                    onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
-                                  >
-                                    View Details →
-                                  </button>
-                                )}
+                              <div className="incoming-pill-title">
+                                {task.title}
                               </div>
+
+                              {task.subtasks?.length > 0 && (
+                                <div className="pill-subtask-badge" title={`${task.subtasks.filter(s => s.completed).length} of ${task.subtasks.length} subtasks done`} onClick={(e) => { e.stopPropagation(); setSubtaskPopupTask(task); }} style={{ cursor: "pointer" }}>
+                                  <span className="pill-subtask-icon">≡</span>
+                                  <span className="pill-subtask-count">{task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}</span>
+                                </div>
+                              )}
+
+
                             </div>
                           );
                         })
                       )}
 
-
+                      <button
+                        type="button"
+                        className="incoming-plus-card"
+                        title="Add task"
+                        onClick={() => setShowAddModal(true)}
+                      >
+                        +
+                      </button>
                     </div>
 
-                    <footer className="status-card-footer">
+                    <footer className="status-card-footer" style={{ marginTop: "0px", paddingTop: "2px" }}>
                       <button
                         type="button"
                         className="status-card-viewall"
@@ -1741,108 +1906,136 @@ function TaskPage() {
               );
               case 'incoming': return (
                 <DraggableCard id="incoming" key="incoming">
-                  <div className="status-card incoming" style={{ height: "350px", display: "flex", flexDirection: "column" }}>
-                    <header className="status-card-header">
-                      <div className="status-card-title-group">
+                  <div className="status-card incoming" style={{ height: "235px", display: "flex", flexDirection: "column" }}>
+                    <header className="status-card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                      <div className="status-card-title-group" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         <span className="status-card-icon">🔵</span>
-
-                        <h3 className="status-card-title">
+                        <h3 className="status-card-title" style={{ fontSize: "1.15rem", fontWeight: 800, color: "#1e293b", margin: 0 }}>
                           Incoming
                         </h3>
                       </div>
-
                       <span className="status-card-count">
                         {totalIncomingCount} Tasks
                       </span>
                     </header>
 
-                    <div className="status-card-previews" style={{ flex: 1, overflow: "hidden", paddingRight: "4px" }}>
-                      {incomingTasksList.length === 0 ? (
-                        <div className="status-card-empty">{getEmptyStateMessage("Incoming", filterCategory, filterPriority)}</div>
+                    {/* Embedded Search & Combo Filter Bar inside Incoming Div */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px", overflow: "visible", zIndex: 50 }}>
+                      {/* Search Bar inside Incoming Card */}
+                      <div className="incoming-card-search" style={{
+                        flex: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        background: "#edf2f8",
+                        borderRadius: "999px",
+                        padding: "2px 14px",
+                        boxShadow: "inset 3px 3px 6px #b8c6d9, inset -3px -3px 6px #ffffff",
+                        border: "1px solid rgba(255,255,255,0.7)"
+                      }}>
+                        <input
+                          type="text"
+                          placeholder="Search incoming..."
+                          value={incomingSearchQuery}
+                          onChange={(e) => setIncomingSearchQuery(e.target.value)}
+                          style={{
+                            width: "100%",
+                            border: "none",
+                            background: "transparent",
+                            outline: "none",
+                            fontSize: "0.82rem",
+                            fontWeight: 500,
+                            color: "#2d3748",
+                            padding: "6px 4px"
+                          }}
+                        />
+                        <span style={{ color: "#718096", fontSize: "0.85rem" }}>🔍</span>
+                      </div>
+
+                      {/* Side-by-side Category & Priority Filter Pills (Matching Screenshot 100%) */}
+                      <NeumorphicFilterPill
+                        label="Category"
+                        selectedValues={selectedIncomingCategories}
+                        onSelectionChange={(vals) => setSelectedIncomingCategories(vals)}
+                        options={allCategories.filter(c => c !== "All")}
+                      />
+                      <NeumorphicFilterPill
+                        label="Priority"
+                        selectedValues={selectedIncomingPriorities}
+                        onSelectionChange={(vals) => setSelectedIncomingPriorities(vals)}
+                        options={["High", "Medium", "Low"]}
+                        alignRight={true}
+                      />
+                    </div>
+
+                    {/* Horizontal Tasks Row matching image layout */}
+                    <div className="incoming-horizontal-grid" style={{ flex: 1 }}>
+                      {filteredIncomingList.length === 0 ? (
+                        <div className="status-card-empty" style={{ width: "100%" }}>{getEmptyStateMessage("Incoming", filterCategory, filterPriority)}</div>
                       ) : (
-                        incomingTasksList.slice(0, 3).map((task) => {
-                          const progress =
-                            getSubtaskProgress(task);
+                        filteredIncomingList.slice(0, 6).map((task, idx) => {
+                          const iconGradients = [
+                            "linear-gradient(135deg, #6000ff 0%, #3b82f6 100%)",
+                            "linear-gradient(135deg, #3b82f6 0%, #00c6ff 100%)",
+                            "linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)",
+                            "linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)"
+                          ];
+                          const icons = ["👤", "📊", "🎯", "⚡"];
 
                           return (
                             <div
                               key={getTaskId(task)}
-                              className="task-preview-item"
+                              className="incoming-task-pill-card"
+                              onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
+                              title="Click to view details"
                             >
-                              {/* Top Row: Title & Due Date */}
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "4px" }}>
-                                <div className="task-title-checkbox-row" style={{ display: "flex", alignItems: "flex-start", gap: "4px", margin: 0, flex: 1, minWidth: 0 }}>
-
-                                  <label
-                                    className="task-complete-checkbox"
-                                    style={{ flexShrink: 0 }}
-                                    title={
-                                      areAllSubtasksCompleted(task)
-                                        ? "Mark task as completed"
-                                        : "Complete all subtasks first"
-                                    }
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={false}
-                                      onChange={() => handleCompleteTask(task)}
-                                    />
-                                    <span className="custom-checkmark" />
-                                  </label>
-
-                                  <h4 className="task-preview-title" style={{ margin: 0, lineHeight: 1.3 }}>
-                                    {task.title}
-                                  </h4>
-                                </div>
-                                <div className="task-preview-date" style={{ margin: 0, padding: 0, background: "none", flexShrink: 0, fontSize: "0.85rem", fontWeight: 600 }}>
-
-                                  <span style={{ color: "var(--text-muted)", fontSize: "0.85rem", fontWeight: 600 }}>Due • </span>
-                                  {formatTaskDate(task.dueDate)}
-
-                                </div>
+                              {/* Top Icon Badge */}
+                              <div className="incoming-pill-icon-badge" style={{ background: iconGradients[idx % iconGradients.length] }}>
+                                <span>{icons[idx % icons.length]}</span>
                               </div>
 
-                              {/* Bottom Row: Subtasks on left, View Details on right (or left if no subtasks) */}
-                              <div className="task-preview-actions" style={{ display: "flex", justifyContent: task.subtasks?.length > 0 ? "space-between" : "flex-start", alignItems: "center", gap: "8px" }}>
-                                {task.subtasks?.length > 0 ? (
-                                  <>
-                                    <button
-                                      type="button"
-                                      className="subtask-toggle-btn"
-                                      style={{ margin: 0 }}
-                                      onClick={() => setSubtaskPopupTask(task)}
-                                    >
-                                      Subtasks: {progress.completed}/{progress.total}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="status-card-viewall"
-                                      style={{ margin: 0 }}
-                                      onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
-                                    >
-                                      View Details →
-                                    </button>
-                                  </>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    className="status-card-viewall"
-                                    style={{ margin: 0 }}
-                                    onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
-                                  >
-                                    View Details →
-                                  </button>
+                              {/* Task Title */}
+                              <div className="incoming-pill-title">
+                                {task.title}
+                              </div>
+
+                              {/* Bottom: subtask badge + checkmark side by side */}
+                              <div style={{ display: "flex", alignItems: "center", gap: "5px", justifyContent: "center" }}>
+                                {task.subtasks?.length > 0 && (
+                                  <div className="pill-subtask-badge" title={`${task.subtasks.filter(s => s.completed).length} of ${task.subtasks.length} subtasks done`} onClick={(e) => { e.stopPropagation(); setSubtaskPopupTask(task); }} style={{ cursor: "pointer" }}>
+                                    <span className="pill-subtask-icon">≡</span>
+                                    <span className="pill-subtask-count">{task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}</span>
+                                  </div>
                                 )}
+                                {/* Bottom Green Checkmark Button */}
+                                <button
+                                  type="button"
+                                  className="incoming-check-btn"
+                                  title="Mark task completed"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCompleteTask(task);
+                                  }}
+                                >
+                                  ✓
+                                </button>
                               </div>
                             </div>
                           );
                         })
                       )}
 
-
+                      {/* Plus Card Button */}
+                      <button
+                        type="button"
+                        className="incoming-plus-card"
+                        title="Add task"
+                        onClick={() => setShowAddModal(true)}
+                      >
+                        +
+                      </button>
                     </div>
 
-                    <footer className="status-card-footer">
+                    <footer className="status-card-footer" style={{ marginTop: "0px", paddingTop: "2px" }}>
                       <button
                         type="button"
                         className="status-card-viewall"

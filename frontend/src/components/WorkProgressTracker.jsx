@@ -2,11 +2,13 @@ import { useState, useMemo, useEffect } from "react";
 
 import DraggableGrid from "./dnd/DraggableGrid";
 import DraggableCard from "./dnd/DraggableCard";
+import NeumorphicCircleProgress from "./NeumorphicCircleProgress";
+import NeumorphicLinearProgress from "./NeumorphicLinearProgress";
 import { clearLayout } from "../utils/layoutStorage";
 
 import { useTasks } from "../context/TaskContext";
 import { format, subDays, addDays, isThisMonth, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isThisWeek, startOfWeek, endOfWeek, differenceInDays } from "date-fns";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
+import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
 import "./WorkProgressTracker.css";
 
 /* ── Micro SVG Icons ── */
@@ -28,9 +30,157 @@ const IcoZap = () => <Ico><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 
 
 const IcoReset = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7" /><polyline points="3 3 3 9 9 9" /></svg>;
 
+/* Custom Floating Tooltip (Matching Reference Image) */
+const CustomChartTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    const pctData = payload.find(p => p.dataKey === "completionPct") || payload[0];
+    const countData = payload.find(p => p.dataKey === "completed") || payload[1];
+
+    return (
+      <div className="custom-chart-tooltip">
+        <div className="tooltip-badge-pill">
+          <span className="tooltip-icon">⚡</span>
+          <div className="tooltip-info">
+            <span className="tooltip-title">{label} Analytics</span>
+            <span className="tooltip-val">{pctData?.value}% Rate ({countData?.value || 0} Tasks)</span>
+          </div>
+        </div>
+        <div className="tooltip-arrow-pointer" />
+      </div>
+    );
+  }
+  return null;
+};
+
+function StackedCardsDeck({ summaryStats }) {
+  const [topIndex, setTopIndex] = useState(0);
+  const [animating, setAnimating] = useState(false);
+
+  const cards = [
+    {
+      id: "sum-total",
+      title: "Total Tasks",
+      value: summaryStats.total,
+      color: "#6366f1",
+      bannerClass: "banner-total",
+      bannerText: "TOTAL CREATED"
+    },
+    {
+      id: "sum-completed",
+      title: "Completed",
+      value: summaryStats.completed,
+      color: "#10b981",
+      bannerClass: "banner-completed",
+      bannerText: "FINISHED TASK"
+    },
+    {
+      id: "sum-pending",
+      title: "Pending",
+      value: summaryStats.pending,
+      color: "#f59e0b",
+      bannerClass: "banner-pending",
+      bannerText: "IN PROGRESS"
+    },
+    {
+      id: "sum-overdue",
+      title: "Overdue",
+      value: summaryStats.overdue,
+      color: "#ef4444",
+      bannerClass: "banner-overdue",
+      bannerText: "ACTION REQUIRED"
+    },
+    {
+      id: "sum-completion",
+      title: "Completion %",
+      value: `${summaryStats.completionPct}%`,
+      color: "#a855f7",
+      bannerClass: "banner-completion",
+      bannerText: "SUCCESS RATE"
+    },
+    {
+      id: "sum-rescheduled",
+      title: "Rescheduled",
+      value: summaryStats.rescheduled,
+      color: "#3b82f6",
+      bannerClass: "banner-rescheduled",
+      bannerText: "RE-ASSIGNED"
+    }
+  ];
+
+  const handleCardClick = () => {
+    if (animating) return;
+    setAnimating(true);
+    setTimeout(() => {
+      setTopIndex((prev) => (prev + 1) % cards.length);
+      setAnimating(false);
+    }, 280);
+  };
+
+  return (
+    <div className="stacked-deck-wrapper">
+      <div className="stacked-deck-container">
+        {cards.map((card, idx) => {
+          const total = cards.length;
+          const relIndex = (idx - topIndex + total) % total;
+          const isTop = relIndex === 0;
+          const isAnimatingThis = isTop && animating;
+
+          const rotateAngle = isTop ? -2 : (idx % 2 === 0 ? 3 + relIndex * 2 : -3 - relIndex * 2);
+          const offsetX = (relIndex % 3) * 14;
+          const offsetY = relIndex * 8;
+          const scale = 1 - relIndex * 0.035;
+          const zIndex = total - relIndex;
+
+          return (
+            <div
+              key={card.id}
+              className={`stacked-card-item ${isTop ? "is-top-card" : ""} ${isAnimatingThis ? "is-swiping-out" : ""}`}
+              onClick={isTop ? handleCardClick : undefined}
+              style={{
+                zIndex: zIndex,
+                transform: isAnimatingThis
+                  ? `translate(140%, -20px) rotate(20deg) scale(0.9)`
+                  : `translate(${offsetX}px, ${offsetY}px) rotate(${rotateAngle}deg) scale(${scale})`,
+                opacity: isAnimatingThis ? 0 : (relIndex > 4 ? 0.3 : 1 - relIndex * 0.1),
+                pointerEvents: isTop ? "auto" : "none"
+              }}
+              title={isTop ? "Touch / Click to reveal next card" : ""}
+            >
+              <div className="wpt-sum-card">
+                <div className="wpt-sum-card-body">
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span className="wpt-sum-title">{card.title}</span>
+                    <span style={{ fontSize: "0.72rem", background: "rgba(99, 102, 241, 0.12)", color: card.color, padding: "2px 8px", borderRadius: "99px", fontWeight: 800 }}>
+                      {relIndex === 0 ? "TOUCH TOP ➔" : `#${relIndex + 1}`}
+                    </span>
+                  </div>
+                  <span className="wpt-sum-value" style={{ color: card.color }}>{card.value}</span>
+                </div>
+                <div className={`wpt-sum-banner ${card.bannerClass}`}>
+                  <span>{card.bannerText}</span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+     
+        <button
+          type="button"
+          className="stacked-deck-controls"
+          onClick={handleCardClick}
+        >
+          Next Card ➔
+        </button>
+      
+    </div>
+  );
+}
+
 export default function WorkProgressTracker() {
   const { tasks, streak, longestStreak, fetchTasks, loading } = useTasks();
   const [activeFilter, setActiveFilter] = useState("Today");
+  const [summaryViewMode, setSummaryViewMode] = useState("stacked"); // "stacked" or "grid"
   const [customDate, setCustomDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [historicalDate, setHistoricalDate] = useState(format(subDays(new Date(), 1), "yyyy-MM-dd"));
   const [calendarMonth, setCalendarMonth] = useState(new Date());
@@ -236,8 +386,8 @@ export default function WorkProgressTracker() {
         <div>
           <h2 className="wpt-title">Report Tracker</h2>
         </div>
-        <div className="wpt-filters" style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-          <div className="wpt-filter-group">
+        <div className="wpt-filters" style={{ display: 'flex', gap: '16px', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+          <div className="wpt-filter-group" style={{ width: 'auto', margin: 0 }}>
             {["Today", "Yesterday", "Tomorrow", "Last 7 Days", "This Month"].map(f => (
               <button
                 key={f}
@@ -248,49 +398,106 @@ export default function WorkProgressTracker() {
               </button>
             ))}
           </div>
+
+
         </div>
       </div>
+
+      {/* Render Stacked Card Deck FIRST, then Today Progress Bar in the SAME ROW */}
+      {summaryViewMode === "stacked" && (
+        <div className="wpt-top-row-container">
+          <div className="wpt-top-deck-wrapper" style={{ width: "320px", flexShrink: 0 }}>
+            <StackedCardsDeck summaryStats={summaryStats} />
+          </div>
+          <div className="wpt-top-progress-wrapper" style={{ flex: 1 }}>
+            <NeumorphicLinearProgress
+              title={`${activeFilter} Progress`}
+              completionPct={summaryStats.completionPct}
+              completedCount={summaryStats.completed}
+              totalCount={summaryStats.total}
+            />
+          </div>
+        </div>
+      )}
 
       <DraggableGrid page="reports" defaultLayout={['sum-total', 'sum-completed', 'sum-pending', 'sum-overdue', 'sum-rescheduled', 'sum-completion', 'left-daily', 'left-weekly', 'chart-weekly', 'chart-status', 'right-previous', 'right-insights']}>
         {({ layout }) => {
           const renderWidget = (id) => {
             switch (id) {
-              case 'sum-total': return <DraggableCard id="sum-total" key="sum-total"><div className="wpt-sum-card">
-                <span className="wpt-sum-title">Total Tasks</span>
-                <span className="wpt-sum-value" style={{ color: "#6366f1" }}>{summaryStats.total}</span>
-              </div></DraggableCard>;
-              case 'sum-completed': return <DraggableCard id="sum-completed" key="sum-completed"><div className="wpt-sum-card">
-                <span className="wpt-sum-title">Completed</span>
-                <span className="wpt-sum-value" style={{ color: "#10b981" }}>{summaryStats.completed}</span>
-              </div></DraggableCard>;
-              case 'sum-pending': return <DraggableCard id="sum-pending" key="sum-pending"><div className="wpt-sum-card">
-                <span className="wpt-sum-title">Pending</span>
-                <span className="wpt-sum-value" style={{ color: "#f59e0b" }}>{summaryStats.pending}</span>
-              </div></DraggableCard>;
-              case 'sum-overdue': return <DraggableCard id="sum-overdue" key="sum-overdue"><div className="wpt-sum-card">
-                <span className="wpt-sum-title">Overdue</span>
-                <span className="wpt-sum-value" style={{ color: "#ef4444" }}>{summaryStats.overdue}</span>
-              </div></DraggableCard>;
-              case 'sum-rescheduled': return <DraggableCard id="sum-rescheduled" key="sum-rescheduled"><div className="wpt-sum-card">
-                <span className="wpt-sum-title">Rescheduled</span>
-                <span className="wpt-sum-value" style={{ color: "#3b82f6" }}>{summaryStats.rescheduled}</span>
-              </div></DraggableCard>;
-              case 'sum-completion': return <DraggableCard id="sum-completion" key="sum-completion"><div className="wpt-sum-card">
-                <span className="wpt-sum-title">Completion %</span>
-                <span className="wpt-sum-value" style={{ color: "#a855f7" }}>{summaryStats.completionPct}%</span>
-              </div></DraggableCard>;
-              case 'left-daily': return <DraggableCard id="left-daily" key="left-daily">{/* Daily Progress */}
-                <div className="wpt-card">
-                  <div className="wpt-card-header">
-                    <span>{activeFilter} Progress</span>
-                    <span style={{ color: "var(--color-primary)" }}>{summaryStats.completed} / {summaryStats.total} Tasks Completed</span>
+              case 'sum-total': return <DraggableCard id="sum-total" key="sum-total">
+                <div className="wpt-sum-card theme-total">
+                  <div className="wpt-sum-card-body">
+                    <span className="wpt-sum-title">Total Tasks</span>
+                    <span className="wpt-sum-value" style={{ color: "#6366f1" }}>{summaryStats.total}</span>
                   </div>
-                  <div className="wpt-progress-wrapper">
-                    <div className="wpt-progress-fill" style={{ width: `${summaryStats.completionPct}%` }}>
-                      {summaryStats.completionPct > 5 && <span className="wpt-progress-text">{summaryStats.completionPct}%</span>}
-                    </div>
+                  <div className="wpt-sum-banner banner-total">
+                    <span>TOTAL CREATED</span>
                   </div>
-                </div></DraggableCard>;
+                </div>
+              </DraggableCard>;
+              case 'sum-completed': return <DraggableCard id="sum-completed" key="sum-completed">
+                <div className="wpt-sum-card theme-completed">
+                  <div className="wpt-sum-card-body">
+                    <span className="wpt-sum-title">Completed</span>
+                    <span className="wpt-sum-value" style={{ color: "#10b981" }}>{summaryStats.completed}</span>
+                  </div>
+                  <div className="wpt-sum-banner banner-completed">
+                    <span>FINISHED TASK</span>
+                  </div>
+                </div>
+              </DraggableCard>;
+              case 'sum-pending': return <DraggableCard id="sum-pending" key="sum-pending">
+                <div className="wpt-sum-card theme-pending">
+                  <div className="wpt-sum-card-body">
+                    <span className="wpt-sum-title">Pending</span>
+                    <span className="wpt-sum-value" style={{ color: "#f59e0b" }}>{summaryStats.pending}</span>
+                  </div>
+                  <div className="wpt-sum-banner banner-pending">
+                    <span>IN PROGRESS</span>
+                  </div>
+                </div>
+              </DraggableCard>;
+              case 'sum-overdue': return <DraggableCard id="sum-overdue" key="sum-overdue">
+                <div className="wpt-sum-card theme-overdue">
+                  <div className="wpt-sum-card-body">
+                    <span className="wpt-sum-title">Overdue</span>
+                    <span className="wpt-sum-value" style={{ color: "#ef4444" }}>{summaryStats.overdue}</span>
+                  </div>
+                  <div className="wpt-sum-banner banner-overdue">
+                    <span>ACTION REQUIRED</span>
+                  </div>
+                </div>
+              </DraggableCard>;
+              case 'sum-completion': return <DraggableCard id="sum-completion" key="sum-completion">
+                <div className="wpt-sum-card theme-completion">
+                  <div className="wpt-sum-card-body">
+                    <span className="wpt-sum-title">Completion %</span>
+                    <span className="wpt-sum-value" style={{ color: "#a855f7" }}>{summaryStats.completionPct}%</span>
+                  </div>
+                  <div className="wpt-sum-banner banner-completion">
+                    <span>SUCCESS RATE</span>
+                  </div>
+                </div>
+              </DraggableCard>;
+              case 'sum-rescheduled': return <DraggableCard id="sum-rescheduled" key="sum-rescheduled">
+                <div className="wpt-sum-card theme-rescheduled">
+                  <div className="wpt-sum-card-body">
+                    <span className="wpt-sum-title">Rescheduled</span>
+                    <span className="wpt-sum-value" style={{ color: "#3b82f6" }}>{summaryStats.rescheduled}</span>
+                  </div>
+                  <div className="wpt-sum-banner banner-rescheduled">
+                    <span>RE-ASSIGNED</span>
+                  </div>
+                </div>
+              </DraggableCard>;
+              case 'left-daily': return <DraggableCard id="left-daily" key="left-daily">
+                <NeumorphicLinearProgress
+                  title={`${activeFilter} Progress`}
+                  completionPct={summaryStats.completionPct}
+                  completedCount={summaryStats.completed}
+                  totalCount={summaryStats.total}
+                />
+              </DraggableCard>;
               case 'left-weekly': return <DraggableCard id="left-weekly" key="left-weekly">{/* Weekly Progress (Last 7 Days) */}
                 <div className="wpt-card">
                   <div className="wpt-card-header">Last 7 Days Progress</div>
@@ -307,34 +514,68 @@ export default function WorkProgressTracker() {
                     ))}
                   </div>
                 </div></DraggableCard>;
-              case 'chart-weekly': return <DraggableCard id="chart-weekly" key="chart-weekly"><div className="wpt-card" style={{ padding: "16px" }}>
-                <div className="wpt-card-header" style={{ marginBottom: "8px", fontSize: "1rem" }}>Weekly Completion </div>
-                <div style={{ height: "180px", width: "100%" }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={last7DaysData}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                      <XAxis dataKey="displayDay" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} width={30} />
-                      <RechartsTooltip contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
-                      <Line type="monotone" dataKey="completionPct" stroke="#4f46e5" strokeWidth={3} dot={{ r: 4, fill: "#4f46e5" }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div></DraggableCard>;
-              case 'chart-status': return <DraggableCard id="chart-status" key="chart-status"><div className="wpt-card" style={{ padding: "16px" }}>
-                <div className="wpt-card-header" style={{ marginBottom: "8px", fontSize: "1rem" }}>Status Distribution</div>
-                <div style={{ height: "180px", width: "100%", position: "relative" }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={pieData} innerRadius={50} outerRadius={70} paddingAngle={2} dataKey="value" stroke="none">
-                        {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
-                      </Pie>
-                      <RechartsTooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
-                    <span style={{ fontSize: "1.2rem", fontWeight: 800, color: "var(--text-primary)" }}>{summaryStats.completionPct}%</span>
+              case 'chart-weekly': return <DraggableCard id="chart-weekly" key="chart-weekly">
+                <div className="wpt-card chart-card-styled" style={{ padding: "20px 24px", borderRadius: "24px", background: "#edf2f8", boxShadow: "-8px -8px 20px #ffffff, 8px 8px 22px #b8c6d9" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "8px" }}>
+                    <div>
+                      <h3 style={{ fontSize: "1.1rem", fontWeight: 800, color: "#1e293b", margin: 0 }}>Weekly Performance Trend</h3>
+                      <p style={{ fontSize: "0.78rem", color: "#64748b", margin: "2px 0 0 0", fontWeight: 500 }}>Real-time completion & task activity curves</p>
+                    </div>
+                    <div style={{ display: "flex", gap: "6px" }}>
+                      <span style={{ fontSize: "0.72rem", background: "rgba(79, 70, 229, 0.12)", color: "#4f46e5", padding: "4px 10px", borderRadius: "99px", fontWeight: 700 }}>● Completion %</span>
+                      <span style={{ fontSize: "0.72rem", background: "rgba(244, 63, 94, 0.12)", color: "#f43f5e", padding: "4px 10px", borderRadius: "99px", fontWeight: 700 }}>● Completed</span>
+                    </div>
                   </div>
+
+                  <div style={{ height: "200px", width: "100%" }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={last7DaysData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="colorCompletion" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.45} />
+                            <stop offset="95%" stopColor="#6366f1" stopOpacity={0.0} />
+                          </linearGradient>
+                          <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#f43f5e" stopOpacity={0.0} />
+                          </linearGradient>
+                        </defs>
+
+                        <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="rgba(203, 213, 225, 0.45)" />
+                        <XAxis dataKey="displayDay" tick={{ fontSize: 11, fill: "#64748b", fontWeight: 700 }} axisLine={false} tickLine={false} dy={6} />
+                        <YAxis tick={{ fontSize: 11, fill: "#64748b", fontWeight: 600 }} axisLine={false} tickLine={false} domain={[0, 100]} unit="%" />
+                        <RechartsTooltip content={<CustomChartTooltip />} />
+
+                        {/* Secondary Rose/Pink Area Curve */}
+                        <Area
+                          type="monotone"
+                          dataKey="completed"
+                          stroke="#f43f5e"
+                          strokeWidth={2.5}
+                          fillOpacity={1}
+                          fill="url(#colorCompleted)"
+                          activeDot={{ r: 6, fill: "#f43f5e", stroke: "#ffffff", strokeWidth: 2 }}
+                        />
+
+                        {/* Primary Indigo Area Curve */}
+                        <Area
+                          type="monotone"
+                          dataKey="completionPct"
+                          stroke="#4f46e5"
+                          strokeWidth={3.5}
+                          fillOpacity={1}
+                          fill="url(#colorCompletion)"
+                          activeDot={{ r: 7, fill: "#4f46e5", stroke: "#ffffff", strokeWidth: 3 }}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </DraggableCard>;
+              case 'chart-status': return <DraggableCard id="chart-status" key="chart-status"><div className="wpt-card" style={{ padding: "16px" }}>
+                <div className="wpt-card-header" style={{ marginBottom: "4px", fontSize: "1rem" }}>Status Distribution</div>
+                <div style={{ height: "185px", width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <NeumorphicCircleProgress summaryStats={summaryStats} pieData={pieData} size={165} />
                 </div>
               </div></DraggableCard>;
               case 'right-previous': return <DraggableCard id="right-previous" key="right-previous">{/* Historical Progress Date Picker */}
@@ -377,52 +618,87 @@ export default function WorkProgressTracker() {
                     </div>
                   )}
                 </div></DraggableCard>;
-              case 'right-insights': return <DraggableCard id="right-insights" key="right-insights">{/* Performance Insights */}
-                <div className="wpt-card">
-                  <div className="wpt-card-header" style={{ marginBottom: "16px" }}>Performance Insights</div>
-                  <div className="wpt-insights">
-                    <div className="wpt-insight-row">
-                      <span className="wpt-insight-label"><IcoStar size={16} /> Best Performing Day</span>
-                      <span className="wpt-insight-value">{insights.bestDay}</span>
+              case 'right-insights': return <DraggableCard id="right-insights" key="right-insights">{/* 2-Layer 3D Stacked Glass Card (Matching Image 100%) */}
+                <div className="purple-stats-3d-wrapper">
+                  {/* Base 3D Extruded Container */}
+                  <div className="purple-stats-base">
+                    <span className="purple-stats-time">{format(new Date(), "HH:mm")}</span>
+                  </div>
+
+                  {/* Floating 3D Translucent Glass Top Card */}
+                  <div className="purple-stats-glass-card">
+                    <div className="purple-stats-header">
+                      <span className="purple-stats-title">Performance Insights</span>
                     </div>
-                    <div className="wpt-insight-row">
-                      <span className="wpt-insight-label"><IcoFire size={16} /> Current Streak</span>
-                      <span className="wpt-insight-value">{insights.streak} Days</span>
-                    </div>
-                    <div className="wpt-insight-row">
-                      <span className="wpt-insight-label"><IcoTarget size={16} /> Highest Completion %</span>
-                      <span className="wpt-insight-value">{insights.highestPct}%</span>
-                    </div>
-                    <div className="wpt-insight-row">
-                      <span className="wpt-insight-label"><IcoZap size={16} /> Avg Daily Completion</span>
-                      <span className="wpt-insight-value">{insights.avgDaily} Tasks</span>
-                    </div>
-                    <div className="wpt-insight-row">
-                      <span className="wpt-insight-label">
-                        {insights.trendDiff >= 0 ? <IcoTrendingUp size={16} /> : <IcoTrendingDown size={16} />}
-                        Weekly Trend
-                      </span>
-                      <span className="wpt-insight-value" style={{ color: insights.trendDiff >= 0 ? "#10b981" : "#ef4444" }}>
-                        {insights.trendDiff > 0 ? "+" : ""}{insights.trendDiff}%
-                      </span>
+
+                    <div className="purple-stats-body">
+                      {/* Row 1: Best Performing Day */}
+                      <div className="purple-stat-row">
+                        <div className="purple-icon-badge badge-lime">
+                          <IcoStar size={16} />
+                        </div>
+                        <span className="purple-stat-label">Best Performing Day</span>
+                        <span className="purple-stat-val">{insights.bestDay}</span>
+                      </div>
+
+                      {/* Row 2: Current Streak */}
+                      <div className="purple-stat-row">
+                        <div className="purple-icon-badge badge-pink">
+                          <IcoFire size={16} />
+                        </div>
+                        <span className="purple-stat-label">Current Streak</span>
+                        <span className="purple-stat-val">{insights.streak} Days</span>
+                      </div>
+
+                      {/* Row 3: Highest Completion % */}
+                      <div className="purple-stat-row">
+                        <div className="purple-icon-badge badge-orange">
+                          <IcoTarget size={16} />
+                        </div>
+                        <span className="purple-stat-label">Highest Completion %</span>
+                        <span className="purple-stat-val">{insights.highestPct}%</span>
+                      </div>
+
+                      {/* Row 4: Avg Daily Completion */}
+                      <div className="purple-stat-row">
+                        <div className="purple-icon-badge badge-violet">
+                          <IcoZap size={16} />
+                        </div>
+                        <span className="purple-stat-label">Avg Daily Completion</span>
+                        <span className="purple-stat-val">{insights.avgDaily} Tasks</span>
+                      </div>
+
+                      {/* Row 5: Weekly Trend */}
+                      <div className="purple-stat-row">
+                        <div className="purple-icon-badge badge-cyan">
+                          {insights.trendDiff >= 0 ? <IcoTrendingUp size={16} /> : <IcoTrendingDown size={16} />}
+                        </div>
+                        <span className="purple-stat-label">Weekly Trend</span>
+                        <span className="purple-stat-val" style={{ color: insights.trendDiff >= 0 ? "#4ade80" : "#f87171" }}>
+                          {insights.trendDiff > 0 ? "+" : ""}{insights.trendDiff}%
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div></DraggableCard>;
+                </div>
+              </DraggableCard>;
               default: return null;
             }
           };
 
           return (
             <>
-              {/* ── Top Summary Cards ── */}
-              <div className="wpt-summary-grid">
-                {layout.filter(id => id.startsWith('sum-')).map(renderWidget)}
-              </div>
+              {/* ── Top Summary Cards Grid (Shown only in grid mode) ── */}
+              {summaryViewMode === "grid" && (
+                <div className="wpt-summary-grid">
+                  {layout.filter(id => id.startsWith('sum-')).map(renderWidget)}
+                </div>
+              )}
 
               <div className="wpt-main-grid">
                 {/* LEFT COLUMN */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-                  {layout.filter(id => id.startsWith('left-')).map(renderWidget)}
+                  {layout.filter(id => id.startsWith('left-') && (summaryViewMode === "grid" || id !== 'left-daily')).map(renderWidget)}
 
                   {/* Charts Row */}
                   <div className="wpt-chart-grid">

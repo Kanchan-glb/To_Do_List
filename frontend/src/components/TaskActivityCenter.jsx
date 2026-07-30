@@ -4,6 +4,8 @@ import { format, isThisWeek, isThisMonth, parseISO, subDays, addDays } from "dat
 import { useNavigate } from "react-router-dom";
 import TaskDetailsModal from "./TaskDetailsModal";
 import DateHistoryModal from "./DateHistoryModal";
+import NeumorphicCircleProgress from "./NeumorphicCircleProgress";
+import NeumorphicSelect from "./NeumorphicSelect";
 import { filterTasks } from "../api/authApi";
 
 /* ── Micro SVG Icons ── */
@@ -981,18 +983,14 @@ canvas {
             </div> */}
 
             <div className="tac-filter-row">
-              <select value={quickFilter} onChange={(e) => {
-                setQuickFilter(e.target.value);
-                if (e.target.value !== "Custom Date") setCustomDate(format(new Date(), "yyyy-MM-dd"));
-              }}>
-                <option value="Today">Today</option>
-                <option value="Yesterday">Yesterday</option>
-                <option value="Tomorrow">Tomorrow</option>
-                <option value="This Week">This Week</option>
-                <option value="This Month">This Month</option>
-                <option value="All Tasks">All Tasks</option>
-                <option value="Custom Date">Custom Date...</option>
-              </select>
+              <NeumorphicSelect
+                value={quickFilter}
+                onChange={(e) => {
+                  setQuickFilter(e.target.value);
+                  if (e.target.value !== "Custom Date") setCustomDate(format(new Date(), "yyyy-MM-dd"));
+                }}
+                options={["Today", "Yesterday", "Tomorrow", "This Week", "This Month", "All Tasks", "Custom Date"]}
+              />
 
               {quickFilter === "Custom Date" && (
                 <input
@@ -1003,57 +1001,69 @@ canvas {
                 />
               )}
 
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                <option value="All">All Status</option>
-                <option value="Pending">Pending</option>
-                <option value="Completed">Completed</option>
-                <option value="Overdue">Overdue</option>
-                <option value="Rescheduled">Rescheduled</option>
-                <option value="Missed">Missed</option>
-              </select>
+              <NeumorphicSelect
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                options={[
+                  { value: "All", label: "All Status" },
+                  { value: "Pending", label: "Pending" },
+                  { value: "Completed", label: "Completed" },
+                  { value: "Overdue", label: "Overdue" },
+                  { value: "Rescheduled", label: "Rescheduled" },
+                  { value: "Missed", label: "Missed" },
+                ]}
+              />
 
-              <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
-                <option value="All">All Priorities</option>
-                <option value="High">High</option>
-                <option value="Medium">Medium</option>
-                <option value="Low">Low</option>
-              </select>
+              <NeumorphicSelect
+                value={priorityFilter}
+                onChange={(e) => setPriorityFilter(e.target.value)}
+                options={[
+                  { value: "All", label: "All Priorities" },
+                  { value: "High", label: "High" },
+                  { value: "Medium", label: "Medium" },
+                  { value: "Low", label: "Low" },
+                ]}
+              />
 
-              <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-                {allCategories.map(c => <option key={c} value={c}>{c === 'All' ? 'All Categories' : c}</option>)}
-              </select>
+              <NeumorphicSelect
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                options={allCategories.map(c => ({ value: c, label: c === 'All' ? 'All Categories' : c }))}
+              />
 
-              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-                <option value="Due Time">Sort: Due Time</option>
-                <option value="Priority">Sort: Priority</option>
-                <option value="Newest">Sort: Newest</option>
-                <option value="Oldest">Sort: Oldest</option>
-                <option value="Alphabetical">Sort: Alphabetical</option>
-              </select>
+              <NeumorphicSelect
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                options={[
+                  { value: "Due Time", label: "Sort: Due Time" },
+                  { value: "Priority", label: "Sort: Priority" },
+                  { value: "Newest", label: "Sort: Newest" },
+                  { value: "Oldest", label: "Sort: Oldest" },
+                  { value: "Alphabetical", label: "Sort: Alphabetical" },
+                ]}
+              />
             </div>
           </div>
-
-
-
         </div>
 
-        {/* RIGHT COLUMN: Productivity & Action Button */}
+        {/* RIGHT COLUMN: Productivity Score Neumorphic Dial */}
         <div className="tac-right">
           <div className="tac-side-card">
             <h4>Productivity Score</h4>
-            <div className="tac-score-circle">
-              <svg width="100" height="100" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="42" fill="none" stroke="#e2e8f0" strokeWidth="8" />
-                <circle cx="50" cy="50" r="42" fill="none" stroke="#4f46e5" strokeWidth="8"
-                  strokeDasharray="264" strokeDashoffset={264 - (264 * stats.compPercent) / 100}
-                  transform="rotate(-90 50 50)" strokeLinecap="round" />
-              </svg>
-              <div className="score-val">{stats.compPercent}%</div>
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", width: "100%", padding: "4px 0" }}>
+              <NeumorphicCircleProgress
+                summaryStats={{
+                  total: stats.total,
+                  completed: stats.completed,
+                  pending: stats.pending,
+                  overdue: stats.overdue,
+                  completionPct: stats.compPercent,
+                }}
+                size={160}
+              />
             </div>
-            <p className="score-desc">Based on filtered tasks completion</p>
+            <p className="score-desc" style={{ marginTop: "4px" }}>Based on filtered tasks completion</p>
           </div>
-
-
         </div>
       </div>
       {/* Summary Cards - Two Levels */}

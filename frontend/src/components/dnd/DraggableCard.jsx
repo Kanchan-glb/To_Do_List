@@ -2,7 +2,7 @@ import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-export default function DraggableCard({ id, children }) {
+export default function DraggableCard({ id, children, style: customStyle }) {
   const {
     attributes,
     listeners,
@@ -20,6 +20,7 @@ export default function DraggableCard({ id, children }) {
     display: 'flex',
     width: '100%',
     height: '100%',
+    ...customStyle
   };
 
   return (

@@ -1033,6 +1033,9 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  overflow: visible !important;
+  position: relative;
+  z-index: 100;
 }
 
 .tac-filter-row select,

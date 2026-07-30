@@ -11,7 +11,8 @@
   --bg-sidebar: #111827;
   --text-primary: #1F2937;
   --text-secondary: #6B7280;
-  --text-muted: #8fa3b1; /* Keep existing for backward compat */
+  --text-muted: #8fa3b1;
+  /* Keep existing for backward compat */
 
   /* Primary */
   --color-primary: #6D28D9;
@@ -60,9 +61,12 @@
 }
 
 /* --- Dark Mode Variables --- */
-html.dark, .dark {
-  --bg-app: #09090b; /* Deep zinc */
-  --bg-card: #18181b; /* Elevated zinc */
+html.dark,
+.dark {
+  --bg-app: #09090b;
+  /* Deep zinc */
+  --bg-card: #18181b;
+  /* Elevated zinc */
   --bg-navbar: #18181b;
   --bg-sidebar: #09090b;
   --text-primary: #fafafa;
@@ -145,19 +149,50 @@ body,
 
 /* --- Buttons & General Actions --- */
 button,
-.btn {
-  font-family: var(--font-body);
+.btn,
+.secondary-button,
+.db-summary-trigger-btn,
+.view-all-tasks-button {
+  font-family: var(--font-body), 'Inter', sans-serif;
   font-size: 0.9rem;
   font-weight: 600;
-  border-radius: var(--border-radius-md);
-  padding: 10px 18px;
+  border-radius: 999px;
+  padding: 10px 22px;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  background: #edf2f8;
+  border: none;
+  box-shadow:
+    inset 3px 3px 7px #b8c6d9,
+    inset -3px -3px 7px #ffffff;
+  color: #64748b;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px solid transparent;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+button:hover,
+.btn:hover,
+.secondary-button:hover,
+.db-summary-trigger-btn:hover,
+.view-all-tasks-button:hover {
+  color: #2d3748;
+  box-shadow:
+    inset 4px 4px 9px #a8b8cc,
+    inset -4px -4px 9px #ffffff;
+}
+
+button:active,
+.btn:active,
+.btn.active {
+  background: #edf2f8;
+  color: #4f46e5;
+  font-weight: 800;
+  box-shadow:
+    inset 4px 4px 10px #a1b2c7,
+    inset -4px -4px 10px #ffffff,
+    0 0 0 2px rgba(99, 102, 241, 0.2);
 }
 
 .primary-btn,
@@ -165,6 +200,7 @@ button,
   background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
   color: white;
   border: none;
+  box-shadow: 0 6px 18px rgba(79, 70, 229, 0.3);
 }
 
 .primary-btn:hover,
@@ -177,18 +213,6 @@ button,
 .primary-btn:active,
 .login-button:active {
   transform: translateY(0);
-}
-
-.secondary-button {
-  background: var(--bg-card);
-  border: var(--border-light);
-  color: var(--text-secondary);
-}
-
-.secondary-button:hover {
-  background: var(--bg-app);
-  border-color: var(--border-light);
-  color: var(--text-primary);
 }
 
 .danger-btn {
@@ -221,10 +245,50 @@ textarea {
 }
 
 input:focus,
-select:focus,
 textarea:focus {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+/* 3D Neumorphic Select Dropdown Styling (Matching Design Screenshot) */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: #edf2f8;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23718096' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding: 10px 38px 10px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: -4px -4px 10px #ffffff, 4px 4px 12px #b8c6d9;
+  color: #2d3748;
+  font-family: var(--font-body), 'Inter', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  width: 100%;
+}
+
+select:hover {
+  transform: translateY(-1px);
+  box-shadow: -6px -6px 14px #ffffff, 6px 6px 16px #a8b8cc;
+}
+
+select:focus {
+  outline: none;
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: -5px -5px 12px #ffffff, 5px 5px 12px #a8b8cc, 0 0 0 3px rgba(99, 102, 241, 0.18);
+}
+
+select option {
+  background-color: #edf2f8;
+  color: #2d3748;
+  padding: 10px 14px;
+  font-weight: 500;
 }
 
 /* --- Login Page --- */
@@ -1465,6 +1529,7 @@ textarea:focus {
   font-weight: 800;
   line-height: 1;
 }
+
 .topbar-add-task-btn,
 .timer-action-btn {
   display: flex;
@@ -2936,7 +3001,7 @@ textarea:focus {
   align-items: center;
   padding: 16px;
   border-bottom: var(--border-light);
-  background: rgba(0,0,0,0.02);
+  background: rgba(0, 0, 0, 0.02);
 }
 
 .notification-header h4 {
@@ -2958,6 +3023,7 @@ textarea:focus {
   font-weight: 600;
   cursor: pointer;
 }
+
 .notification-actions .text-btn:hover {
   text-decoration: underline;
 }
@@ -2976,6 +3042,7 @@ textarea:focus {
   text-align: center;
   color: var(--text-muted);
 }
+
 .notification-empty p {
   margin: 12px 0 4px;
   font-weight: 600;
@@ -2995,6 +3062,7 @@ textarea:focus {
 .notification-item:hover {
   background: var(--hover-color);
 }
+
 .notification-item:hover .notification-delete {
   opacity: 1;
 }
@@ -3002,6 +3070,7 @@ textarea:focus {
 .notification-item.unread {
   background: rgba(139, 92, 246, 0.05);
 }
+
 .dark .notification-item.unread {
   background: rgba(139, 92, 246, 0.1);
 }
@@ -3060,11 +3129,13 @@ textarea:focus {
     opacity: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
+
 .topbar-center {
   position: absolute;
   left: 50%;
@@ -3079,23 +3150,29 @@ textarea:focus {
   .topbar-center {
     gap: 6px;
   }
+
   .topbar-add-task-btn span,
   .timer-btn .timer-label,
   .timer-btn {
-     /* We will handle icon-only styling safely below */
+    /* We will handle icon-only styling safely below */
   }
+
   .topbar-add-task-btn span:not(.icon) {
     display: none;
   }
+
   .topbar-add-task-btn {
     min-width: 42px !important;
     padding: 0 10px !important;
   }
+
   .timer-btn {
     min-width: 42px !important;
     padding: 0 10px !important;
-    font-size: 0 !important; /* Hide 'Timer' text */
+    font-size: 0 !important;
+    /* Hide 'Timer' text */
   }
+
   .timer-btn .timer-btn-icon {
     margin: 0;
   }

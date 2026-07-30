@@ -1,0 +1,182 @@
+/* ══════════════════════════════════════════════════════════════
+   NEUMORPHIC 3D DROPLIST SELECT (Matching Design Screenshot 1)
+   ══════════════════════════════════════════════════════════════ */
+
+.neo-select-container {
+  position: relative;
+  width: auto;
+  min-width: 140px;
+  max-width: 320px;
+  user-select: none;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.neo-select-container.open-active {
+  z-index: 99999 !important;
+}
+
+/* Trigger Button */
+.neo-select-trigger {
+  width: 100%;
+  background: #edf2f8;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  padding: 12px 18px;
+  box-shadow:
+    -5px -5px 12px #ffffff,
+    5px 5px 14px #b8c6d9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.25s ease;
+}
+
+.neo-select-trigger:hover,
+.neo-select-trigger.open {
+  transform: translateY(-1px);
+  box-shadow:
+    -6px -6px 14px #ffffff,
+    6px 6px 16px #a8b8cc,
+    0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.neo-select-label {
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: #4a5568;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.neo-select-arrow {
+  color: #718096;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.25s ease;
+}
+
+.neo-select-arrow.rotate {
+  transform: rotate(180deg);
+}
+
+/* Expanded Neumorphic Options Card Dropdown (Smart Directional) */
+.neo-select-dropdown-card {
+  position: absolute;
+  left: 0;
+  min-width: 100%;
+  width: max-content;
+  max-width: 280px;
+  z-index: 9999999 !important;
+  background: #edf2f8;
+  border-radius: 18px;
+  padding: 12px 14px;
+  box-sizing: border-box;
+}
+
+.neo-select-dropdown-card.open-down {
+  top: calc(100% + 8px);
+  bottom: auto;
+  animation: fadeInDown 0.2s ease-out;
+  box-shadow: 
+    -8px -8px 22px #ffffff,
+    8px 8px 26px rgba(0, 0, 0, 0.22),
+    0 12px 32px rgba(15, 23, 42, 0.18);
+}
+
+.neo-select-dropdown-card.open-up {
+  bottom: calc(100% + 8px);
+  top: auto;
+  animation: fadeInUp 0.2s ease-out;
+  box-shadow: 
+    -8px -8px 22px #ffffff,
+    8px 8px 26px rgba(0, 0, 0, 0.22),
+    0 -12px 32px rgba(15, 23, 42, 0.18);
+}
+
+.neo-select-dropdown-card.align-right {
+  left: auto;
+  right: 0;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Options List with Dotted Dividers & Custom Dark Blue Scrollbar */
+.neo-select-options-list {
+  max-height: 118px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding-right: 6px;
+}
+
+/* Dark Blue Scrollbar Thumb (Matching Image 1 scrollbar!) */
+.neo-select-options-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.neo-select-options-list::-webkit-scrollbar-track {
+  background: #e2e8f0;
+  border-radius: 99px;
+}
+
+.neo-select-options-list::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  /* Dark navy blue thumb matching screenshot */
+  border-radius: 99px;
+}
+
+/* Option Row with Dotted Line Dividers */
+.neo-select-option {
+  padding: 10px 12px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  border-bottom: 1px dotted #cbd5e1;
+  /* Dotted line matching screenshot! */
+  transition: all 0.2s ease;
+}
+
+.neo-select-option:last-child {
+  border-bottom: none;
+}
+
+.neo-select-option:hover {
+  color: #2d3748;
+  background: rgba(226, 232, 240, 0.5);
+  border-radius: 8px;
+  padding-left: 16px;
+}
+
+.neo-select-option.selected {
+  color: #4f46e5;
+  font-weight: 700;
+  background: rgba(99, 102, 241, 0.08);
+  border-radius: 8px;
+}
