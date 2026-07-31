@@ -115,6 +115,8 @@ function formatDueDisplay(dueDate, dueTime) {
 }
 
 /* ── Compact task row: title and View Details side by side ── */
+/* ── Compact task row with Neumorphic 3D styling ── */
+/* ── Compact task row with Enhanced Neumorphic 3D styling ── */
 function TaskPreviewCard({ task, onSelect }) {
   return (
     <div
@@ -123,13 +125,15 @@ function TaskPreviewCard({ task, onSelect }) {
         display: "grid",
         gridTemplateColumns: "minmax(0, 1fr) auto",
         alignItems: "center",
-        columnGap: "12px",
+        columnGap: "10px",
         width: "100%",
         boxSizing: "border-box",
-        padding: "10px 12px",
-        border: "1px solid var(--border-light)",
-        borderRadius: "10px",
-        background: "var(--bg-card)"
+        padding: "8px 12px",
+        border: "1px solid rgba(255, 255, 255, 0.85)",
+        borderRadius: "12px",
+        background: "#edf2f8",
+        boxShadow: "-3px -3px 8px #ffffff, 3px 3px 8px #b8c6d9",
+        transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)"
       }}
     >
       <span
@@ -139,12 +143,13 @@ function TaskPreviewCard({ task, onSelect }) {
           display: "block",
           minWidth: 0,
           margin: 0,
-          fontWeight: "700",
-          color: "var(--text-primary)",
+          fontWeight: "800",
+          color: "#1e293b",
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
-          textAlign: "left"
+          textAlign: "left",
+          fontSize: "0.85rem"
         }}
       >
         {task.title}
@@ -161,16 +166,18 @@ function TaskPreviewCard({ task, onSelect }) {
           flexShrink: 0,
           width: "auto",
           margin: 0,
-          border: "1px solid #c7d2fe",
-          background: "#eef2ff",
-          color: "#4f46e5",
-          padding: "7px 12px",
-          borderRadius: "8px",
-          fontSize: "0.78rem",
+          border: "1.5px solid #c4b5fd",
+          background: "linear-gradient(180deg, #f8f7ff 0%, #ede9fe 100%)",
+          color: "#7c3aed",
+          padding: "5px 11px",
+          borderRadius: "999px",
+          fontSize: "0.72rem",
           lineHeight: 1.2,
-          fontWeight: "700",
+          fontWeight: "800",
           whiteSpace: "nowrap",
-          cursor: "pointer"
+          cursor: "pointer",
+          boxShadow: "0 3px 8px rgba(124, 58, 237, 0.12), inset -1.5px -1.5px 4px #ffffff",
+          transition: "all 0.25s ease"
         }}
       >
         View Details
@@ -196,15 +203,46 @@ function TaskPreviewSection({
   return (
     <div
       className="db-preview-section"
-      style={{ "--section-accent": accentColor, "--section-accent-bg": accentBg }}
+      style={{
+        "--section-accent": accentColor,
+        "--section-accent-bg": accentBg,
+        background: "#edf2f8",
+        borderRadius: "20px",
+        border: "1px solid rgba(255, 255, 255, 0.85)",
+        boxShadow: "-5px -5px 14px #ffffff, 5px 5px 16px #b8c6d9",
+        padding: "14px 16px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "10px",
+        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+      }}
     >
-      <div className="db-preview-header">
+      {/* Sleek Recessed Header */}
+      <div
+        className="db-preview-header"
+        style={{
+          padding: "8px 14px",
+          borderRadius: "14px",
+          background: "#edf2f8",
+          boxShadow: "inset -3px -3px 6px #ffffff, inset 3px 3px 6px #b8c6d9",
+          border: "1px solid rgba(255, 255, 255, 0.7)"
+        }}
+      >
         <div className="db-preview-heading">
-          <span className="db-preview-icon" style={{ color: accentColor }}>{icon}</span>
-          <h3 className="db-preview-title">{title}</h3>
+          <span className="db-preview-icon" style={{ color: accentColor, display: "flex", alignItems: "center" }}>{icon}</span>
+          <h3 className="db-preview-title" style={{ color: "#1e293b", fontWeight: 800, fontSize: "0.88rem" }}>{title}</h3>
           <span
             className="db-preview-count"
-            style={{ background: accentBg, color: accentColor }}
+            style={{
+              background: accentBg,
+              color: accentColor,
+              fontWeight: 900,
+              fontSize: "0.74rem",
+              padding: "2px 8px",
+              borderRadius: "999px",
+              boxShadow: "-2px -2px 4px #ffffff, 2px 2px 4px #b8c6d9",
+              border: "1px solid rgba(255, 255, 255, 0.8)"
+            }}
           >
             {tasks.length}
           </span>
@@ -217,7 +255,7 @@ function TaskPreviewSection({
           display: "flex",
           flexDirection: "column",
           alignItems: "stretch",
-          gap: "10px",
+          gap: "8px",
           width: "100%"
         }}
       >
@@ -230,7 +268,30 @@ function TaskPreviewSection({
         )}
       </div>
 
-      <button type="button" className="db-preview-viewall" onClick={onViewAll}>
+      {/* Recessed View All Button */}
+      <button
+        type="button"
+        className="db-preview-viewall"
+        onClick={onViewAll}
+        style={{
+          width: "100%",
+          padding: "9px 14px",
+          background: "#edf2f8",
+          border: "1px solid rgba(255, 255, 255, 0.85)",
+          borderRadius: "12px",
+          color: accentColor,
+          fontSize: "0.8rem",
+          fontWeight: 800,
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "6px",
+          boxShadow: "inset -2px -2px 5px #ffffff, inset 2px 2px 5px #b8c6d9",
+          transition: "all 0.25s ease",
+          marginTop: "2px"
+        }}
+      >
         <span>{viewAllLabel}</span>
         <IcoArrow />
       </button>

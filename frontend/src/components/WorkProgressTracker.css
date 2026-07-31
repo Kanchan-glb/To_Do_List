@@ -255,18 +255,55 @@
   color: #6b21a8;
 }
 
-/* Main Layout Grid */
-.wpt-main-grid {
+/* Main Layout Grid (Matching Reference Screenshot 100%) */
+.wpt-main-grid-container {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-  flex: 1;
-  min-height: 0;
+  grid-template-columns: 1fr 340px;
+  gap: 24px;
+  width: 100%;
+  align-items: start;
 }
 
-@media(min-width: 1024px) {
-  .wpt-main-grid {
-    grid-template-columns: 2fr 1fr;
+.wpt-left-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.wpt-right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.wpt-top-hero-row {
+  display: grid;
+  grid-template-columns: 290px 1fr;
+  gap: 20px;
+  align-items: stretch;
+}
+
+.wpt-bottom-charts-row {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 20px;
+  align-items: stretch;
+}
+
+@media (max-width: 1120px) {
+  .wpt-main-grid-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .wpt-top-hero-row {
+    grid-template-columns: 1fr;
+  }
+  .wpt-bottom-charts-row {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -522,14 +559,23 @@
 
 /* ==========================================================================
    Stacked Cards Deck Styling (Matching Image 1 Stacked Pile Design)
-/* Top Row Flex Container (Today Progress + Stacked Cards Deck Side-by-Side) */
-.wpt-top-row-container {
+/* Organized Row Layout System */
+.wpt-layout-row {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
   gap: 24px;
   width: 100%;
-  margin-bottom: 24px;
+  align-items: stretch;
+}
+
+@media (max-width: 1024px) {
+  .wpt-layout-row {
+    flex-direction: column;
+    gap: 20px;
+  }
+  .wpt-row-left-group, .wpt-row-right-group {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+  }
 }
 
 /* Custom Graph Floating Tooltip (Matching Reference Image Pointer Badge) */

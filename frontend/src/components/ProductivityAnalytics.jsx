@@ -26,6 +26,7 @@ import {
 } from 'date-fns';
 import { useTasks } from '../context/TaskContext';
 import { getAnalytics } from "../api/authApi";
+import '../dashboard.css';
 
 const renderCustomizedLabel = (props) => {
   const { x, y, width, height, value } = props;
@@ -47,11 +48,45 @@ const renderCustomizedLabel = (props) => {
   );
 };
 
+// Custom Floating Neumorphic Tooltip (Matching Image 1 Neumorphic aesthetic)
+const CustomNeumorphicTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div style={{
+        background: '#edf2f8',
+        borderRadius: '16px',
+        padding: '12px 18px',
+        boxShadow: '-6px -6px 16px #ffffff, 6px 6px 18px #b8c6d9',
+        border: '1px solid rgba(255, 255, 255, 0.9)',
+        color: '#1e293b',
+        minWidth: '170px'
+      }}>
+        <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#1e293b', borderBottom: '1px solid rgba(203, 213, 225, 0.6)', paddingBottom: '6px', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span>⚡</span> {label}
+        </div>
+        {payload.map((entry, index) => {
+          if (entry.value === undefined || entry.value === null) return null;
+          return (
+            <div key={`item-${index}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.76rem', fontWeight: 700, margin: '3px 0' }}>
+              <span style={{ color: entry.fill === 'url(#purpleGradient)' ? '#a855f7' : (entry.color || '#64748b'), display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: entry.fill === 'url(#purpleGradient)' ? '#d946ef' : (entry.color || '#6366f1'), display: 'inline-block' }} />
+                {entry.name || 'Total Tasks'}:
+              </span>
+              <span style={{ color: '#0f172a', fontWeight: 900, background: 'rgba(255, 255, 255, 0.6)', padding: '1px 6px', borderRadius: '6px' }}>{entry.value}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+  return null;
+};
 
 export default function ProductivityAnalytics() {
 
   const { tasks, history } = useTasks();
   const [analytics, setAnalytics] = useState([]);
+  const [chartStyle, setChartStyle] = useState('gradient'); // 'gradient' (Image 1 Style) or 'stacked'
 
   useEffect(() => {
     const fetchAnalytics = async () => {
@@ -269,8 +304,6 @@ export default function ProductivityAnalytics() {
     return weeklyAggregate;
   }, [dateRange, analytics, history, mode]);
 
-  console.log("CHART DATA", chartData);
-  console.log("ANALYTICS RESULT", analytics);
   const summary = useMemo(() => {
 
     if (mode === "Weekly") {
@@ -512,11 +545,53 @@ export default function ProductivityAnalytics() {
 
   return (
     <div className="pa-container">
-      <div className="pa-header">
-        <h2>Productivity Analytics</h2>
-        <p>
-          Deep dive into your historical performance and task trends.
-        </p>
+      <div className="pa-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <h2>Productivity Analytics</h2>
+          <p>
+            Deep dive into your historical performance and task trends.
+          </p>
+        </div>
+
+        {/* View Style Switcher: Image 1 Vibrant Gradient vs Status Stacked */}
+        <div style={{ display: 'flex', background: '#edf2f8', padding: '4px', borderRadius: '12px', boxShadow: 'inset -3px -3px 6px #ffffff, inset 3px 3px 6px #b8c6d9' }}>
+          <button
+            type="button"
+            onClick={() => setChartStyle('gradient')}
+            style={{
+              padding: '5px 12px',
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              borderRadius: '8px',
+              border: 'none',
+              cursor: 'pointer',
+              background: chartStyle === 'gradient' ? 'linear-gradient(135deg, #d946ef 0%, #3b82f6 100%)' : 'transparent',
+              color: chartStyle === 'gradient' ? '#ffffff' : '#64748b',
+              boxShadow: chartStyle === 'gradient' ? '0 2px 8px rgba(217,70,239,0.3)' : 'none',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            ✨ Vibrant Pill Bars
+          </button>
+          <button
+            type="button"
+            onClick={() => setChartStyle('stacked')}
+            style={{
+              padding: '5px 12px',
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              borderRadius: '8px',
+              border: 'none',
+              cursor: 'pointer',
+              background: chartStyle === 'stacked' ? 'linear-gradient(135deg, #d946ef 0%, #3b82f6 100%)' : 'transparent',
+              color: chartStyle === 'stacked' ? '#ffffff' : '#64748b',
+              boxShadow: chartStyle === 'stacked' ? '0 2px 8px rgba(217,70,239,0.3)' : 'none',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            📊 Status Breakdown
+          </button>
+        </div>
       </div>
 
       {/* FILTER SECTION */}
@@ -564,20 +639,26 @@ export default function ProductivityAnalytics() {
                       ? 'View previous seven days'
                       : 'View previous month'
                   }
+                  title="Previous Period"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(0, 0, 0, 0.12)',
+                    background: '#edf2f8',
+                    boxShadow: '-4px -4px 10px #ffffff, 4px 4px 10px #b8c6d9',
+                    color: '#000000',
+                    fontSize: '1.5rem',
+                    fontWeight: '900',
+                    lineHeight: '1',
+                    cursor: 'pointer',
+                    userSelect: 'none'
+                  }}
                 >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <polyline points="15 18 9 12 15 6" />
-                  </svg>
+                  ‹
                 </button>
 
                 <span className="pa-date-range">
@@ -594,20 +675,27 @@ export default function ProductivityAnalytics() {
                       ? 'View next seven days'
                       : 'View next month'
                   }
+                  title="Next Period"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(0, 0, 0, 0.12)',
+                    background: '#edf2f8',
+                    boxShadow: isNextDisabled() ? 'none' : '-4px -4px 10px #ffffff, 4px 4px 10px #b8c6d9',
+                    color: isNextDisabled() ? '#94a3b8' : '#000000',
+                    fontSize: '1.5rem',
+                    fontWeight: '900',
+                    lineHeight: '1',
+                    cursor: isNextDisabled() ? 'not-allowed' : 'pointer',
+                    opacity: isNextDisabled() ? 0.35 : 1,
+                    userSelect: 'none'
+                  }}
                 >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
+                  ›
                 </button>
               </>
             )}
@@ -645,29 +733,29 @@ export default function ProductivityAnalytics() {
             </span>
           </div>
           {mode === "ThisMonth" && (
- <div
-  className="pa-stat-card incoming"
-  style={{
-    background: "#eff6ff",
-    border: "1px solid #93c5fd",
-    boxShadow: "0 8px 20px rgba(59,130,246,.12)"
-  }}
->
-  <span
-    className="pa-stat-val"
-    style={{ color: "#2563eb" }}
-  >
-    {summary.incoming}
-  </span>
+            <div
+              className="pa-stat-card incoming"
+              style={{
+                background: "#edf2f8",
+                boxShadow: "-6px -6px 14px #ffffff, 6px 6px 16px #b8c6d9",
+                border: "1px solid rgba(255, 255, 255, 0.8)"
+              }}
+            >
+              <span
+                className="pa-stat-val"
+                style={{ color: "#2563eb" }}
+              >
+                {summary.incoming}
+              </span>
 
-  <span
-    className="pa-stat-label"
-    style={{ color: "#1d4ed8" }}
-  >
-    Incoming
-  </span>
-</div>
-)}
+              <span
+                className="pa-stat-label"
+                style={{ color: "#1d4ed8" }}
+              >
+                Incoming
+              </span>
+            </div>
+          )}
           <div className="pa-stat-card overdue">
             <span className="pa-stat-val">
               {summary.overdue}
@@ -697,7 +785,7 @@ export default function ProductivityAnalytics() {
         </div>
       </div>
 
-      {/* CHART SECTION */}
+      {/* CHART SECTION - RECESSED NEUMORPHIC INSET CONTAINER (IMAGE 1 EXACT DESIGN) */}
       <div
         className="pa-card"
         style={{
@@ -707,136 +795,201 @@ export default function ProductivityAnalytics() {
           minHeight: 0
         }}
       >
-        <div className="pa-chart-wrapper">
-          {summary.total === 0 &&
-            analytics.rescheduled === 0 && (
-              <div className="pa-empty-overlay">
-                <div className="pa-empty-msg">
-                  No productivity data available for the selected period.
+        <div className="pa-chart-inset-container">
+          <div className="pa-chart-wrapper">
+            {summary.total === 0 &&
+              analytics.rescheduled === 0 && (
+                <div className="pa-empty-overlay">
+                  <div className="pa-empty-msg">
+                    No productivity data available for the selected period.
+                  </div>
                 </div>
-              </div>
-            )}
-
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={chartData}
-              margin={{
-                top: 10,
-                right: 10,
-                left: -20,
-                bottom: 0
-              }}
-            >
-              <CartesianGrid
-                strokeDasharray="3 3"
-                vertical={false}
-                stroke="#e5e7eb"
-              />
-
-              <XAxis
-                dataKey="date"
-                tick={{
-                  fontSize: 12,
-                  fill: '#6b7280'
-                }}
-                tickMargin={10}
-                axisLine={false}
-                tickLine={false}
-              />
-
-              <YAxis
-                tick={{
-                  fontSize: 12,
-                  fill: '#6b7280'
-                }}
-                axisLine={false}
-                tickLine={false}
-                allowDecimals={false}
-                domain={yDomain}
-              />
-
-              <Tooltip
-                cursor={{
-                  fill: 'rgba(0,0,0,0.04)'
-                }}
-                contentStyle={{
-                  borderRadius: '8px',
-                  border: 'none',
-                  boxShadow:
-                    '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                }}
-              />
-
-              <Legend
-                wrapperStyle={{
-                  fontSize: '12px',
-                  paddingTop: '20px'
-                }}
-              />
-
-              <Bar
-                dataKey="overdue"
-                name="Overdue"
-                stackId="a"
-                fill="#ef4444"
-              >
-                <LabelList
-                  dataKey="overdue"
-                  content={renderCustomizedLabel}
-                />
-              </Bar>
-              {mode === "ThisMonth" && (
-                <Bar
-                  dataKey="incoming"
-                  name="Incoming"
-                  stackId="a"
-                  fill="#3b82f6"
-                >
-                  <LabelList
-                    dataKey="incoming"
-                    content={renderCustomizedLabel}
-                  />
-                </Bar>
               )}
-              <Bar
-                dataKey="pending"
-                name="Pending"
-                stackId="a"
-                fill="#f59e0b"
-              >
-                <LabelList
-                  dataKey="pending"
-                  content={renderCustomizedLabel}
-                />
-              </Bar>
 
-              <Bar
-                dataKey="completed"
-                name="Completed"
-                stackId="a"
-                fill="#10b981"
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={chartData}
+                margin={{
+                  top: 15,
+                  right: 15,
+                  left: -20,
+                  bottom: 0
+                }}
+                barGap={8}
               >
-                <LabelList
-                  dataKey="completed"
-                  content={renderCustomizedLabel}
-                />
-              </Bar>
+                <defs>
+                  {/* Image 1 Signature Gradient: Magenta/Pink to Deep Royal Blue */}
+                  <linearGradient id="purpleGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#e040fb" stopOpacity={1} />
+                    <stop offset="45%" stopColor="#d946ef" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={1} />
+                  </linearGradient>
 
-              <Bar
-                dataKey="rescheduled"
-                name="Rescheduled"
-                fill="#3b82f6"
-                radius={4}
-              >
-                <LabelList
-                  dataKey="rescheduled"
-                  content={renderCustomizedLabel}
+                  {/* Status Specific Gradients with Pill Glow */}
+                  <linearGradient id="completedGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#34d399" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#059669" stopOpacity={1} />
+                  </linearGradient>
+
+                  <linearGradient id="overdueGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#f87171" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#dc2626" stopOpacity={1} />
+                  </linearGradient>
+
+                  <linearGradient id="pendingGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#fbbf24" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#d97706" stopOpacity={1} />
+                  </linearGradient>
+
+                  <linearGradient id="rescheduledGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#60a5fa" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#2563eb" stopOpacity={1} />
+                  </linearGradient>
+
+                  <linearGradient id="incomingGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#c084fc" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#7e22ce" stopOpacity={1} />
+                  </linearGradient>
+                </defs>
+
+                <CartesianGrid
+                  strokeDasharray="4 4"
+                  vertical={false}
+                  stroke="#cbd5e1"
+                  strokeOpacity={0.6}
                 />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+
+                <XAxis
+                  dataKey="date"
+                  tick={{
+                    fontSize: 11,
+                    fill: '#64748b',
+                    fontWeight: 700
+                  }}
+                  tickMargin={10}
+                  axisLine={false}
+                  tickLine={false}
+                />
+
+                <YAxis
+                  tick={{
+                    fontSize: 11,
+                    fill: '#64748b',
+                    fontWeight: 700
+                  }}
+                  axisLine={false}
+                  tickLine={false}
+                  allowDecimals={false}
+                  domain={yDomain}
+                />
+
+                <Tooltip
+                  cursor={{ fill: 'rgba(217, 70, 239, 0.05)', rx: 12 }}
+                  content={<CustomNeumorphicTooltip />}
+                />
+
+                <Legend
+                  wrapperStyle={{
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    paddingTop: '16px'
+                  }}
+                />
+
+                {chartStyle === 'gradient' ? (
+                  /* IMAGE 1 VIBRANT GRADIENT PILL BARS (EXACT LOOK OF IMAGE 1) */
+                  <Bar
+                    dataKey="total"
+                    name="Activity Level"
+                    fill="url(#purpleGradient)"
+                    radius={[16, 16, 16, 16]}
+                    maxBarSize={28}
+                    style={{ filter: "drop-shadow(0px 4px 8px rgba(217, 70, 239, 0.35))" }}
+                  >
+                    <LabelList
+                      dataKey="total"
+                      content={renderCustomizedLabel}
+                    />
+                  </Bar>
+                ) : (
+                  /* STACKED STATUS BREAKDOWN BARS */
+                  <>
+                    <Bar
+                      dataKey="overdue"
+                      name="Overdue"
+                      stackId="a"
+                      fill="url(#overdueGradient)"
+                      radius={[10, 10, 10, 10]}
+                      maxBarSize={24}
+                    >
+                      <LabelList
+                        dataKey="overdue"
+                        content={renderCustomizedLabel}
+                      />
+                    </Bar>
+                    {mode === "ThisMonth" && (
+                      <Bar
+                        dataKey="incoming"
+                        name="Incoming"
+                        stackId="a"
+                        fill="url(#incomingGradient)"
+                        radius={[10, 10, 10, 10]}
+                        maxBarSize={24}
+                      >
+                        <LabelList
+                          dataKey="incoming"
+                          content={renderCustomizedLabel}
+                        />
+                      </Bar>
+                    )}
+                    <Bar
+                      dataKey="pending"
+                      name="Pending"
+                      stackId="a"
+                      fill="url(#pendingGradient)"
+                      radius={[10, 10, 10, 10]}
+                      maxBarSize={24}
+                    >
+                      <LabelList
+                        dataKey="pending"
+                        content={renderCustomizedLabel}
+                      />
+                    </Bar>
+
+                    <Bar
+                      dataKey="completed"
+                      name="Completed"
+                      stackId="a"
+                      fill="url(#completedGradient)"
+                      radius={[10, 10, 10, 10]}
+                      maxBarSize={24}
+                    >
+                      <LabelList
+                        dataKey="completed"
+                        content={renderCustomizedLabel}
+                      />
+                    </Bar>
+
+                    <Bar
+                      dataKey="rescheduled"
+                      name="Rescheduled"
+                      fill="url(#rescheduledGradient)"
+                      radius={[10, 10, 10, 10]}
+                      maxBarSize={24}
+                    >
+                      <LabelList
+                        dataKey="rescheduled"
+                        content={renderCustomizedLabel}
+                      />
+                    </Bar>
+                  </>
+                )}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
     </div>
   );
 }
+

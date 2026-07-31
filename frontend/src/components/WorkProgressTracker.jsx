@@ -403,23 +403,6 @@ export default function WorkProgressTracker() {
         </div>
       </div>
 
-      {/* Render Stacked Card Deck FIRST, then Today Progress Bar in the SAME ROW */}
-      {summaryViewMode === "stacked" && (
-        <div className="wpt-top-row-container">
-          <div className="wpt-top-deck-wrapper" style={{ width: "320px", flexShrink: 0 }}>
-            <StackedCardsDeck summaryStats={summaryStats} />
-          </div>
-          <div className="wpt-top-progress-wrapper" style={{ flex: 1 }}>
-            <NeumorphicLinearProgress
-              title={`${activeFilter} Progress`}
-              completionPct={summaryStats.completionPct}
-              completedCount={summaryStats.completed}
-              totalCount={summaryStats.total}
-            />
-          </div>
-        </div>
-      )}
-
       <DraggableGrid page="reports" defaultLayout={['sum-total', 'sum-completed', 'sum-pending', 'sum-overdue', 'sum-rescheduled', 'sum-completion', 'left-daily', 'left-weekly', 'chart-weekly', 'chart-status', 'right-previous', 'right-insights']}>
         {({ layout }) => {
           const renderWidget = (id) => {
@@ -498,17 +481,61 @@ export default function WorkProgressTracker() {
                   totalCount={summaryStats.total}
                 />
               </DraggableCard>;
-              case 'left-weekly': return <DraggableCard id="left-weekly" key="left-weekly">{/* Weekly Progress (Last 7 Days) */}
-                <div className="wpt-card">
-                  <div className="wpt-card-header">Last 7 Days Progress</div>
-                  <div className="wpt-weekly-row">
+              case 'left-weekly': return <DraggableCard id="left-weekly" key="left-weekly">{/* Weekly Progress (Last 7 Days) - Neumorphic 3D Upgrade */}
+                <div className="wpt-card" style={{
+                  padding: "20px 24px",
+                  borderRadius: "24px",
+                  background: "#edf2f8",
+                  border: "1px solid rgba(255, 255, 255, 0.85)",
+                  boxShadow: "-8px -8px 20px #ffffff, 8px 8px 22px #b8c6d9"
+                }}>
+                  <div style={{ marginBottom: "16px" }}>
+                    <h3 style={{ fontSize: "1.1rem", fontWeight: 900, color: "#1e293b", margin: 0 }}>📊 Last 7 Days Progress</h3>
+                    <p style={{ fontSize: "0.78rem", color: "#64748b", margin: "3px 0 0 0", fontWeight: 500 }}>Daily task completion breakdown and progress tracks</p>
+                  </div>
+                  <div className="wpt-weekly-row" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(80px, 1fr))", gap: "12px" }}>
                     {last7DaysData.map(d => (
-                      <div key={d.dateStr} className="wpt-day-card">
-                        <span className="wpt-day-name">{d.displayDay}</span>
-                        <span className="wpt-day-stats">{d.completed} <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: 500 }}>/ {d.total}</span></span>
-                        <span className="wpt-day-pct">{d.completionPct}%</span>
-                        <div style={{ width: "100%", height: "4px", background: "var(--border-light)", borderRadius: "4px", overflow: "hidden", marginTop: "4px" }}>
-                          <div style={{ width: `${d.completionPct}%`, height: "100%", background: "var(--color-primary)", borderRadius: "4px" }} />
+                      <div
+                        key={d.dateStr}
+                        className="wpt-day-card"
+                        style={{
+                          background: "#edf2f8",
+                          borderRadius: "16px",
+                          border: "1px solid rgba(255, 255, 255, 0.9)",
+                          boxShadow: "-4px -4px 10px #ffffff, 4px 4px 10px #b8c6d9",
+                          padding: "14px 10px",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "4px",
+                          textAlign: "center",
+                          transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)"
+                        }}
+                      >
+                        <span className="wpt-day-name" style={{ fontSize: "0.72rem", fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>{d.displayDay}</span>
+                        <span className="wpt-day-stats" style={{ fontSize: "1.1rem", fontWeight: 900, color: "#1e293b" }}>
+                          {d.completed} <span style={{ fontSize: "0.78rem", color: "#94a3b8", fontWeight: 600 }}>/ {d.total}</span>
+                        </span>
+                        <span className="wpt-day-pct" style={{ fontSize: "0.85rem", fontWeight: 900, color: d.completionPct === 100 ? "#10b981" : "#7c3aed" }}>{d.completionPct}%</span>
+                        <div style={{
+                          width: "100%",
+                          height: "6px",
+                          background: "#edf2f8",
+                          borderRadius: "999px",
+                          overflow: "hidden",
+                          marginTop: "4px",
+                          boxShadow: "inset -1.5px -1.5px 3px #ffffff, inset 1.5px 1.5px 3px #b8c6d9",
+                          border: "1px solid rgba(255, 255, 255, 0.7)"
+                        }}>
+                          <div style={{
+                            width: `${d.completionPct}%`,
+                            height: "100%",
+                            background: d.completionPct === 100 ? "linear-gradient(90deg, #10b981 0%, #059669 100%)" : "linear-gradient(90deg, #d946ef 0%, #6366f1 100%)",
+                            borderRadius: "999px",
+                            boxShadow: "0 2px 6px rgba(99, 102, 241, 0.3)",
+                            transition: "width 0.4s ease"
+                          }} />
                         </div>
                       </div>
                     ))}
@@ -557,11 +584,11 @@ export default function WorkProgressTracker() {
                           activeDot={{ r: 6, fill: "#f43f5e", stroke: "#ffffff", strokeWidth: 2 }}
                         />
 
-                        {/* Primary Indigo Area Curve */}
+                        {/* Main Indigo Area Curve */}
                         <Area
                           type="monotone"
                           dataKey="completionPct"
-                          stroke="#4f46e5"
+                          stroke="#6366f1"
                           strokeWidth={3.5}
                           fillOpacity={1}
                           fill="url(#colorCompletion)"
@@ -578,42 +605,172 @@ export default function WorkProgressTracker() {
                   <NeumorphicCircleProgress summaryStats={summaryStats} pieData={pieData} size={165} />
                 </div>
               </div></DraggableCard>;
-              case 'right-previous': return <DraggableCard id="right-previous" key="right-previous">{/* Historical Progress Date Picker */}
-                <div className="wpt-card">
-                  <div className="wpt-card-header">View Previous Progress</div>
+              case 'right-previous': return <DraggableCard id="right-previous" key="right-previous">{/* Historical Progress Date Picker - Neumorphic 3D Upgrade */}
+                <div className="wpt-card" style={{
+                  background: "#edf2f8",
+                  borderRadius: "24px",
+                  border: "1px solid rgba(255, 255, 255, 0.85)",
+                  boxShadow: "-8px -8px 20px #ffffff, 8px 8px 22px #b8c6d9",
+                  padding: "20px 22px"
+                }}>
+                  <div className="wpt-card-header" style={{
+                    fontSize: "1.05rem",
+                    fontWeight: 900,
+                    color: "#1e293b",
+                    marginBottom: "14px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px"
+                  }}>
+                    📅 View Previous Progress
+                  </div>
+
+                  {/* Inset Recessed Date Picker */}
                   <input
                     type="date"
                     className="wpt-date-picker"
-                    style={{ width: "100%", marginBottom: "16px" }}
+                    style={{
+                      width: "100%",
+                      marginBottom: "16px",
+                      padding: "10px 14px",
+                      background: "#edf2f8",
+                      border: "1px solid rgba(255, 255, 255, 0.9)",
+                      borderRadius: "14px",
+                      boxShadow: "inset -3px -3px 7px #ffffff, inset 3px 3px 7px #b8c6d9",
+                      fontWeight: 800,
+                      color: "#1e293b",
+                      outline: "none",
+                      fontSize: "0.88rem",
+                      boxSizing: "border-box"
+                    }}
                     value={historicalDate}
                     max={new Date().toISOString().split("T")[0]}
                     onChange={(e) => setHistoricalDate(e.target.value)}
                   />
+
                   {histStats.total === 0 ? (
-                    <div style={{ textAlign: "center", padding: "24px", color: "var(--text-muted)", background: "var(--bg-body)", borderRadius: "12px" }}>
+                    <div style={{
+                      textAlign: "center",
+                      padding: "20px 14px",
+                      color: "#64748b",
+                      background: "#edf2f8",
+                      borderRadius: "14px",
+                      boxShadow: "inset -3px -3px 6px #ffffff, inset 3px 3px 6px #b8c6d9",
+                      fontSize: "0.85rem",
+                      fontWeight: 600
+                    }}>
                       No task history available for this date.
                     </div>
                   ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{ fontWeight: 600, color: "var(--text-secondary)" }}>Total Tasks</span>
-                        <span style={{ fontWeight: 800 }}>{histStats.total}</span>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                      {/* Total Tasks Pill */}
+                      <div style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "10px 14px",
+                        background: "#edf2f8",
+                        borderRadius: "14px",
+                        boxShadow: "-3px -3px 8px #ffffff, 3px 3px 8px #b8c6d9",
+                        border: "1px solid rgba(255, 255, 255, 0.85)"
+                      }}>
+                        <span style={{ fontWeight: 700, color: "#64748b", fontSize: "0.85rem" }}>Total Tasks</span>
+                        <span style={{
+                          fontWeight: 900,
+                          color: "#4f46e5",
+                          background: "rgba(99, 102, 241, 0.12)",
+                          padding: "3px 10px",
+                          borderRadius: "8px",
+                          fontSize: "0.9rem"
+                        }}>{histStats.total}</span>
                       </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{ fontWeight: 600, color: "#10b981" }}>Completed</span>
-                        <span style={{ fontWeight: 800, color: "#10b981" }}>{histStats.completed}</span>
+
+                      {/* Completed Pill */}
+                      <div style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "10px 14px",
+                        background: "#edf2f8",
+                        borderRadius: "14px",
+                        boxShadow: "-3px -3px 8px #ffffff, 3px 3px 8px #b8c6d9",
+                        border: "1px solid rgba(255, 255, 255, 0.85)"
+                      }}>
+                        <span style={{ fontWeight: 700, color: "#059669", fontSize: "0.85rem" }}>Completed</span>
+                        <span style={{
+                          fontWeight: 900,
+                          color: "#10b981",
+                          background: "rgba(16, 185, 129, 0.12)",
+                          padding: "3px 10px",
+                          borderRadius: "8px",
+                          fontSize: "0.9rem"
+                        }}>{histStats.completed}</span>
                       </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{ fontWeight: 600, color: "#f59e0b" }}>Pending</span>
-                        <span style={{ fontWeight: 800, color: "#f59e0b" }}>{histStats.pending}</span>
+
+                      {/* Pending Pill */}
+                      <div style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "10px 14px",
+                        background: "#edf2f8",
+                        borderRadius: "14px",
+                        boxShadow: "-3px -3px 8px #ffffff, 3px 3px 8px #b8c6d9",
+                        border: "1px solid rgba(255, 255, 255, 0.85)"
+                      }}>
+                        <span style={{ fontWeight: 700, color: "#d97706", fontSize: "0.85rem" }}>Pending</span>
+                        <span style={{
+                          fontWeight: 900,
+                          color: "#f59e0b",
+                          background: "rgba(245, 158, 11, 0.12)",
+                          padding: "3px 10px",
+                          borderRadius: "8px",
+                          fontSize: "0.9rem"
+                        }}>{histStats.pending}</span>
                       </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{ fontWeight: 600, color: "#ef4444" }}>Overdue</span>
-                        <span style={{ fontWeight: 800, color: "#ef4444" }}>{histStats.overdue}</span>
+
+                      {/* Overdue Pill */}
+                      <div style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "10px 14px",
+                        background: "#edf2f8",
+                        borderRadius: "14px",
+                        boxShadow: "-3px -3px 8px #ffffff, 3px 3px 8px #b8c6d9",
+                        border: "1px solid rgba(255, 255, 255, 0.85)"
+                      }}>
+                        <span style={{ fontWeight: 700, color: "#dc2626", fontSize: "0.85rem" }}>Overdue</span>
+                        <span style={{
+                          fontWeight: 900,
+                          color: "#ef4444",
+                          background: "rgba(239, 68, 68, 0.12)",
+                          padding: "3px 10px",
+                          borderRadius: "8px",
+                          fontSize: "0.9rem"
+                        }}>{histStats.overdue}</span>
                       </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border-light)", paddingTop: "12px" }}>
-                        <span style={{ fontWeight: 800, color: "var(--text-primary)" }}>Completion</span>
-                        <span style={{ fontWeight: 800, color: "#a855f7", fontSize: "1.2rem" }}>{histStats.completionPct}%</span>
+
+                      {/* Recessed Bottom Completion Banner */}
+                      <div style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginTop: "4px",
+                        padding: "12px 16px",
+                        background: "#edf2f8",
+                        borderRadius: "16px",
+                        boxShadow: "inset -3px -3px 7px #ffffff, inset 3px 3px 7px #b8c6d9",
+                        border: "1px solid rgba(255, 255, 255, 0.7)"
+                      }}>
+                        <span style={{ fontWeight: 800, color: "#1e293b", fontSize: "0.9rem" }}>Completion</span>
+                        <span style={{
+                          fontWeight: 900,
+                          background: "linear-gradient(135deg, #d946ef 0%, #6366f1 100%)",
+                          WebkitBackgroundClip: "text",
+                          WebkitTextFillColor: "transparent",
+                          fontSize: "1.3rem"
+                        }}>{histStats.completionPct}%</span>
                       </div>
                     </div>
                   )}
@@ -687,31 +844,57 @@ export default function WorkProgressTracker() {
           };
 
           return (
-            <>
+            <div className="wpt-main-grid-container">
               {/* ── Top Summary Cards Grid (Shown only in grid mode) ── */}
               {summaryViewMode === "grid" && (
-                <div className="wpt-summary-grid">
+                <div className="wpt-summary-grid" style={{ gridColumn: "1 / -1", width: "100%" }}>
                   {layout.filter(id => id.startsWith('sum-')).map(renderWidget)}
                 </div>
               )}
 
-              <div className="wpt-main-grid">
-                {/* LEFT COLUMN */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-                  {layout.filter(id => id.startsWith('left-') && (summaryViewMode === "grid" || id !== 'left-daily')).map(renderWidget)}
-
-                  {/* Charts Row */}
-                  <div className="wpt-chart-grid">
-                    {layout.filter(id => id.startsWith('chart-')).map(renderWidget)}
+              {/* ══════════════ LEFT MAIN COLUMN (Wide ~70%) ══════════════ */}
+              <div className="wpt-left-column">
+                {/* 1. Top Hero Row: Stacked Cards Deck + Today Progress */}
+                <div className="wpt-top-hero-row">
+                  {summaryViewMode === "stacked" && (
+                    <div style={{ width: "290px", flexShrink: 0 }}>
+                      <StackedCardsDeck summaryStats={summaryStats} />
+                    </div>
+                  )}
+                  <div style={{ minWidth: 0 }}>
+                    {renderWidget('left-daily')}
                   </div>
                 </div>
 
-                {/* RIGHT COLUMN */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-                  {layout.filter(id => id.startsWith('right-')).map(renderWidget)}
+                {/* 2. Middle Card: Last 7 Days Progress */}
+                <div style={{ width: "100%" }}>
+                  {renderWidget('left-weekly')}
+                </div>
+
+                {/* 3. Bottom Row: Weekly Performance Trend + Status Distribution */}
+                <div className="wpt-bottom-charts-row">
+                  <div style={{ minWidth: 0 }}>
+                    {renderWidget('chart-weekly')}
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    {renderWidget('chart-status')}
+                  </div>
                 </div>
               </div>
-            </>
+
+              {/* ══════════════ RIGHT MAIN COLUMN (Narrow ~30%) ══════════════ */}
+              <div className="wpt-right-column">
+                {/* 1. Performance Insights (Purple Glass Card) */}
+                <div style={{ width: "100%" }}>
+                  {renderWidget('right-insights')}
+                </div>
+
+                {/* 2. View Previous Progress */}
+                <div style={{ width: "100%" }}>
+                  {renderWidget('right-previous')}
+                </div>
+              </div>
+            </div>
           );
         }}
       </DraggableGrid>

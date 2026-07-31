@@ -7,6 +7,7 @@ import DateHistoryModal from "./DateHistoryModal";
 import NeumorphicCircleProgress from "./NeumorphicCircleProgress";
 import NeumorphicSelect from "./NeumorphicSelect";
 import { filterTasks } from "../api/authApi";
+import "../dashboard.css";
 
 /* ── Micro SVG Icons ── */
 const Ico = ({ children, size = 16, className = "" }) => (
@@ -371,7 +372,7 @@ export default function TaskActivityCenter() {
   flex: 1;
   margin: 0 !important;
 
-  padding: clamp(16px, 2vw, 30px);
+  padding: clamp(16px, 2vw, 24px);
 
   display: flex;
   flex-direction: column;
@@ -380,6 +381,10 @@ export default function TaskActivityCenter() {
 
   text-align: center;
   overflow: hidden;
+  background: #edf2f8;
+  border-radius: 24px;
+  box-shadow: inset -6px -6px 14px #ffffff, inset 6px 6px 16px #b8c6d9;
+  border: 1px solid rgba(255, 255, 255, 0.7);
 }
 
 /* Productivity heading */
@@ -387,7 +392,9 @@ export default function TaskActivityCenter() {
   width: 100%;
   margin: 0 0 clamp(10px, 1vw, 16px);
 
-  font-size: clamp(0.9rem, 0.95vw, 1.1rem);
+  font-size: clamp(0.95rem, 1vw, 1.15rem);
+  font-weight: 900;
+  color: #1e293b;
   line-height: 1.35;
 
   text-align: center;
@@ -437,6 +444,8 @@ export default function TaskActivityCenter() {
   font-size: clamp(0.72rem, 0.75vw, 0.86rem);
   line-height: 1.45;
   text-align: center;
+  color: #64748b;
+  font-weight: 600;
 
   overflow-wrap: anywhere;
 }
@@ -478,24 +487,36 @@ export default function TaskActivityCenter() {
   min-width: 0;
   min-height: clamp(58px, 5vw, 76px);
 
-  padding: clamp(8px, 1vw, 14px);
+  padding: clamp(10px, 1.2vw, 16px);
 
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
 
-  gap: clamp(4px, 0.5vw, 7px);
+  gap: clamp(6px, 0.6vw, 10px);
 
   text-align: center;
   overflow: hidden;
+  background: #edf2f8;
+  border-radius: 18px;
+  box-shadow: -6px -6px 14px #ffffff, 6px 6px 16px #b8c6d9;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tac-sum-card:hover {
+  transform: translateY(-3px);
+  box-shadow: -8px -8px 18px #ffffff, 8px 8px 20px #a3b4c9;
 }
 
 .tac-sum-card .val {
   display: inline-block;
 
-  font-size: clamp(0.95rem, 1.15vw, 1.25rem);
-  line-height: 1.2;
+  font-family: var(--font-heading);
+  font-size: clamp(1.2rem, 1.4vw, 1.6rem);
+  font-weight: 900;
+  line-height: 1.1;
   white-space: nowrap;
 }
 
@@ -504,7 +525,11 @@ export default function TaskActivityCenter() {
 
   min-width: 0;
 
-  font-size: clamp(0.68rem, 0.72vw, 0.85rem);
+  font-size: clamp(0.68rem, 0.72vw, 0.8rem);
+  font-weight: 800;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   line-height: 1.25;
 
   overflow: hidden;
@@ -521,7 +546,36 @@ export default function TaskActivityCenter() {
   max-width: 100% !important;
   min-width: 0;
 
-  min-height: clamp(46px, 4vw, 54px);
+  min-height: clamp(48px, 4.5vw, 56px);
+  padding: 14px 24px !important;
+  background: linear-gradient(180deg, #f8f7ff 0%, #ede9fe 100%) !important;
+  border: 1.5px solid #c4b5fd !important;
+  border-radius: 999px !important;
+  font-size: 0.95rem !important;
+  font-weight: 800 !important;
+  color: #7c3aed !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  box-shadow: 0 6px 16px rgba(124, 58, 237, 0.12), inset -2px -2px 6px #ffffff, inset 2px 2px 6px rgba(167, 139, 250, 0.2) !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  text-align: center !important;
+}
+
+.view-all-tasks-button:hover {
+  transform: translateY(-2px) !important;
+  background: linear-gradient(180deg, #ffffff 0%, #f3e8ff 100%) !important;
+  border-color: #a855f7 !important;
+  color: #6d28d9 !important;
+  box-shadow: 0 8px 20px rgba(124, 58, 237, 0.2), inset -2px -2px 6px #ffffff, inset 2px 2px 6px rgba(167, 139, 250, 0.3) !important;
+}
+
+.view-all-tasks-button:active {
+  transform: translateY(0) !important;
+  box-shadow: inset -2px -2px 4px #ffffff, inset 2px 2px 6px rgba(124, 58, 237, 0.3) !important;
+}
 
   margin-top: clamp(11px, 1.2vw, 16px) !important;
   padding: clamp(11px, 1.2vw, 16px) !important;
@@ -1078,17 +1132,29 @@ canvas {
           <div className="tac-sum-card"><span className="val" style={{ color: '#3b82f6' }}>{stats.rescheduled}</span> <span className="lbl">Rescheduled</span></div>
         </div>
       </div>
-      {/* View All Tasks Button */}
+      {/* View All Tasks Button - Matching Glossy Lavender Pill Button */}
       <button
         type="button"
         className="view-all-tasks-button"
         onClick={() => setHistoryModalDate(quickFilter === "Custom Date" ? customDate : quickFilter)}
         style={{
-          padding: '16px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', border: 'none',
-          borderRadius: '16px', fontSize: '1rem', fontWeight: 800, cursor: 'pointer',
-          display: 'flex', alignItems: 'center', gap: '8px', color: 'white',
-          boxShadow: '0 8px 20px rgba(79, 70, 229, 0.3)', width: '100%', justifyContent: 'center',
-          textAlign: 'center'
+          width: '100%',
+          padding: '14px 24px',
+          background: 'linear-gradient(180deg, #f8f7ff 0%, #ede9fe 100%)',
+          border: '1.5px solid #c4b5fd',
+          borderRadius: '999px',
+          fontSize: '0.95rem',
+          fontWeight: 800,
+          color: '#7c3aed',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          boxShadow: '0 6px 16px rgba(124, 58, 237, 0.12), inset -2px -2px 6px #ffffff, inset 2px 2px 6px rgba(167, 139, 250, 0.2)',
+          textAlign: 'center',
+          marginTop: '16px',
+          transition: 'all 0.25s ease'
         }}
       >
         📋 View All Tasks for {quickFilter === "Custom Date" ? format(parseISO(customDate), "MMMM d, yyyy") : quickFilter}
