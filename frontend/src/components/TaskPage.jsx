@@ -2299,13 +2299,14 @@ function TaskPage() {
                 padding: "12px 24px",
                 background: "var(--bg-app)",
                 borderBottom: "1px solid rgba(226, 232, 240, 0.8)",
-                display: "grid",
-                gridTemplateColumns: "minmax(200px, 2fr) minmax(120px, 1fr) minmax(120px, 1fr)",
+                display: "flex",
+                flexWrap: "wrap",
                 gap: "12px",
                 alignItems: "center"
               }}
             >
-              <div className="tasks-search-wrapper" style={{ width: "100%" }}>
+              {/* Search */}
+              <div className="tasks-search-wrapper" style={{ flex: "1 1 200px", minWidth: "180px" }}>
                 <span className="tasks-search-icon">🔍</span>
                 <input
                   type="text"
@@ -2316,28 +2317,47 @@ function TaskPage() {
                   style={{ width: "100%", padding: "8px 12px 8px 36px", fontSize: "0.85rem", boxSizing: "border-box" }}
                 />
               </div>
-              <select
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-                className="tasks-select"
-                style={{ width: "100%", padding: "8px 12px", fontSize: "0.82rem", boxSizing: "border-box" }}
-              >
-                <option value="All">All Categories</option>
-                {allCategories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-              <select
-                value={filterPriority}
-                onChange={(e) => setFilterPriority(e.target.value)}
-                className="tasks-select"
-                style={{ width: "100%", padding: "8px 12px", fontSize: "0.82rem", boxSizing: "border-box" }}
-              >
-                <option value="All">All Priorities</option>
-                <option value="High">High</option>
-                <option value="Medium">Medium</option>
-                <option value="Low">Low</option>
-              </select>
+
+              {/* Category multi-select pill */}
+              <NeumorphicFilterPill
+                label="Category"
+                selectedValues={selectedTopCategories}
+                onSelectionChange={(vals) => setSelectedTopCategories(vals)}
+                options={allCategories.filter(c => c !== "All")}
+              />
+
+              {/* Priority multi-select pill */}
+              <NeumorphicFilterPill
+                label="Priority"
+                selectedValues={selectedTopPriorities}
+                onSelectionChange={(vals) => setSelectedTopPriorities(vals)}
+                options={["High", "Medium", "Low"]}
+                alignRight={true}
+              />
+
+              {/* Clear all filters */}
+              {(selectedTopCategories.length > 0 || selectedTopPriorities.length > 0 || searchQuery) && (
+                <button
+                  type="button"
+                  onClick={() => { setSelectedTopCategories([]); setSelectedTopPriorities([]); setSearchQuery(""); }}
+                  style={{
+                    background: "transparent",
+                    border: "1.5px solid #ef4444",
+                    color: "#ef4444",
+                    borderRadius: "999px",
+                    padding: "6px 14px",
+                    fontSize: "0.78rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    transition: "all 0.2s ease"
+                  }}
+                  onMouseOver={(e) => { e.currentTarget.style.background = "#fef2f2"; }}
+                  onMouseOut={(e) => { e.currentTarget.style.background = "transparent"; }}
+                >
+                  ✕ Clear All
+                </button>
+              )}
             </div>
 
             {/* Scrollable Tasks list */}
@@ -2387,23 +2407,44 @@ function TaskPage() {
                       {/* Top Row: Title */}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "8px", overflow: "hidden" }}>
-                          {!task.completed && (
+                          {viewAllStatus !== "Completed" && (
                             <input
                               type="checkbox"
-                              style={{ width: "16px", height: "16px", cursor: "pointer", accentColor: "#10b981", flexShrink: 0 }}
+                              style={{
+                                width: "16px",
+                                height: "16px",
+                                cursor: "pointer",
+                                accentColor: "#10b981",
+                                flexShrink: 0,
+                              }}
                               onChange={async (e) => {
                                 e.stopPropagation();
-                                if (window.confirm("Mark this task as completed?")) {
-                                  const hasIncompleteSubtasks = task.subtasks && task.subtasks.length > 0 && task.subtasks.some(s => !s.completed);
-                                  if (hasIncompleteSubtasks) {
-                                    const completedCount = task.subtasks.filter(s => s.completed).length;
-                                    toast.error(`Complete all subtasks before marking this task as completed. (${completedCount} of ${task.subtasks.length} completed)`);
-                                    return;
-                                  }
-                                  try {
-                                    await updateTask(task.id, { completed: true, status: "completed" });
-                                    toast.success("✅ Task marked as completed.");
-                                  } catch (err) { }
+
+                                const hasIncompleteSubtasks =
+                                  task.subtasks &&
+                                  task.subtasks.length > 0 &&
+                                  task.subtasks.some((s) => !s.completed);
+
+                                if (hasIncompleteSubtasks) {
+                                  const completedCount = task.subtasks.filter((s) => s.completed).length;
+                                  toast.error(
+                                    `Complete all subtasks before marking this task as completed. (${completedCount} of ${task.subtasks.length} completed)`
+                                  );
+                                  return;
+                                }
+
+                                try {
+                                  await updateTask(task.id, {
+                                    completed: true,
+                                    status: "Completed",
+                                    completedAt: new Date().toISOString(),
+                                    completedDate: format(new Date(), "yyyy-MM-dd"),
+                                  });
+
+                                  toast.success("✅ Task marked as completed.");
+                                } catch (err) {
+                                  console.error(err);
+                                  toast.error("Failed to mark task as completed.");
                                 }
                               }}
                             />
@@ -2442,12 +2483,21 @@ function TaskPage() {
                         <button
                           type="button"
                           className="task-action-btn task-delete-btn"
-                          onClick={() => {
-                            if (window.confirm("Are you sure you want to delete this task?")) {
-                              deleteTask(task.id);
+                          onClick={async () => {
+                            const confirmed = window.confirm(
+                              "Are you sure you want to delete this task?"
+                            );
+
+                            if (!confirmed) return;
+
+                            try {
+                              await deleteTask(task.id);
+                              toast.success("Task deleted successfully.");
+                            } catch (err) {
+                              console.error(err);
+                              toast.error("Failed to delete task.");
                             }
                           }}
-                          style={{ padding: "4px 10px", fontSize: "0.75rem", borderRadius: "6px" }}
                         >
                           Delete
                         </button>

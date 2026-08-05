@@ -21,12 +21,14 @@ const formatTask = (taskDoc) => {
 };
 
 const updateTaskStatuses = async (userId) => {
+  console.log("===== GET update API CALLED =====");
   const tasks = await Task.find({
     user: userId,
     completed: { $ne: true },
   });
 
   const now = new Date();
+  console.log("NOW:", now);
 
   for (const task of tasks) {
     if (task.completed || task.status === "Completed") continue;
@@ -41,6 +43,12 @@ const updateTaskStatuses = async (userId) => {
     } else {
       due.setHours(23, 59, 59, 999);
     }
+    console.log({
+      title: task.title,
+      due,
+      now,
+      dueLessThanNow: due < now
+    });
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -116,6 +124,9 @@ const createTask = async (req, res) => {
 
 const getTasks = async (req, res) => {
   try {
+    console.log("===== GET TASKS API CALLED =====");
+    console.log("===== GET TASKS API CALLED =====");
+    console.log("USER ID:", req.user.id);
     await updateTaskStatuses(req.user.id);
 
     const tasks = await Task.find({
@@ -399,7 +410,18 @@ const filterTasks = async (req, res) => {
     let filter = {
       user: req.user.id,
     };
+    console.log("Logged User ID:", req.user.id);
 
+    const allTasks = await Task.find();
+
+    console.log("All DB Tasks:", allTasks.length);
+
+    console.log(
+      "User Tasks:",
+      allTasks.filter(
+        task => task.user?.toString() === req.user.id.toString()
+      ).length
+    );
     // Search
     if (search) {
       filter.title = {

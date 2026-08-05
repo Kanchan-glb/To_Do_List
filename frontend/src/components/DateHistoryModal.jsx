@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useTasks } from "../context/TaskContext";
 import { format, parseISO, subDays, addDays, isThisWeek, isThisMonth, isToday, isYesterday, isTomorrow } from "date-fns";
 import TaskDetailsModal from "./TaskDetailsModal";
-
+import NeumorphicFilterPill from "./NeumorphicFilterPill";
 /* ── Micro SVG Icons ── */
 const Ico = ({ children, size = 15, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -196,6 +196,7 @@ export default function DateHistoryModal({ dateStr, onClose }) {
   const handleDelete = async (id) => {
     await deleteTask(id);
   };
+  const [selectedCategories, setSelectedCategories] = useState([]);
 
   return (
     /* Dimmed Backdrop Blur Overlay */
@@ -390,9 +391,12 @@ export default function DateHistoryModal({ dateStr, onClose }) {
             <option value="Low">Low</option>
           </select>
 
-          <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} style={{ height: "30px", padding: "0 4px", borderRadius: "5px", border: "1px solid #cbd5e1", fontSize: "0.76rem", background: "#fff" }}>
-            {allCategories.map(c => <option key={c} value={c}>{c === 'All' ? 'All Categories' : c}</option>)}
-          </select>
+          <NeumorphicFilterPill
+            label="Category"
+            selectedValues={selectedCategories}
+            onSelectionChange={(vals) => setSelectedCategories(vals)}
+            options={allCategories.filter(c => c !== "All")}
+          />
 
           <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ height: "30px", padding: "0 4px", borderRadius: "5px", border: "1px solid #cbd5e1", fontSize: "0.76rem", background: "#fff" }}>
             <option value="Due Time">Sort: Due Time</option>

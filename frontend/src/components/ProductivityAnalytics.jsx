@@ -83,6 +83,118 @@ const CustomNeumorphicTooltip = ({ active, payload, label }) => {
 };
 
 export default function ProductivityAnalytics() {
+  const [mode, setMode] = useState('Weekly');
+  const [anchorDate, setAnchorDate] = useState(new Date());
+  const isTaskOverdue = (task) => {
+
+    if (task.status === "Completed") {
+      return false;
+    }
+
+    if (!task.dueDate) {
+      return false;
+    }
+
+    const due = new Date(task.dueDate);
+
+    if (task.dueTime) {
+      const [hours, minutes] = task.dueTime.split(":");
+
+      due.setHours(
+        Number(hours),
+        Number(minutes),
+        0,
+        0
+      );
+    } else {
+      due.setHours(
+        23,
+        59,
+        59,
+        999
+      );
+    }
+
+    return due < new Date();
+  };
+  const isTaskIncoming = (task) => {
+
+    if (task.status === "Completed") {
+      return false;
+    }
+
+    if (!task.dueDate) {
+      return false;
+    }
+
+    const due = new Date(task.dueDate);
+
+    if (task.dueTime) {
+      const [hours, minutes] = task.dueTime.split(":");
+
+      due.setHours(
+        Number(hours),
+        Number(minutes),
+        0,
+        0
+      );
+    } else {
+      due.setHours(
+        23,
+        59,
+        59,
+        999
+      );
+    }
+
+
+    const today = new Date();
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+
+    const tomorrowStart = new Date(todayStart);
+    tomorrowStart.setDate(todayStart.getDate() + 1);
+
+
+    // future date (tomorrow or later)
+    return due >= tomorrowStart;
+  };
+  const getSelectedRange = () => {
+    if (mode === "Weekly") {
+      return {
+        start: subDays(anchorDate, 6),
+        end: anchorDate,
+      };
+    }
+
+    if (mode === "ThisMonth") {
+      return {
+        start: startOfMonth(new Date()),
+        end: new Date(),
+      };
+    }
+
+    return {
+      start: startOfMonth(anchorDate),
+      end: endOfMonth(anchorDate),
+    };
+  };
+  const { start, end } = getSelectedRange();
+  const isDateBetween = (date, start, end) => {
+    const d = new Date(date);
+
+    d.setHours(0, 0, 0, 0);
+
+    const s = new Date(start);
+    s.setHours(0, 0, 0, 0);
+
+    const e = new Date(end);
+    e.setHours(23, 59, 59, 999);
+
+    return d >= s && d <= e;
+  };
 
   const { tasks, history } = useTasks();
   const [analytics, setAnalytics] = useState([]);
@@ -110,8 +222,6 @@ export default function ProductivityAnalytics() {
   // Weekly       = Last 7 Days
   // ThisMonth    = Current month only
   // PreviousMonth = Previous and older months with arrow navigation
-  const [mode, setMode] = useState('Weekly');
-  const [anchorDate, setAnchorDate] = useState(new Date());
 
   const latestAllowedPreviousMonth = useMemo(
     () => subMonths(startOfMonth(new Date()), 1),
@@ -120,27 +230,12 @@ export default function ProductivityAnalytics() {
 
 
   const dateRange = useMemo(() => {
-    let start;
-    let end;
+    return eachDayOfInterval({
+      start,
+      end,
+    });
+  }, [start, end]);
 
-    if (mode === 'ThisMonth') {
-      start = startOfMonth(new Date());
-      end = new Date();
-    } else if (mode === 'PreviousMonth') {
-      start = startOfMonth(anchorDate);
-      end = endOfMonth(anchorDate);
-    } else {
-      start = subDays(anchorDate, 6);
-      end = anchorDate;
-    }
-
-    try {
-      return eachDayOfInterval({ start, end });
-    } catch (error) {
-      console.error('Unable to generate productivity date range:', error);
-      return [new Date()];
-    }
-  }, [mode, anchorDate]);
 
   const getStatsForDate = (dateObj) => {
     const dateStr = format(dateObj, 'yyyy-MM-dd');
@@ -172,10 +267,23 @@ export default function ProductivityAnalytics() {
         "yyyy-MM-dd"
       );
 
-      const due = format(
-        new Date(task.dueDate),
-        "yyyy-MM-dd"
-      );
+      const due = new Date(task.dueDate);
+
+      const completed =
+        task.completedAt
+          ? new Date(task.completedAt)
+          : null;
+
+      const wasOverdueOnThatDate =
+        format(due, "yyyy-MM-dd") === dateStr &&
+        (
+          !completed ||
+          completed > due
+        );
+
+      if (wasOverdueOnThatDate) {
+        overdueCount++;
+      }
 
       const isCompletedOnDay =
         task.status === "Completed" &&
@@ -183,19 +291,25 @@ export default function ProductivityAnalytics() {
         format(new Date(task.completedAt), "yyyy-MM-dd") === dateStr;
 
       const isPendingOnDay =
-        task.status === "Pending" &&
-        format(new Date(task.dueDate), "yyyy-MM-dd") === dateStr;
-
-      const isIncomingOnDay =
-        mode === "ThisMonth" &&
-        task.status === "Incoming" &&
-        format(new Date(task.dueDate), "yyyy-MM-dd") === dateStr;
-
-      const isOverdueOnDay =
+        !isTaskOverdue(task) &&
+        !isTaskIncoming(task) &&
         task.status !== "Completed" &&
-        format(new Date(task.dueDate), "yyyy-MM-dd") < dateStr;
-
-
+        format(
+          new Date(task.dueDate),
+          "yyyy-MM-dd"
+        ) === dateStr;
+      const isIncomingOnDay =
+        isTaskIncoming(task) &&
+        format(
+          new Date(task.dueDate),
+          "yyyy-MM-dd"
+        ) === dateStr;
+      const isOverdueOnDay =
+        isTaskOverdue(task) &&
+        format(
+          new Date(task.dueDate),
+          "yyyy-MM-dd"
+        ) === dateStr;
       if (isCompletedOnDay) {
         completedCount++;
       }
@@ -248,9 +362,71 @@ export default function ProductivityAnalytics() {
 
   const chartData = useMemo(() => {
     const rawData = dateRange.map((date) => getStatsForDate(date));
+    if (mode === "Weekly") {
 
-    if (mode === 'Weekly') {
-      return rawData;
+      const start = dateRange[0];
+      const end = dateRange[dateRange.length - 1];
+
+      let completed = 0;
+      let pending = 0;
+      let incoming = 0;
+      let overdue = 0;
+      let rescheduled = 0;
+
+      analytics.forEach(task => {
+
+        if (
+          task.status === "Completed" &&
+          task.completedAt &&
+          isDateBetween(task.completedAt, start, end)
+        ) {
+          completed++;
+        }
+
+        if (
+          task.status === "Pending" &&
+          isDateBetween(task.dueDate, start, end)
+        ) {
+          pending++;
+        }
+
+        if (
+          isTaskIncoming(task) &&
+          isDateBetween(task.dueDate, start, end)
+        ) {
+          incoming++;
+        }
+
+        if (
+          isTaskOverdue(task) &&
+          isDateBetween(task.dueDate, start, end)
+        ) {
+          overdue++;
+        }
+
+        if (
+          task.rescheduleHistory?.some(r =>
+            isDateBetween(r.rescheduledAt, start, end)
+          )
+        ) {
+          rescheduled++;
+        }
+
+      });
+
+      return [{
+        date: "Last 7 Days",
+        completed,
+        pending,
+        incoming,
+        overdue,
+        rescheduled,
+        total:
+          completed +
+          pending +
+          incoming +
+          overdue
+      }];
     }
 
     const weeklyAggregate = [];
@@ -306,29 +482,25 @@ export default function ProductivityAnalytics() {
 
   const summary = useMemo(() => {
 
+    let start;
+    let end;
+
     if (mode === "Weekly") {
-      return chartData.reduce((acc, day) => {
-
-        acc.total += day.total;
-        acc.completed += day.completed;
-        acc.pending += day.pending;
-        acc.overdue += day.overdue;
-        acc.rescheduled += day.rescheduled;
-
-        return acc;
-
-      }, {
-        total: 0,
-        completed: 0,
-        pending: 0,
-        incoming: 0,
-        overdue: 0,
-        rescheduled: 0
-      });
+      start = subDays(anchorDate, 6);
+      end = anchorDate;
     }
+    else if (mode === "ThisMonth") {
+      start = startOfMonth(new Date());
+      end = new Date();
+    } else if (mode === "PreviousMonth") {
 
-    const month =
-      format(anchorDate, "yyyy-MM");
+      start = startOfMonth(anchorDate);
+      end = endOfMonth(anchorDate);
+
+    } else {
+      start = startOfMonth(anchorDate);
+      end = endOfMonth(anchorDate);
+    }
 
     let completed = 0;
     let pending = 0;
@@ -338,81 +510,61 @@ export default function ProductivityAnalytics() {
 
     analytics.forEach(task => {
 
-      const due =
-        format(new Date(task.dueDate), "yyyy-MM");
-
-      const completedMonth =
-        task.completedAt
-          ? format(new Date(task.completedAt), "yyyy-MM")
-          : "";
-
       if (
         task.status === "Completed" &&
-        completedMonth === month
+        task.completedAt &&
+        isDateBetween(task.completedAt, start, end)
       ) {
         completed++;
       }
 
-      const today = new Date();
-
       if (
         task.status === "Pending" &&
-        due === month &&
-        new Date(task.dueDate) >= today
+        isDateBetween(task.dueDate, start, end)
       ) {
         pending++;
       }
 
       if (
-        task.status === "Incoming" &&
-        due === month
+        isTaskIncoming(task) &&
+        isDateBetween(task.dueDate, start, end)
       ) {
         incoming++;
       }
 
       if (
-        task.status !== "Completed" &&
-        due === month &&
-        new Date(task.dueDate) < today
+        isTaskOverdue(task) &&
+        isDateBetween(task.dueDate, start, end)
       ) {
         overdue++;
       }
 
       if (
-        task.rescheduleHistory?.some(r =>
-          format(new Date(r.rescheduledAt), "yyyy-MM") === month
+        task.rescheduleHistory?.some(item =>
+          isDateBetween(item.rescheduledAt, start, end)
         )
       ) {
         rescheduled++;
       }
 
     });
-
-    const total = analytics.filter(task => {
-      const dueMonth =
-        format(new Date(task.dueDate), "yyyy-MM");
-
-      const completedMonth =
-        task.completedAt
-          ? format(new Date(task.completedAt), "yyyy-MM")
-          : "";
-
-      return (
-        dueMonth === month ||
-        completedMonth === month
-      );
-    }).length;
-
     return {
+
       completed,
       pending,
       incoming,
       overdue,
       rescheduled,
-      total
+
+      total:
+        completed +
+        pending +
+        incoming +
+        overdue
+
     };
 
-  }, [analytics, chartData, mode, anchorDate]);
+  }, [analytics, mode, anchorDate]);
 
   const aggregateCompPct =
     summary.total > 0
@@ -798,7 +950,7 @@ export default function ProductivityAnalytics() {
         <div className="pa-chart-inset-container">
           <div className="pa-chart-wrapper">
             {summary.total === 0 &&
-              analytics.rescheduled === 0 && (
+              summary.rescheduled === 0 && (
                 <div className="pa-empty-overlay">
                   <div className="pa-empty-msg">
                     No productivity data available for the selected period.
