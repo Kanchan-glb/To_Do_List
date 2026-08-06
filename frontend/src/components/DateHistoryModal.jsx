@@ -98,8 +98,8 @@ export default function DateHistoryModal({ dateStr, onClose }) {
 
         if (dateStr === "Today") {
           const isDueToday = taskDue === todayStr;
-          const isCompletedToday = taskCompletedDate === todayStr;
-          const isOverdue = !task.completed && taskDue < todayStr;
+          const isCompletedToday = taskCompletedDate === todayStr || (task.completed && task.completedAt && format(new Date(task.completedAt), "yyyy-MM-dd") === todayStr);
+          const isOverdue = !task.completed && task.status !== "Completed" && taskDue < todayStr;
           const isRescheduledToday = task.rescheduleHistory?.some(h => h.rescheduledAtDate === todayStr);
           if (!isDueToday && !isCompletedToday && !isOverdue && !isRescheduledToday) return false;
         } else if (dateStr === "Yesterday" && !isMatchDate(format(subDays(new Date(), 1), "yyyy-MM-dd"))) return false;

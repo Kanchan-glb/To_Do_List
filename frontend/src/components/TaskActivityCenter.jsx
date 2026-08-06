@@ -88,8 +88,8 @@ export default function TaskActivityCenter() {
 
         if (quickFilter === "Today") {
           const isDueToday = taskDue === todayStr;
-          const isCompletedToday = taskCompletedDate === todayStr;
-          const isOverdue = !task.completed && taskDue < todayStr;
+          const isCompletedToday = taskCompletedDate === todayStr || (task.completed && task.completedAt && format(new Date(task.completedAt), "yyyy-MM-dd") === todayStr);
+          const isOverdue = !task.completed && task.status !== "Completed" && taskDue < todayStr;
           const isRescheduledToday = task.rescheduleHistory?.some(h => h.rescheduledAtDate === todayStr);
           if (!isDueToday && !isCompletedToday && !isOverdue && !isRescheduledToday) return false;
         }
@@ -110,65 +110,46 @@ export default function TaskActivityCenter() {
   const [filteredTasks, setFilteredTasks] = useState([]);
   // Summaries (Only based on Date, totally independent of search/status filters)
   const stats = useMemo(() => {
-
     let completed = 0;
     let pending = 0;
     let overdue = 0;
     let rescheduled = 0;
+    let incoming = 0;
 
-    // Always use filtered data
-    const data = filteredTasks;
+    const todayStr = format(new Date(), "yyyy-MM-dd");
 
-    data.forEach((t) => {
-
-      if (t.status === "Completed") {
+    dateOnlyTasks.forEach((t) => {
+      const isComp = t.completed || t.status === "Completed";
+      if (isComp) {
         completed++;
-      }
-      else {
-
-        const due = new Date(
-          `${t.dueDate}T${t.dueTime || "23:59"}`
-        );
-
-        if (due < new Date()) {
-          overdue++;
-        }
-        else {
-          pending++;
-        }
+      } else if (t.status === "Overdue" || (t.dueDate && t.dueDate < todayStr)) {
+        overdue++;
+      } else if (t.status === "Incoming") {
+        incoming++;
+      } else {
+        pending++;
       }
 
-      if (t.rescheduleHistory?.length) {
+      if (t.rescheduleCount > 0 || (t.rescheduleHistory && t.rescheduleHistory.length > 0)) {
         rescheduled++;
       }
-
     });
 
-
-    const total = data.length;
-
+    const total = dateOnlyTasks.length;
 
     return {
-
       total,
-
       completed,
-
       pending,
-
       overdue,
-
+      incoming,
       rescheduled,
-
       compPercent:
         total === 0
           ? 0
           : Math.round((completed / total) * 100)
-
     };
-
-
-  }, [filteredTasks]);
+  }, [dateOnlyTasks]);
   const loadTasks = async () => {
     try {
 
@@ -1170,4 +1151,5 @@ canvas {
       )}
     </div>
   );
-}
+} 
+

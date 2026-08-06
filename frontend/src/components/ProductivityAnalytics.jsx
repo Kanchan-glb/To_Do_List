@@ -240,76 +240,40 @@ export default function ProductivityAnalytics() {
   const getStatsForDate = (dateObj) => {
     const dateStr = format(dateObj, 'yyyy-MM-dd');
 
-
     let completedCount = 0;
     let pendingCount = 0;
     let overdueCount = 0;
-    let totalCount = 0;
     let rescheduledCount = 0;
     let incomingCount = 0;
+
     analytics.forEach((task) => {
-      const taskDue = format(
+      if (!task.dueDate) return;
+
+      const taskDueStr = format(
         new Date(task.dueDate),
         "yyyy-MM-dd"
       );
 
-      const isCompletedOnOrBefore =
-        Boolean(task.completed) &&
-        Boolean(task.completedDate) &&
-        task.completedDate <= dateStr;
-
-
-      const isDueOnDay = taskDue === dateStr;
-
-      const todayStr = format(new Date(), "yyyy-MM-dd");
-      const created = format(
-        new Date(task.createdAt),
-        "yyyy-MM-dd"
-      );
-
-      const due = new Date(task.dueDate);
-
-      const completed =
-        task.completedAt
-          ? new Date(task.completedAt)
-          : null;
-
-      const wasOverdueOnThatDate =
-        format(due, "yyyy-MM-dd") === dateStr &&
-        (
-          !completed ||
-          completed > due
-        );
-
-      if (wasOverdueOnThatDate) {
-        overdueCount++;
-      }
-
+      const compDate = task.completedAt || task.updatedAt;
       const isCompletedOnDay =
         task.status === "Completed" &&
-        task.completedAt &&
-        format(new Date(task.completedAt), "yyyy-MM-dd") === dateStr;
+        compDate &&
+        format(new Date(compDate), "yyyy-MM-dd") === dateStr;
 
       const isPendingOnDay =
         !isTaskOverdue(task) &&
         !isTaskIncoming(task) &&
         task.status !== "Completed" &&
-        format(
-          new Date(task.dueDate),
-          "yyyy-MM-dd"
-        ) === dateStr;
+        taskDueStr === dateStr;
+
       const isIncomingOnDay =
         isTaskIncoming(task) &&
-        format(
-          new Date(task.dueDate),
-          "yyyy-MM-dd"
-        ) === dateStr;
+        taskDueStr === dateStr;
+
       const isOverdueOnDay =
         isTaskOverdue(task) &&
-        format(
-          new Date(task.dueDate),
-          "yyyy-MM-dd"
-        ) === dateStr;
+        taskDueStr === dateStr;
+
       if (isCompletedOnDay) {
         completedCount++;
       }
@@ -326,14 +290,9 @@ export default function ProductivityAnalytics() {
         overdueCount++;
       }
 
-      totalCount =
-        completedCount +
-        pendingCount +
-        incomingCount +
-        overdueCount;
-
       const wasRescheduledOnDate =
         task.rescheduleHistory?.some(item =>
+          item.rescheduledAt &&
           format(
             new Date(item.rescheduledAt),
             "yyyy-MM-dd"
@@ -344,6 +303,12 @@ export default function ProductivityAnalytics() {
         rescheduledCount += 1;
       }
     });
+
+    const totalCount =
+      completedCount +
+      pendingCount +
+      incomingCount +
+      overdueCount;
 
     return {
       date: format(
@@ -534,7 +499,7 @@ export default function ProductivityAnalytics() {
 
       if (
         isTaskOverdue(task) &&
-        isDateBetween(task.dueDate, start, end)
+        (isDateBetween(task.dueDate, start, end) || (new Date(task.dueDate) < start && isDateBetween(new Date(), start, end)))
       ) {
         overdue++;
       }

@@ -107,11 +107,20 @@ function StackedCardsDeck({ summaryStats }) {
     }
   ];
 
-  const handleCardClick = () => {
+  const handleNextCard = () => {
     if (animating) return;
     setAnimating(true);
     setTimeout(() => {
       setTopIndex((prev) => (prev + 1) % cards.length);
+      setAnimating(false);
+    }, 280);
+  };
+
+  const handlePrevCard = () => {
+    if (animating) return;
+    setAnimating(true);
+    setTimeout(() => {
+      setTopIndex((prev) => (prev - 1 + cards.length) % cards.length);
       setAnimating(false);
     }, 280);
   };
@@ -135,7 +144,7 @@ function StackedCardsDeck({ summaryStats }) {
             <div
               key={card.id}
               className={`stacked-card-item ${isTop ? "is-top-card" : ""} ${isAnimatingThis ? "is-swiping-out" : ""}`}
-              onClick={isTop ? handleCardClick : undefined}
+              onClick={isTop ? handleNextCard : undefined}
               style={{
                 zIndex: zIndex,
                 transform: isAnimatingThis
@@ -165,14 +174,50 @@ function StackedCardsDeck({ summaryStats }) {
         })}
       </div>
      
+      <div style={{ display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'center', marginTop: '4px' }}>
         <button
           type="button"
-          className="stacked-deck-controls"
-          onClick={handleCardClick}
+          onClick={handlePrevCard}
+          style={{
+            padding: '6px 14px',
+            borderRadius: '999px',
+            border: '1px solid rgba(255, 255, 255, 0.8)',
+            background: '#edf2f8',
+            color: '#475569',
+            fontSize: '0.8rem',
+            fontWeight: 800,
+            cursor: 'pointer',
+            boxShadow: '-3px -3px 7px #ffffff, 3px 3px 7px #b8c6d9',
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px'
+          }}
+        >
+          ⬅ Previous Card
+        </button>
+        <button
+          type="button"
+          onClick={handleNextCard}
+          style={{
+            padding: '6px 14px',
+            borderRadius: '999px',
+            border: '1px solid rgba(255, 255, 255, 0.8)',
+            background: '#edf2f8',
+            color: '#4f46e5',
+            fontSize: '0.8rem',
+            fontWeight: 800,
+            cursor: 'pointer',
+            boxShadow: '-3px -3px 7px #ffffff, 3px 3px 7px #b8c6d9',
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px'
+          }}
         >
           Next Card ➔
         </button>
-      
+      </div>
     </div>
   );
 }
@@ -214,19 +259,26 @@ export default function WorkProgressTracker() {
     tasks.forEach(t => {
       const taskDue = t.dueDate || t.createdDate || todayStr;
       const isComp = t.completed || t.status === "Completed";
+      const actualCompDate = (t.completedAt && format(new Date(t.completedAt), "yyyy-MM-dd")) || t.completedDate || (isComp ? (t.updatedAt ? format(new Date(t.updatedAt), "yyyy-MM-dd") : taskDue) : null);
+      const isCompletedOnDate = isComp && actualCompDate === dateStr;
       const isDueOnDate = taskDue === dateStr;
-      const isCompletedOnDate = (t.completedDate && t.completedDate === dateStr) || (isComp && taskDue === dateStr);
       const isRescheduledOnDate = t.rescheduleHistory?.some(h => h.rescheduledAtDate === dateStr);
 
-      if (isDueOnDate || isCompletedOnDate || isRescheduledOnDate) {
+      // Carry over past uncompleted (overdue) tasks into Today's active workload
+      const isPastOverdueCarriedOver = !isComp && taskDue < dateStr && dateStr === todayStr;
+
+      if (isDueOnDate || isCompletedOnDate || isRescheduledOnDate || isPastOverdueCarriedOver) {
         total++;
-        const st = getTaskStatus(t);
-        if (st === "Completed") completed++;
-        else if (st === "Overdue") overdue++;
-        else {
-          // For reporting analytics: Pending Report Count = Pending + Incoming
-          pending++;
-          if (st === "Incoming") incoming++;
+        if (isCompletedOnDate) {
+          completed++;
+        } else {
+          const st = getTaskStatus(t);
+          if (st === "Overdue") overdue++;
+          else {
+            // For reporting analytics: Pending Report Count = Pending + Incoming
+            pending++;
+            if (st === "Incoming") incoming++;
+          }
         }
       }
 
@@ -254,12 +306,16 @@ export default function WorkProgressTracker() {
       let taskDateObj;
       try { taskDateObj = parseISO(t.dueDate || t.createdDate || todayStr); } catch (e) { taskDateObj = new Date(); }
 
+      const isComp = t.completed || t.status === "Completed";
+      const taskDue = t.dueDate || t.createdDate || todayStr;
+      const isPastOverdue = !isComp && taskDue < todayStr;
+
       let include = false;
       if (activeFilter === "Last 7 Days" || activeFilter === "This Week") {
         const diff = differenceInDays(new Date(), taskDateObj);
-        include = diff <= 7 && diff >= 0;
+        include = (diff <= 7 && diff >= 0) || isPastOverdue;
       } else if (activeFilter === "This Month") {
-        include = isThisMonth(taskDateObj);
+        include = isThisMonth(taskDateObj) || isPastOverdue;
       }
 
       if (include) {

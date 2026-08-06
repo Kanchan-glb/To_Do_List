@@ -17,6 +17,17 @@ const formatTask = (taskDoc) => {
       }
     } catch (e) { }
   }
+  if (obj.completedAt) {
+    try {
+      const d = new Date(obj.completedAt);
+      if (!isNaN(d.getTime())) {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        obj.completedDate = `${year}-${month}-${day}`;
+      }
+    } catch (e) { }
+  }
   return obj;
 };
 
@@ -435,7 +446,7 @@ const filterTasks = async (req, res) => {
       if (status === "Completed") {
         filter.completed = true;
       } else if (status === "Pending") {
-        filter.status = "Pending";
+        filter.status = { $in: ["Pending", "Overdue"] };
       } else if (status === "Incoming") {
         filter.status = "Incoming";
       } else if (status === "Overdue") {
@@ -458,12 +469,28 @@ const filterTasks = async (req, res) => {
     today.setHours(0, 0, 0, 0);
 
     switch (quickFilter) {
-      case "Today":
-        filter.dueDate = {
-          $gte: today,
-          $lt: new Date(today.getTime() + 86400000),
-        };
+      case "Today": {
+        const tomorrow = new Date(today.getTime() + 86400000);
+        filter.$or = [
+          {
+            dueDate: {
+              $gte: today,
+              $lt: tomorrow,
+            },
+          },
+          {
+            dueDate: { $lt: today },
+            status: { $ne: "Completed" },
+          },
+          {
+            completedAt: {
+              $gte: today,
+              $lt: tomorrow,
+            },
+          },
+        ];
         break;
+      }
 
       case "Yesterday":
         const yesterday = new Date(today);

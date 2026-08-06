@@ -698,12 +698,90 @@ function Layout({ children }) {
 
               {notificationDropdownOpen && (
                 <div className="notification-dropdown">
-                  <div className="notification-header">
-                    <h4>Notifications</h4>
-                    <div className="notification-actions">
-                      <button type="button" onClick={markAllAsRead} className="text-btn">Mark all read</button>
-                      <button type="button" onClick={clearAll} className="text-btn">Clear</button>
+                  <div
+                    className="notification-header"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 14px',
+                      gap: '8px',
+                      background: '#edf2f8',
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.8)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={markAllAsRead}
+                        style={{
+                          padding: '6px 12px',
+                          fontSize: '0.75rem',
+                          fontWeight: 800,
+                          borderRadius: '20px',
+                          border: 'none',
+                          background: '#edf2f8',
+                          color: '#7c3aed',
+                          cursor: 'pointer',
+                          boxShadow: '-3px -3px 7px #ffffff, 3px 3px 7px #b8c6d9',
+                          whiteSpace: 'nowrap',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        Mark all read
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={clearAll}
+                        style={{
+                          padding: '6px 14px',
+                          fontSize: '0.75rem',
+                          fontWeight: 800,
+                          borderRadius: '20px',
+                          border: 'none',
+                          background: '#edf2f8',
+                          color: '#7c3aed',
+                          cursor: 'pointer',
+                          boxShadow: '-3px -3px 7px #ffffff, 3px 3px 7px #b8c6d9',
+                          whiteSpace: 'nowrap',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        Clear
+                      </button>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setNotificationDropdownOpen(false)}
+                      title="Close Notifications"
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '50%',
+                        border: 'none',
+                        background: '#edf2f8',
+                        color: '#64748b',
+                        fontSize: '0.85rem',
+                        fontWeight: 900,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '-3px -3px 7px #ffffff, 3px 3px 7px #b8c6d9',
+                        transition: 'all 0.2s ease',
+                        flexShrink: 0
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = '#ef4444';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.color = '#64748b';
+                      }}
+                    >
+                      X
+                    </button>
                   </div>
                   <div className="notification-body">
                     {notifications.length === 0 ? (
