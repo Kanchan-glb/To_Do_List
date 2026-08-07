@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useTasks } from "../context/TaskContext";
 import { format, isToday, parseISO, addHours } from "date-fns";
-import { generateSuggestions } from "../services/gemini";
+// import { generateSuggestions } from "../services/gemini";
 import { getSpeechRecognizer, parseSpeechToTask } from "../services/speech";
 import { calculateDefaultDueTime, CATEGORY_DEFAULT_DURATION } from "../utils/taskUtils";
 import toast from "react-hot-toast";

@@ -1,12 +1,13 @@
 import { useState, useMemo, useEffect } from "react";
+import { lazy, Suspense } from "react";
 import { useTasks } from "../context/TaskContext";
 import { format, isThisWeek, isThisMonth, parseISO, subDays, addDays } from "date-fns";
 import { useNavigate } from "react-router-dom";
-import TaskDetailsModal from "./TaskDetailsModal";
-import DateHistoryModal from "./DateHistoryModal";
-import NeumorphicCircleProgress from "./NeumorphicCircleProgress";
-import NeumorphicSelect from "./NeumorphicSelect";
-import { filterTasks } from "../api/authApi";
+const TaskDetailsModal = lazy(() => import("./TaskDetailsModal"));
+const DateHistoryModal = lazy(() => import("./DateHistoryModal"));
+const NeumorphicCircleProgress = lazy(() => import("./NeumorphicCircleProgress"));
+const NeumorphicSelect = lazy(() => import("./NeumorphicSelect"));
+const filterTasks = lazy(() => import("../api/authApi"));
 import "../dashboard.css";
 
 /* ── Micro SVG Icons ── */

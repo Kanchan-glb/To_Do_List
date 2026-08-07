@@ -1,12 +1,16 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { lazy, Suspense } from "react";
 import { useTasks } from "../context/TaskContext";
 import { format, isThisWeek, parseISO, isToday, isYesterday, isTomorrow } from "date-fns";
-import TaskDetailsModal from "./TaskDetailsModal";
-import TaskActivityCenter from "./TaskActivityCenter";
-import ProductivityAnalytics from "./ProductivityAnalytics";
+const TaskDetailsModal = lazy(() => import("./TaskDetailsModal"));
+const TaskActivityCenter = lazy(() => import("./TaskActivityCenter"));
+const ProductivityAnalytics = lazy(() => import("./ProductivityAnalytics"));
 import { useNavigate } from "react-router-dom";
-import DraggableGrid from "./dnd/DraggableGrid";
-import DraggableCard from "./dnd/DraggableCard";
+const  DraggableGrid = lazy(() => import("./dnd/DraggableGrid"));
+const DraggableCard = lazy(() => import("./dnd/DraggableCard"));
+// import DraggableGrid from "./dnd/DraggableGrid";
+// import DraggableCard from "./dnd/DraggableCard";
+
 import "../dashboard.css";
 
 /* ── Micro SVG Icons ── */

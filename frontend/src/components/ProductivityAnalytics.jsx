@@ -216,7 +216,7 @@ export default function ProductivityAnalytics() {
     };
 
     fetchAnalytics();
-  }, [tasks]);
+  }, [mode, anchorDate]);
 
   // Modes:
   // Weekly       = Last 7 Days

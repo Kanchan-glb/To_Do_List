@@ -1,4 +1,5 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap");
+/* Google Fonts are loaded via <link> in index.html for non-blocking delivery */
+/* Using font-display:swap is handled by the &display=swap param in the URL */
 
 :root {
   --font-heading: 'Outfit', sans-serif;
@@ -107,6 +108,20 @@ html.dark,
   padding: 0;
 }
 
+/* Spin animation for page loader */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Promote frequently animated elements to their own GPU layer */
+.scale-in,
+.reminder-modal-card,
+.modal-overlay,
+.sidebar {
+  will-change: transform;
+}
+
+
 body {
   font-family: var(--font-body);
   background: var(--bg-app);
@@ -115,7 +130,10 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.5;
-  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  /* Scope transition to only the 3 properties that change — avoids checking ALL props on every repaint */
+  transition-property: background-color, color, border-color;
+  transition-duration: 0.3s;
+  transition-timing-function: ease;
   background-image: radial-gradient(ellipse at 20% 0%, rgba(79, 70, 229, 0.06) 0%, transparent 55%),
     radial-gradient(ellipse at 80% 100%, rgba(14, 165, 233, 0.05) 0%, transparent 55%);
 }

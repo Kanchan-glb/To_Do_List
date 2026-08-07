@@ -309,12 +309,6 @@ function Layout({ children }) {
 
   return (
     <div className="app-shell">
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 2500,
-        }}
-      />
 
       {/* ═══════════════════ SIDEBAR & OVERLAY ═══════════════════ */}
       <div
@@ -504,6 +498,7 @@ function Layout({ children }) {
                 }}>
                   <button
                     onClick={() => isFocusRunning ? pauseTimer() : startTimer()}
+                    aria-label={isFocusRunning ? 'Pause timer' : 'Start timer'}
                     style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center' }}
                   >
                     {isFocusRunning ? <PauseIcon size={18} /> : <PlayIcon size={18} />}
@@ -518,6 +513,7 @@ function Layout({ children }) {
 
                   <button
                     onClick={() => { setTimerDropdownOpen(true); resetTimerToDefault(); }}
+                    aria-label="Reset timer"
                     style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center' }}
                     title="Reset Timer"
                   >
@@ -689,6 +685,7 @@ function Layout({ children }) {
                   setNotificationDropdownOpen(!notificationDropdownOpen);
                 }}
                 title="Notifications"
+                aria-label="Notifications"
               >
                 <BellIcon />
                 {unreadCount > 0 && (

@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-
-import DraggableGrid from "./dnd/DraggableGrid";
-import DraggableCard from "./dnd/DraggableCard";
-import NeumorphicSelect from "./NeumorphicSelect";
-import NeumorphicComboSelect from "./NeumorphicComboSelect";
-import NeumorphicFilterPill from "./NeumorphicFilterPill";
+import { lazy, Suspense } from "react";
+const DraggableCard = lazy(() => import("./dnd/DraggableCard"));
+const DraggableGrid = lazy(() => import("./dnd/DraggableGrid"));
+const NeumorphicFilterPill = lazy(() => import("./NeumorphicFilterPill"));
+const NeumorphicComboSelect = lazy(() => import("./NeumorphicComboSelect"));
+const NeumorphicSelect = lazy(() => import("./NeumorphicSelect"));
+const TaskDetailsModal = lazy(() => import("./TaskDetailsModal"));
 import { clearLayout } from "../utils/layoutStorage";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useTasks } from "../context/TaskContext";
@@ -13,7 +14,6 @@ import { generateSubtasks } from "../services/gemini";
 import { getSpeechRecognizer, parseSpeechToTask } from "../services/speech";
 import { calculateDefaultDueTime } from "../utils/taskUtils";
 import { translateHinglishToEnglish, extractTaskDetails } from "../utils/voiceParser";
-import TaskDetailsModal from "./TaskDetailsModal";
 import toast from "react-hot-toast";
 import axios from "axios";
 import "../tasks.css";

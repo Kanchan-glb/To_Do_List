@@ -223,7 +223,7 @@ function StackedCardsDeck({ summaryStats }) {
 }
 
 export default function WorkProgressTracker() {
-  const { tasks, streak, longestStreak, fetchTasks, loading } = useTasks();
+  const { tasks, streak, longestStreak, loading } = useTasks();
   const [activeFilter, setActiveFilter] = useState("Today");
   const [summaryViewMode, setSummaryViewMode] = useState("stacked"); // "stacked" or "grid"
   const [customDate, setCustomDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -231,12 +231,7 @@ export default function WorkProgressTracker() {
   const [calendarMonth, setCalendarMonth] = useState(new Date());
 
   // Auto-fetch fresh data from MongoDB backend API on component mount
-  useEffect(() => {
-    if (fetchTasks) {
-      fetchTasks();
-    }
-  }, []);
-
+ 
   // Helper: Unified Task Status Evaluation
   const getTaskStatus = (task) => {
     if (task.completed || task.status === "Completed") return "Completed";
@@ -250,47 +245,93 @@ export default function WorkProgressTracker() {
     if (taskTime < nowTimeStr) return "Overdue";
     return "Pending";
   };
-
+const statsCache = useMemo(() => new Map(), [tasks]);
   // Helper: Get tasks for a specific exact date string
   const getStatsForDate = (dateStr) => {
-    let total = 0, completed = 0, pending = 0, incoming = 0, overdue = 0, rescheduled = 0;
-    const todayStr = format(new Date(), "yyyy-MM-dd");
+  if (statsCache.has(dateStr)) {
+    return statsCache.get(dateStr);
+  }
 
-    tasks.forEach(t => {
-      const taskDue = t.dueDate || t.createdDate || todayStr;
-      const isComp = t.completed || t.status === "Completed";
-      const actualCompDate = (t.completedAt && format(new Date(t.completedAt), "yyyy-MM-dd")) || t.completedDate || (isComp ? (t.updatedAt ? format(new Date(t.updatedAt), "yyyy-MM-dd") : taskDue) : null);
-      const isCompletedOnDate = isComp && actualCompDate === dateStr;
-      const isDueOnDate = taskDue === dateStr;
-      const isRescheduledOnDate = t.rescheduleHistory?.some(h => h.rescheduledAtDate === dateStr);
+  let total = 0;
+  let completed = 0;
+  let pending = 0;
+  let incoming = 0;
+  let overdue = 0;
+  let rescheduled = 0;
 
-      // Carry over past uncompleted (overdue) tasks into Today's active workload
-      const isPastOverdueCarriedOver = !isComp && taskDue < dateStr && dateStr === todayStr;
+  const todayStr = format(new Date(), "yyyy-MM-dd");
 
-      if (isDueOnDate || isCompletedOnDate || isRescheduledOnDate || isPastOverdueCarriedOver) {
-        total++;
-        if (isCompletedOnDate) {
-          completed++;
+  tasks.forEach((t) => {
+    const taskDue = t.dueDate || t.createdDate || todayStr;
+    const isComp = t.completed || t.status === "Completed";
+
+    const actualCompDate =
+      (t.completedAt &&
+        format(new Date(t.completedAt), "yyyy-MM-dd")) ||
+      t.completedDate ||
+      (isComp
+        ? t.updatedAt
+          ? format(new Date(t.updatedAt), "yyyy-MM-dd")
+          : taskDue
+        : null);
+
+    const isCompletedOnDate = isComp && actualCompDate === dateStr;
+    const isDueOnDate = taskDue === dateStr;
+    const isRescheduledOnDate =
+      t.rescheduleHistory?.some(
+        (h) => h.rescheduledAtDate === dateStr
+      );
+
+    const isPastOverdueCarriedOver =
+      !isComp && taskDue < dateStr && dateStr === todayStr;
+
+    if (
+      isDueOnDate ||
+      isCompletedOnDate ||
+      isRescheduledOnDate ||
+      isPastOverdueCarriedOver
+    ) {
+      total++;
+
+      if (isCompletedOnDate) {
+        completed++;
+      } else {
+        const status = getTaskStatus(t);
+
+        if (status === "Overdue") {
+          overdue++;
         } else {
-          const st = getTaskStatus(t);
-          if (st === "Overdue") overdue++;
-          else {
-            // For reporting analytics: Pending Report Count = Pending + Incoming
-            pending++;
-            if (st === "Incoming") incoming++;
+          pending++;
+
+          if (status === "Incoming") {
+            incoming++;
           }
         }
       }
+    }
 
-      if (isRescheduledOnDate || (t.rescheduleCount > 0 && isDueOnDate)) {
-        rescheduled++;
-      }
-    });
+    if (
+      isRescheduledOnDate ||
+      (t.rescheduleCount > 0 && isDueOnDate)
+    ) {
+      rescheduled++;
+    }
+  });
 
-    const completionPct = total === 0 ? 0 : Math.round((completed / total) * 100);
-    return { total, completed, pending, incoming, overdue, rescheduled, completionPct };
+  const result = {
+    total,
+    completed,
+    pending,
+    incoming,
+    overdue,
+    rescheduled,
+    completionPct:
+      total === 0 ? 0 : Math.round((completed / total) * 100),
   };
 
+  statsCache.set(dateStr, result);
+  return result;
+};
   // Main Summary Stats based on Filter
   const summaryStats = useMemo(() => {
     let total = 0, completed = 0, pending = 0, incoming = 0, overdue = 0, rescheduled = 0;
@@ -352,19 +393,17 @@ export default function WorkProgressTracker() {
 
   // Last 7 Days Array
   const last7DaysData = useMemo(() => {
-    const days = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = subDays(new Date(), i);
-      const str = format(d, "yyyy-MM-dd");
-      const st = getStatsForDate(str);
-      days.push({
-        dateStr: str,
-        displayDay: format(d, "EEE"),
-        ...st
-      });
-    }
-    return days;
-  }, [tasks]);
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = subDays(new Date(), 6 - index);
+    const dateStr = format(date, "yyyy-MM-dd");
+
+    return {
+      dateStr,
+      displayDay: format(date, "EEE"),
+      ...getStatsForDate(dateStr),
+    };
+  });
+}, [tasks]);
 
   const histStats = getStatsForDate(historicalDate);
 

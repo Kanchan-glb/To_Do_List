@@ -1,22 +1,65 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
+
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
-import LoginPage from "./components/LoginPage";
-import DashboardPage from "./components/DashboardPage";
-import Layout from "./components/Layout";
-import TaskPage from "./components/TaskPage";
-import MorningPlanner from "./components/MorningPlanner";
-import ReportsPage from "./components/ReportsPage";
-import WorkProgressTracker from "./components/WorkProgressTracker";
-import SettingsPage from "./components/SettingsPage";
-import ProfilePage from "./components/ProfilePage";
-import MorningPopup from "./components/MorningPopup";
-import NightPopup from "./components/NightPopup";
+
+// Route-level lazy imports — each page becomes its own JS chunk
+// This means the initial bundle only loads what's needed for the current route
+const LoginPage = lazy(() => import("./components/LoginPage"));
+const DashboardPage = lazy(() => import("./components/DashboardPage"));
+const Layout = lazy(() => import("./components/Layout"));
+const TaskPage = lazy(() => import("./components/TaskPage"));
+const MorningPlanner = lazy(() => import("./components/MorningPlanner"));
+const ReportsPage = lazy(() => import("./components/ReportsPage"));
+const WorkProgressTracker = lazy(() => import("./components/WorkProgressTracker"));
+const SettingsPage = lazy(() => import("./components/SettingsPage"));
+const ProfilePage = lazy(() => import("./components/ProfilePage"));
+const MorningPopup = lazy(() => import("./components/MorningPopup"));
+const NightPopup = lazy(() => import("./components/NightPopup"));
+
 import { TaskProvider, useTasks } from "./context/TaskContext";
 import { NotificationProvider, useNotification } from "./context/NotificationContext";
 import { checkTaskReminders, sendBrowserNotification, checkOverdueTaskReminders } from "./services/notification";
 import { format, addDays } from "date-fns";
 import { calculateDefaultDueTime } from "./utils/taskUtils";
+
+// Audio is created lazily inside the effect — avoids a startup network fetch to external CDN
+let reminderAudio = null;
+function getReminderAudio() {
+  if (!reminderAudio) {
+    reminderAudio = new Audio("https://assets.mixkit.co/active_storage/sfx/2019/2019-500.wav");
+    reminderAudio.volume = 0.4;
+  }
+  return reminderAudio;
+}
+
+// Simple loading fallback for Suspense
+const PageLoader = () => (
+  <div style={{
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    height: "100vh",
+    background: "var(--bg-app)",
+    color: "var(--text-secondary)",
+    fontSize: "0.9rem",
+    fontFamily: "var(--font-body, Inter, sans-serif)"
+  }}>
+    <div style={{ textAlign: "center" }}>
+      <div style={{
+        width: 36,
+        height: 36,
+        border: "3px solid var(--color-primary, #6D28D9)",
+        borderTopColor: "transparent",
+        borderRadius: "50%",
+        animation: "spin 0.7s linear infinite",
+        margin: "0 auto 12px"
+      }} />
+      Loading...
+    </div>
+  </div>
+);
+
 
 
 
@@ -81,10 +124,9 @@ function GlobalReminderEngine() {
           data: { taskId: task.id } // Pass task ID to service worker
         });
 
-        // Trigger app sound
         try {
-          const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2019/2019-500.wav");
-          audio.volume = 0.4;
+          const audio = getReminderAudio();
+          audio.currentTime = 0;
           audio.play();
         } catch (e) { }
 
@@ -180,7 +222,7 @@ function GlobalReminderEngine() {
         }
       }
 
-    }, 10000); // Check every 10 seconds
+    }, 60000); // Check every 10 seconds
 
     // Listen for messages from the service worker (OS Notification Clicks)
     const handleAction = (event) => {
@@ -275,7 +317,6 @@ function GlobalReminderEngine() {
 
   return (
   <>
-   <Toaster position="top-right" />
     <div className="reminder-modal-overlay">
       <div className="reminder-modal-card scale-in">
         <div className="reminder-modal-header">
@@ -389,95 +430,97 @@ function App() {
               duration: 2500,
             }}
           />
-          <MorningPopup />
-          <NightPopup />
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <DashboardPage />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/tasks"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <TaskPage />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/tasks/:statusOrId"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <TaskPage />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/planner"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <MorningPlanner />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/reports"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <ReportsPage />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/progress"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <WorkProgressTracker />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <SettingsPage />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <ProfilePage />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
+          {/* Suspense wraps all lazy-loaded routes — shows PageLoader while chunk downloads */}
+          <Suspense fallback={<PageLoader />}>
+            <MorningPopup />
+            <NightPopup />
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <DashboardPage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/tasks"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <TaskPage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/tasks/:statusOrId"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <TaskPage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/planner"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <MorningPlanner />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/reports"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <ReportsPage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/progress"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <WorkProgressTracker />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <SettingsPage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <ProfilePage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </Suspense>
           <GlobalReminderEngine />
-          <Toaster position="top-right" reverseOrder={false} />
         </BrowserRouter>
       </NotificationProvider>
     </TaskProvider>

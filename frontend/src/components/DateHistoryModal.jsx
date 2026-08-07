@@ -1,8 +1,9 @@
 import { useState, useMemo } from "react";
 import { useTasks } from "../context/TaskContext";
+import { lazy, Suspense } from "react";
 import { format, parseISO, subDays, addDays, isThisWeek, isThisMonth, isToday, isYesterday, isTomorrow } from "date-fns";
-import TaskDetailsModal from "./TaskDetailsModal";
-import NeumorphicFilterPill from "./NeumorphicFilterPill";
+const TaskDetailsModal = lazy(() => import("./TaskDetailsModal"));
+const NeumorphicFilterPill = lazy(() => import("./NeumorphicFilterPill"));
 /* ── Micro SVG Icons ── */
 const Ico = ({ children, size = 15, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
