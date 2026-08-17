@@ -260,3 +260,19 @@
 .glass-bottom-grid {
   grid-template-columns: repeat(2, 1fr);
 }
+
+/* Smooth hover micro-interactions for glass cards */
+.force-glass .pa-card,
+.force-glass .pa-stat-card,
+.force-glass .pa-chart-inset-container,
+.force-glass .glass-card {
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s ease !important;
+  will-change: transform;
+}
+
+.force-glass .pa-card:hover,
+.force-glass .pa-stat-card:hover,
+.force-glass .glass-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(255, 255, 255, 0.03) !important;
+}

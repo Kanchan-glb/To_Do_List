@@ -13,8 +13,8 @@ const IcoPlus = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none
 const IcoClock = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>;
 
 // Specific hierarchy shapes
-const IcoTargetCenter = () => <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>;
-const IcoTargetOuter = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/></svg>;
+const IcoTargetCenter = () => <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></svg>;
+const IcoTargetOuter = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /></svg>;
 const IcoSubtaskList = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 10 4 15 9 20"></polyline><path d="M20 4v7a4 4 0 0 1-4 4H4"></path></svg>;
 const IcoSubtaskCompleted = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -31,7 +31,8 @@ export default function GlassOrbitalWidget({ tasks, onAction }) {
   const [selectedSubtaskId, setSelectedSubtaskId] = useState(null);
   const [historyFilter, setHistoryFilter] = useState("Main Tasks");
   const [expandedHistoryIds, setExpandedHistoryIds] = useState([]);
-  
+  const [focusMode, setFocusMode] = useState(false);
+
   // Responsive stage state
   const stageRef = useRef(null);
   const [stageDims, setStageDims] = useState({ width: 400, height: 400 });
@@ -55,7 +56,7 @@ export default function GlassOrbitalWidget({ tasks, onAction }) {
   const selectedTask = useMemo(() => tasks?.find(t => (t.id || t._id) === selectedTaskId), [tasks, selectedTaskId]);
   const selectedSubtask = useMemo(() => selectedTask?.subtasks?.find(s => (s.id || s._id) === selectedSubtaskId), [selectedTask, selectedSubtaskId]);
   const subtasks = selectedTask?.subtasks || [];
-  
+
   const totalSubtasksCount = tasks?.reduce((acc, t) => acc + (t.subtasks?.length || 0), 0) || 0;
   const pendingCount = tasks?.filter(t => !t.completed && t.status !== 'Completed').length || 0;
   const completedCount = tasks?.filter(t => t.completed || t.status === 'Completed').length || 0;
@@ -66,7 +67,7 @@ export default function GlassOrbitalWidget({ tasks, onAction }) {
   // ----------------------------------------------------
   // Interaction Handlers
   // ----------------------------------------------------
-  
+
   const handleActionClick = (action, e) => {
     e.stopPropagation();
     if (selectedTask && onAction) onAction(action, selectedTask);
@@ -75,7 +76,7 @@ export default function GlassOrbitalWidget({ tasks, onAction }) {
   const handleTaskSelect = (taskId) => {
     setSelectedTaskId(taskId);
     setSelectedSubtaskId(null);
-    setOrbitRotation(0); 
+    setOrbitRotation(0);
     currentRotation.current = 0;
   };
 
@@ -99,7 +100,7 @@ export default function GlassOrbitalWidget({ tasks, onAction }) {
   };
 
   const toggleHistoryExpand = (taskId) => {
-    setExpandedHistoryIds(prev => 
+    setExpandedHistoryIds(prev =>
       prev.includes(taskId) ? prev.filter(id => id !== taskId) : [...prev, taskId]
     );
   };
@@ -119,7 +120,7 @@ export default function GlassOrbitalWidget({ tasks, onAction }) {
     // For smooth orbital rotation we map pixel drag to angle in radians
     const deltaX = e.clientX - startX.current;
     // We adjust rotation state (which we'll treat as radians added to base angle)
-    const newRotation = currentRotation.current + (deltaX * 0.005); 
+    const newRotation = currentRotation.current + (deltaX * 0.005);
     setOrbitRotation(newRotation);
   };
 
@@ -159,9 +160,9 @@ export default function GlassOrbitalWidget({ tasks, onAction }) {
     const availableWidth = Math.max(stageDims.width - 60, 200);
     const availableHeight = Math.max(stageDims.height - 60, 200);
     const maxRadius = Math.min(availableWidth, availableHeight) / 2;
-    
+
     // Ensure outer radius doesn't overflow, keep roughly 220px on desktop
-    const outer = Math.min(maxRadius - 25, 230); 
+    const outer = Math.min(maxRadius - 25, 230);
     // Inner must be > center radius (75px) + 25px gap
     const inner = Math.min(outer * 0.6, 130);
     return { inner: Math.max(inner, 100), outer };
@@ -170,7 +171,7 @@ export default function GlassOrbitalWidget({ tasks, onAction }) {
   // ----------------------------------------------------
   // History Compilation
   // ----------------------------------------------------
-  
+
   const historyFeed = useMemo(() => {
     let feed = [];
 
@@ -227,7 +228,7 @@ export default function GlassOrbitalWidget({ tasks, onAction }) {
   // ----------------------------------------------------
 
   const renderHistoryIcon = (type) => {
-    switch(type) {
+    switch (type) {
       case 'completed': return <IcoCheck />;
       case 'reschedule': return <IcoReschedule />;
       case 'update': return <IcoUpdate />;
@@ -238,7 +239,7 @@ export default function GlassOrbitalWidget({ tasks, onAction }) {
 
   return (
     <div className="glass-card orbital-workspace">
-      
+
       {/* HEADER & SUMMARY */}
       <div className="orbital-header">
         <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "700" }}>
@@ -251,20 +252,24 @@ export default function GlassOrbitalWidget({ tasks, onAction }) {
           <span className="summary-pill completed">{completedCount} ✓</span>
         </div>
       </div>
-      
+
       {/* MAIN ORBITAL VIEW */}
-      <div 
-        className="orbital-stage-wrapper" 
+      <div
+        className={`orbital-stage-wrapper ${focusMode ? 'focus-mode-active' : ''}`}
         ref={stageRef}
         style={{
           '--inner-orbit-radius': `${getRadii().inner}px`,
           '--outer-orbit-radius': `${getRadii().outer}px`,
         }}
       >
-        <div className="orbital-nav-btn prev" onClick={selectPreviousTask} title="Previous Main Task"><IcoPrev /></div>
-        
+        {focusMode && <div style={{ position: 'absolute', inset: -1000, background: 'rgba(10,5,20,0.85)', zIndex: 5, backdropFilter: 'blur(8px)', pointerEvents: 'none' }} />}
+
+
+
+        <div className="orbital-nav-btn prev" onClick={selectPreviousTask} title="Previous Main Task" style={{ zIndex: 10 }}><IcoPrev /></div>
+
         <div className="orbital-stage" onPointerDown={onPointerDown} style={{ cursor: isDragging.current ? 'grabbing' : 'grab' }}>
-          
+
           {/* Guide Rings and Lines */}
           <div className="orbit-ring outer-ring" />
           {subtasks.length > 0 && (
@@ -280,12 +285,12 @@ export default function GlassOrbitalWidget({ tasks, onAction }) {
                     const x = Math.cos(angle) * radius;
                     const y = Math.sin(angle) * radius;
                     return (
-                      <line 
+                      <line
                         key={idx}
-                        x1="50%" y1="50%" 
-                        x2={`calc(50% + ${x}px)`} 
-                        y2={`calc(50% + ${y}px)`} 
-                        className="connector-line" 
+                        x1="50%" y1="50%"
+                        x2={`calc(50% + ${x}px)`}
+                        y2={`calc(50% + ${y}px)`}
+                        className="connector-line"
                       />
                     );
                   })}
@@ -304,15 +309,15 @@ export default function GlassOrbitalWidget({ tasks, onAction }) {
             const x = Math.cos(angle) * radius;
             const y = Math.sin(angle) * radius;
             const isCompleted = task.status === 'Completed' || task.completed;
-            
+
             return (
-              <div 
-                key={task.id || task._id} 
-                className="orbit-node-absolute" 
+              <div
+                key={task.id || task._id}
+                className="orbit-node-absolute"
                 style={{ transform: `translate(${x}px, ${y}px)` }}
               >
-                <div 
-                  className={`orbit-node-interactive main-task ${isCompleted ? 'completed' : 'pending'}`} 
+                <div
+                  className={`orbit-node-interactive main-task ${isCompleted ? 'completed' : 'pending'}`}
                   onClick={(e) => { e.stopPropagation(); handleTaskSelect(task.id || task._id); }}
                   aria-label={`Main task: ${task.title}`}
                 >
@@ -337,15 +342,15 @@ export default function GlassOrbitalWidget({ tasks, onAction }) {
             const y = Math.sin(angle) * radius;
             const isSubSelected = selectedSubtaskId === (sub.id || sub._id);
             const isCompleted = sub.completed;
-            
+
             return (
-              <div 
-                key={sub._id || idx} 
-                className="orbit-node-absolute" 
+              <div
+                key={sub._id || idx}
+                className="orbit-node-absolute"
                 style={{ transform: `translate(${x}px, ${y}px)` }}
               >
-                <div 
-                  className={`orbit-node-interactive subtask ${isCompleted ? 'completed' : 'pending'} ${isSubSelected ? 'selected' : ''}`} 
+                <div
+                  className={`orbit-node-interactive subtask ${isCompleted ? 'completed' : 'pending'} ${isSubSelected ? 'selected' : ''}`}
                   onClick={(e) => handleSubtaskSelect(sub.id || sub._id, e)}
                   aria-label={`${isCompleted ? 'Completed subtask' : 'Pending subtask'}: ${sub.title}`}
                 >
@@ -361,39 +366,51 @@ export default function GlassOrbitalWidget({ tasks, onAction }) {
 
           {/* Center Hub: Selected Main Task */}
           <div className="orbit-center-hub" onPointerDown={(e) => e.stopPropagation()}>
-             {selectedTask ? (
-               <div className={`center-hub-core ${selectedTask.completed || selectedTask.status === 'Completed' ? 'completed' : 'pending'}`}>
-                 <span className="hub-eyebrow">◎ Main Task</span>
-                 <div className="hub-icon-container">
-                    {selectedTask.completed || selectedTask.status === 'Completed' ? <IcoCheck /> : <IcoTargetCenter />}
-                 </div>
-                 <span className="hub-title" title={selectedTask.title}>{selectedTask.title}</span>
-                 <span className="hub-eyebrow" style={{ marginTop: '4px' }}>{subtasks.length} Subtasks</span>
-               </div>
-             ) : (
-               <div className="center-hub-core empty">
-                 <span className="hub-eyebrow">No tasks</span>
-                 <span className="hub-title">Create a task</span>
-               </div>
-             )}
+            {selectedTask ? (
+              <div className={`center-hub-core ${selectedTask.completed || selectedTask.status === 'Completed' ? 'completed' : 'pending'}`}>
+                <span className="hub-eyebrow">◎ Main Task</span>
+                <div className="hub-icon-container">
+                  {selectedTask.completed || selectedTask.status === 'Completed' ? <IcoCheck /> : <IcoTargetCenter />}
+                </div>
+                <span className="hub-title" title={selectedTask.title}>{selectedTask.title}</span>
+                <span className="hub-eyebrow" style={{ marginTop: '4px' }}>{subtasks.length} Subtasks</span>
+              </div>
+            ) : (
+              <div className="center-hub-core empty">
+                <span className="hub-eyebrow">No tasks</span>
+                <span className="hub-title">Create a task</span>
+              </div>
+            )}
           </div>
 
 
           {/* Subtask Details Popover */}
           {selectedSubtask && (
-             <div className="subtask-details-popover" role="dialog" aria-label="Subtask Details">
-               <div className="popover-header">
-                 <IcoSubtaskList /> <span>Selected Subtask</span>
-               </div>
-               <p className="popover-title">{selectedSubtask.title}</p>
-               <p className="popover-status">Status: {selectedSubtask.completed ? 'Completed' : 'Pending'}</p>
-               <p className="popover-parent">Parent Task: {selectedTask?.title}</p>
-             </div>
+            <div className="subtask-details-popover" role="dialog" aria-label="Subtask Details">
+              <div className="popover-header">
+                <IcoSubtaskList /> <span>Selected Subtask</span>
+              </div>
+              <p className="popover-title">{selectedSubtask.title}</p>
+              <p className="popover-status">Status: {selectedSubtask.completed ? 'Completed' : 'Pending'}</p>
+              <p className="popover-parent">Parent Task: {selectedTask?.title}</p>
+            </div>
           )}
 
         </div>
-        
-        <div className="orbital-nav-btn next" onClick={selectNextTask} title="Next Main Task"><IcoNext /></div>
+
+        <div className="orbital-nav-btn next" onClick={selectNextTask} title="Next Main Task" style={{ zIndex: 10 }}><IcoNext /></div>
+      </div>
+
+      {/* Task Position Carousel Indicator */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', margin: '16px 0 8px 0', zIndex: 10, position: 'relative' }}>
+        {tasks?.map((t, idx) => (
+          <div key={t.id || t._id} style={{
+            width: '6px', height: '6px', borderRadius: '50%',
+            background: (t.id || t._id) === selectedTaskId ? '#fff' : 'rgba(255,255,255,0.2)',
+            transition: 'all 0.3s',
+            boxShadow: (t.id || t._id) === selectedTaskId ? '0 0 8px #fff' : 'none'
+          }} />
+        ))}
       </div>
 
       {/* External Action Toolbar */}
@@ -428,8 +445,8 @@ export default function GlassOrbitalWidget({ tasks, onAction }) {
             { id: 'Pending', icon: '○', label: 'Pending' },
             { id: 'Completed', icon: '✓', label: 'Completed' }
           ].map(f => (
-            <button 
-              key={f.id} 
+            <button
+              key={f.id}
               className={`history-filter-btn ${historyFilter === f.id ? 'active' : ''}`}
               onClick={() => setHistoryFilter(f.id)}
             >
@@ -437,7 +454,7 @@ export default function GlassOrbitalWidget({ tasks, onAction }) {
             </button>
           ))}
         </div>
-        
+
         <div className="history-feed">
           {historyFeed.length === 0 ? (
             <div className="history-empty">No activity found.</div>

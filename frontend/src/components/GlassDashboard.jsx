@@ -121,6 +121,7 @@ export default function GlassDashboard() {
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedTask, setSelectedTask] = useState(null);
+  const [collapsed, setCollapsed] = useState({ previews: false, main: false, insights: false });
 
   const userName = localStorage.getItem("smartName") || "User";
 
@@ -160,6 +161,21 @@ export default function GlassDashboard() {
   const currentHour = new Date().getHours();
   const greeting = currentHour < 12 ? "Good morning" : currentHour < 17 ? "Good afternoon" : "Good evening";
 
+  const dynamicInsight = useMemo(() => {
+    if (overdueCount > 0) return `You have ${overdueCount} overdue tasks. Let's tackle them first.`;
+    if (completionRate === 100 && todayCount > 0) return "Incredible! You've finished all your tasks for today.";
+    if (pendingCount > 0) return `Focus on: ${pendingTasks[0]?.title || "your next task"}.`;
+    return "Ready to conquer the day?";
+  }, [overdueCount, completionRate, todayCount, pendingCount, pendingTasks]);
+
+  // Ambient Status Background logic
+  const ambientColors = useMemo(() => {
+    if (overdueCount > 0) return { s1: '#ef4444', s2: '#f59e0b' }; // Red/Orange for overdue
+    if (completionRate === 100 && todayCount > 0) return { s1: '#10b981', s2: '#3b82f6' }; // Green/Blue for all clear
+    if (completionRate > 50) return { s1: '#8b5cf6', s2: '#10b981' }; // Purple/Green for good progress
+    return { s1: '#ff007f', s2: '#a855f7' }; // Default Pink/Purple
+  }, [overdueCount, completionRate, todayCount]);
+
   const renderWidget = (id) => {
     switch (id) {
       case 'pending': return (
@@ -180,11 +196,11 @@ export default function GlassDashboard() {
         <GlassOrbitalWidget tasks={tasks} onAction={(action, task) => {
           const taskToEdit = { ...task };
           if (action === 'subtask') {
-             navigate("/tasks", { state: { editTask: taskToEdit, openSubtasks: true } });
+            navigate("/tasks", { state: { editTask: taskToEdit, openSubtasks: true } });
           } else if (action === 'reschedule') {
-             navigate("/tasks", { state: { editTask: taskToEdit, focusDate: true } });
+            navigate("/tasks", { state: { editTask: taskToEdit, focusDate: true } });
           } else {
-             navigate("/tasks", { state: { editTask: taskToEdit } });
+            navigate("/tasks", { state: { editTask: taskToEdit } });
           }
         }} />
       );
@@ -199,16 +215,19 @@ export default function GlassDashboard() {
 
   return (
     <div className="glass-dashboard-container">
-      <div className="glass-shape glass-shape-1"></div>
-      <div className="glass-shape glass-shape-2"></div>
+      <div className="glass-shape glass-shape-1" style={{ background: ambientColors.s1, transition: 'background 2s ease' }}></div>
+      <div className="glass-shape glass-shape-2" style={{ background: ambientColors.s2, transition: 'background 2s ease' }}></div>
 
       <div className="glass-content" style={{ display: 'flex', flexDirection: 'column', gap: '16px', height: '100%', padding: '60px' }}>
-        
+
         {/* Row 1: Hero Banner */}
         <section className="glass-hero" style={{ margin: 0, minHeight: '90px', padding: '16px 24px' }}>
           <div className="glass-hero-left">
             <p className="glass-hero-eyebrow">{todayLabel} • {timeLabel}</p>
-            <h1 style={{ fontSize: '1.8rem' }}>{greeting}, {userName} 👋</h1>
+            <h1 style={{ fontSize: '1.8rem', marginBottom: '4px' }}>{greeting}, {userName} 👋</h1>
+            <p style={{ fontSize: '1.05rem', color: '#e2e8f0', fontWeight: 600, marginBottom: '8px' }}>
+              ✦ {dynamicInsight}
+            </p>
             <p style={{ fontSize: '0.9rem', opacity: 0.9 }}>
               You have <strong>{todayCount} tasks</strong> today — {todayCompleted} done, {pendingCount} remaining.
             </p>
@@ -235,25 +254,39 @@ export default function GlassDashboard() {
         </section>
 
         {/* Row 2: Previews (3 cols) */}
-        <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', minHeight: '160px' }}>
-          {renderWidget('completed')}
-          {renderWidget('overdue')}
-          {renderWidget('pending')}
-        </section>
+        <div style={{ position: 'relative' }}>
+          {!collapsed.previews && (
+            <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', minHeight: '160px' }}>
+              {renderWidget('completed')}
+              {renderWidget('overdue')}
+              {renderWidget('pending')}
+            </section>
+          )}
+        </div>
 
         {/* Row 3: Analytics, Orbital, Activity (3 cols) */}
-        <section style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr 1fr', gap: '24px', minHeight: '560px' }}>
-          {renderWidget('analytics')}
-          {renderWidget('orbital')}
-          {renderWidget('activity')}
-        </section>
+        <div style={{ position: 'relative' }}>
+          {!collapsed.main && (
+            <section className="dashboard-main-grid">
+              {renderWidget('analytics')}
+              {renderWidget('orbital')}
+              {renderWidget('activity')}
+            </section>
+          )}
+        </div>
 
         {/* Row 4: New Bottom Insights (3 cols) */}
-        <section style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.5fr 1fr', gap: '24px', minHeight: '240px', flex: 1, marginTop: '8px' }}>
-          <GlassWeeklyProgress tasks={tasks} />
-          <GlassReportTracker tasks={tasks} />
-          <GlassPerformanceInsights tasks={tasks} />
-        </section>
+        <div style={{ position: 'relative', flex: 1 }}>
+          {!collapsed.insights && (
+            <section style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.5fr 1fr', gap: '24px', minHeight: '240px', marginTop: '8px' }}>
+              <GlassWeeklyProgress tasks={tasks} />
+              <GlassReportTracker tasks={tasks} />
+              <GlassPerformanceInsights tasks={tasks} />
+            </section>
+          )}
+        </div>
+
+
 
         {selectedTask && (
           <TaskDetailsModal
@@ -270,6 +303,22 @@ export default function GlassDashboard() {
             }}
           />
         )}
+      </div>
+
+      {/* ═══════════════════ QUICK ACTION DOCK ═══════════════════ */}
+      <div className="quick-action-dock" style={{
+        position: 'fixed', bottom: '32px', right: '32px', display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 100
+      }}>
+        <button
+          title="Add Task"
+          onClick={() => navigate("/tasks", { state: { openAddTaskModal: true } })}
+          style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(79,70,229,0.8)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 8px 32px rgba(79,70,229,0.5)' }}
+          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+        >
+          <span style={{ fontSize: '32px', lineHeight: 1 }}>+</span>
+        </button>
+
       </div>
     </div>
   );

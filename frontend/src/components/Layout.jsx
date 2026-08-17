@@ -172,6 +172,39 @@ function Layout({ children }) {
   const { notifications, unreadCount, markAllAsRead, clearAll, deleteNotification } = useNotification();
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
 
+
+  // Apply scroll lock when modals are open
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [quickTaskOpen, setQuickTaskOpen] = useState(false);
+  const [focusModeOpen, setFocusModeOpen] = useState(false);
+  
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setCommandPaletteOpen(prev => !prev);
+      } else if (e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        setQuickTaskOpen(true);
+      } else if (e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        setFocusModeOpen(prev => !prev);
+      }
+    };
+    document.addEventListener("keydown", handleGlobalKeyDown);
+    return () => document.removeEventListener("keydown", handleGlobalKeyDown);
+  }, []);
+
+  useEffect(() => {
+    if (commandPaletteOpen || quickTaskOpen || focusModeOpen) {
+      document.body.classList.add('modal-open');
+    } else {
+      document.body.classList.remove('modal-open');
+    }
+    return () => document.body.classList.remove('modal-open');
+  }, [commandPaletteOpen, quickTaskOpen, focusModeOpen]);
+
   const resetPomodoroTimer = () => {
     setIsFocusRunning(false);
     setFocusTimeLeft(pomodoroSettings[focusMode] * 60);
@@ -407,26 +440,37 @@ function Layout({ children }) {
         <header className="topbar">
 
           {/* Left: Page greeting */}
-          <div className="topbar-left" style={{ display: "flex", alignItems: "center" }}>
-            {!isSidebarOpen && (
-              <button
-                className="menu-toggle-btn"
-                onClick={() => setIsSidebarOpen(true)}
-                aria-label="Open Sidebar"
-              >
-                <MenuIcon />
-              </button>
-            )}
-            <div>
-              <p className="topbar-eyebrow">Welcome back</p>
-              <h3 className="topbar-title">
-                {userName}
-              </h3>
+          <div className="topbar-left" style={{ display: "flex", alignItems: "center", gap: "12px", justifySelf: "start" }}>
+            <button
+              className="menu-toggle-btn"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              aria-label="Toggle Sidebar"
+              style={{
+                background: "#1e1e1e",
+                border: "none",
+                color: "#fff",
+                cursor: "pointer",
+                display: isSidebarOpen ? "none" : "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "44px",
+                height: "44px",
+                borderRadius: "12px",
+                padding: "0",
+                transition: "all 0.2s ease"
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "#2a2a2a"; e.currentTarget.style.transform = "scale(1.05)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "#1e1e1e"; e.currentTarget.style.transform = "scale(1)"; }}
+            >
+              <MenuIcon />
+            </button>
+            <div style={{ display: isSidebarOpen ? "none" : "flex", alignItems: "center", gap: "12px", borderLeft: "1px solid var(--border-light)", paddingLeft: "12px" }}>
+              <span style={{ fontWeight: 700, fontSize: "1.1rem", color: "var(--text-primary)", letterSpacing: "0.5px" }}>Smart Planner</span>
             </div>
           </div>
 
 
-          <div className="topbar-center">
+          <div className="topbar-center" style={{ display: 'flex', justifyContent: 'center', justifySelf: 'center', gap: '12px' }}>
             <button
               type="button"
               className="topbar-add-task-btn"
@@ -669,7 +713,7 @@ function Layout({ children }) {
             </div>
           </div>
           {/* Right: Actions */}
-          <div className="topbar-actions">
+          <div className="topbar-actions" style={{ justifySelf: 'end', display: 'flex', alignItems: 'center', gap: '12px' }}>
 
             {/* Notification Button & Dropdown */}
             <div className="notification-wrapper" ref={notificationRef} style={{ position: "relative" }}>

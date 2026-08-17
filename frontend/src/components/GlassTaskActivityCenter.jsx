@@ -1117,32 +1117,71 @@ canvas {
           <div className="tac-sum-card"><span className="val" style={{ color: '#3b82f6' }}>{stats.rescheduled}</span> <span className="lbl">Rescheduled</span></div>
         </div>
       </div>
-      {/* View All Tasks Button - Matching Glossy Lavender Pill Button */}
+      {/* ── VERTICAL TIMELINE ── */}
+      <div className="tac-timeline" style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, overflowY: 'auto' }}>
+        <h4 style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>Recent Activity</h4>
+        
+        {filteredTasks.slice(0, 4).map(task => {
+          const isCompleted = task.completed || task.status === 'Completed';
+          const isOverdue = task.status === 'Overdue' || (!isCompleted && task.dueDate && task.dueDate < format(new Date(), 'yyyy-MM-dd'));
+          
+          let iconColor = '#c084fc';
+          let iconBg = 'rgba(147,51,234,0.15)';
+          if (isCompleted) { iconColor = '#10b981'; iconBg = 'rgba(16,185,129,0.15)'; }
+          else if (isOverdue) { iconColor = '#ef4444'; iconBg = 'rgba(239,68,68,0.15)'; }
+
+          return (
+            <div key={task._id || task.id} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', background: 'rgba(255,255,255,0.02)', padding: '10px 12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.05)'} onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.02)'} onClick={() => setSelectedTask(task)}>
+              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: iconBg, color: iconColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: `1px solid ${iconColor}40` }}>
+                {isCompleted ? <IcoCheck size={14} /> : <IcoClock size={14} />}
+              </div>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#e2e8f0', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{task.title}</span>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  {task.category && (
+                    <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '12px', background: 'rgba(255,255,255,0.1)', color: '#cbd5e1', border: '1px solid rgba(255,255,255,0.1)' }}>{task.category}</span>
+                  )}
+                  <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                    {format(task.dueDate ? new Date(task.dueDate) : new Date(), 'MMM d, yyyy')}
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {filteredTasks.length === 0 && (
+          <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontSize: '0.9rem', fontStyle: 'italic' }}>
+            No activity found for this filter.
+          </div>
+        )}
+      </div>
+
+      {/* View All Tasks Button - Compact */}
       <button
         type="button"
         className="view-all-tasks-button"
         onClick={() => setHistoryModalDate(quickFilter === "Custom Date" ? customDate : quickFilter)}
         style={{
           width: '100%',
-          padding: '14px 24px',
-          background: 'linear-gradient(180deg, #f8f7ff 0%, #ede9fe 100%)',
-          border: '1.5px solid #c4b5fd',
-          borderRadius: '999px',
-          fontSize: '0.95rem',
-          fontWeight: 800,
-          color: '#7c3aed',
+          padding: '10px 16px',
+          background: 'rgba(255,255,255,0.05)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: '12px',
+          fontSize: '0.85rem',
+          fontWeight: 700,
+          color: '#cbd5e1',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           gap: '8px',
-          boxShadow: 'none',
-          textAlign: 'center',
-          marginTop: '16px',
-          transition: 'all 0.25s ease'
+          marginTop: '12px',
+          transition: 'all 0.2s'
         }}
+        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#fff'; }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = '#cbd5e1'; }}
       >
-        📋 View All Tasks for {quickFilter === "Custom Date" ? format(parseISO(customDate), "MMMM d, yyyy") : quickFilter}
+        View All Tasks
       </button>
 
       {selectedTask && <TaskDetailsModal task={selectedTask} onClose={() => setSelectedTask(null)} />}
