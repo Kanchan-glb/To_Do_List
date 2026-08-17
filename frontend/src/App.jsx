@@ -7,6 +7,7 @@ import { Toaster } from "react-hot-toast";
 // This means the initial bundle only loads what's needed for the current route
 const LoginPage = lazy(() => import("./components/LoginPage"));
 const DashboardPage = lazy(() => import("./components/DashboardPage"));
+const GlassDashboard = lazy(() => import("./components/GlassDashboard"));
 const Layout = lazy(() => import("./components/Layout"));
 const TaskPage = lazy(() => import("./components/TaskPage"));
 const MorningPlanner = lazy(() => import("./components/MorningPlanner"));
@@ -443,6 +444,16 @@ function App() {
                   <ProtectedRoute>
                     <Layout>
                       <DashboardPage />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/glass-dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <GlassDashboard />
                     </Layout>
                   </ProtectedRoute>
                 }

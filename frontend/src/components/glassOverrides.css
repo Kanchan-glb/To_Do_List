@@ -1,0 +1,262 @@
+/* =================================================
+   FOOLPROOF GLASSMORPHISM OVERRIDES - DARK THEME
+================================================= */
+
+.force-glass .pa-container,
+.force-glass .tac-container {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Target every neumorphic component inside force-glass */
+.force-glass .pa-card,
+.force-glass .pa-stat-card,
+.force-glass .pa-chart-inset-container,
+.force-glass .pa-empty-overlay,
+.force-glass .pa-empty-msg,
+.force-glass .pa-quick-filters,
+.force-glass .pa-nav-group,
+.force-glass .neo-select-trigger,
+.force-glass .neo-select-dropdown-card,
+.force-glass .tac-side-card,
+.force-glass .tac-sum-card,
+.force-glass select,
+.force-glass input,
+.force-glass .tac-date-picker,
+.force-glass .pa-quick-filters button,
+.force-glass .pa-nav-btn,
+.force-glass .recharts-tooltip-wrapper > div {
+  background: rgba(20, 10, 30, 0.4) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 0 15px rgba(255, 255, 255, 0.02) !important;
+  color: #fff !important;
+}
+
+/* Circle Progress & Dark Variables */
+.force-glass {
+  --neo-bg: rgba(0, 0, 0, 0.6) !important;
+  --neo-shadow-light: rgba(255, 255, 255, 0.03) !important;
+  --neo-shadow-dark: rgba(0, 0, 0, 0.8) !important;
+  --neo-shadow-dark-deep: rgba(0, 0, 0, 0.9) !important;
+  --neo-text-main: #fff !important;
+  --neo-text-sub: #cbd5e1 !important;
+}
+
+/* Force dark SVG fills and strokes for the circle progress */
+.force-glass .neo-compact-segment-group:not(.active) .neo-compact-segment-path {
+  fill: rgba(0, 0, 0, 0.7) !important;
+}
+.force-glass .neo-compact-segment-group:not(.active) path:nth-child(2) {
+  stroke: rgba(255, 255, 255, 0.05) !important;
+}
+.force-glass .neo-compact-svg > circle {
+  stroke: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Fix Productivity Analytics date range text color */
+.force-glass .pa-date-range {
+  color: #ffffff !important;
+}
+
+
+/* Custom Dropdown Options */
+.force-glass .neo-select-option {
+  color: #cbd5e1 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+.force-glass .neo-select-option:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+}
+.force-glass .neo-select-option.selected {
+  background: rgba(168, 85, 247, 0.2) !important;
+  color: #d946ef !important;
+}
+.force-glass .neo-select-label,
+.force-glass .neo-select-arrow {
+  color: #fff !important;
+}
+.force-glass .neo-select-options-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+.force-glass .neo-select-options-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Accent Buttons */
+.force-glass .view-all-tasks-button {
+  background: linear-gradient(90deg, #9333ea, #db2777) !important;
+  border: none !important;
+  border-radius: 16px !important;
+  color: #fff !important;
+  box-shadow: 0 4px 15px rgba(219, 39, 119, 0.4) !important;
+  padding: 12px !important;
+  font-weight: 700 !important;
+}
+
+/* Typography and specific elements */
+.force-glass h2, 
+.force-glass h4, 
+.force-glass p, 
+.force-glass .tac-sub,
+.force-glass .score-desc,
+.force-glass .pa-stat-label,
+.force-glass .tac-sum-card .lbl {
+  color: #e2e8f0 !important;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5) !important;
+}
+
+/* Bold values in stats */
+.force-glass .pa-stat-val,
+.force-glass .tac-sum-card span:first-child {
+  color: #fff !important;
+  font-weight: 800 !important;
+  text-shadow: 0 2px 5px rgba(255,255,255,0.2) !important;
+}
+
+/* Clear specific neumorphic pseudo-elements if any */
+.force-glass .pa-quick-filters button {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #cbd5e1 !important;
+}
+.force-glass .pa-quick-filters button.active {
+  background: linear-gradient(90deg, #9333ea, #db2777) !important;
+  border-radius: 12px !important;
+  color: #fff !important;
+  box-shadow: 0 4px 12px rgba(219, 39, 119, 0.4) !important;
+}
+
+/* Hover effects */
+.force-glass .tac-sum-card:hover,
+.force-glass .view-all-tasks-button:hover,
+.force-glass .pa-nav-btn:hover {
+  background: rgba(40, 20, 60, 0.6) !important;
+  transform: translateY(-3px) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+.force-glass .view-all-tasks-button:hover {
+  background: linear-gradient(90deg, #a855f7, #f43f5e) !important;
+}
+
+/* Progress Circle */
+.force-glass .tac-score-circle svg circle:first-child {
+  stroke: rgba(255, 255, 255, 0.1) !important;
+}
+.force-glass .tac-score-circle svg circle:last-child {
+  stroke: url(#glowGradient) !important;
+}
+
+/* Chart text */
+.force-glass .recharts-text {
+  fill: #cbd5e1 !important;
+}
+
+/* Dropdown options */
+.force-glass select option {
+  background: #1e1e2d !important;
+  color: #fff !important;
+}
+.force-glass select:focus,
+.force-glass .tac-date-picker:focus {
+  outline: none !important;
+  border-color: #d946ef !important;
+  box-shadow: 0 0 10px rgba(217, 70, 239, 0.3) !important;
+}
+
+/* Top buttons area in Analytics */
+.force-glass .pa-header > div > button {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2) !important;
+  color: #fff !important;
+}
+
+/* Custom coloring for stat cards to match the vibrant accents in the image */
+.force-glass .pa-stat-card.total { border-bottom: 2px solid #a855f7 !important; }
+.force-glass .pa-stat-card.completed, .force-glass .tac-sum-card:nth-child(2) { border-bottom: 2px solid #10b981 !important; }
+.force-glass .pa-stat-card.pending, .force-glass .tac-sum-card:nth-child(3) { border-bottom: 2px solid #f59e0b !important; }
+.force-glass .pa-stat-card.overdue, .force-glass .tac-sum-card:nth-child(4) { border-bottom: 2px solid #ef4444 !important; }
+.force-glass .pa-stat-card.rescheduled, .force-glass .tac-sum-card:nth-child(5) { border-bottom: 2px solid #3b82f6 !important; }
+.force-glass .pa-stat-card.done { border-bottom: 2px solid #d946ef !important; }
+
+/* Stat card values colors */
+.force-glass .pa-stat-card.total .pa-stat-val, .force-glass .tac-sum-card:nth-child(1) span:first-child { color: #a855f7 !important; }
+.force-glass .pa-stat-card.completed .pa-stat-val, .force-glass .tac-sum-card:nth-child(2) span:first-child { color: #10b981 !important; }
+.force-glass .pa-stat-card.pending .pa-stat-val, .force-glass .tac-sum-card:nth-child(3) span:first-child { color: #f59e0b !important; }
+.force-glass .pa-stat-card.overdue .pa-stat-val, .force-glass .tac-sum-card:nth-child(4) span:first-child { color: #ef4444 !important; }
+.force-glass .pa-stat-card.rescheduled .pa-stat-val, .force-glass .tac-sum-card:nth-child(5) span:first-child { color: #3b82f6 !important; }
+.force-glass .pa-stat-card.done .pa-stat-val { color: #d946ef !important; }
+
+
+
+/* =================================================
+   COMPACT MODE AGGRESSIVE OVERRIDES
+================================================= */
+.force-glass .pa-card,
+.force-glass .tac-side-card,
+.force-glass .tac-sum-card,
+.force-glass .pa-stat-card {
+  padding: 8px !important;
+  gap: 8px !important;
+}
+
+.force-glass h2 {
+  font-size: 1.1rem !important;
+  margin: 0 !important;
+}
+
+.force-glass h4 {
+  font-size: 0.9rem !important;
+  margin: 0 !important;
+}
+
+.force-glass p {
+  font-size: 0.75rem !important;
+  margin: 0 !important;
+}
+
+/* Reduce chart heights */
+.force-glass .pa-chart-inset-container {
+  min-height: 120px !important;
+  height: 140px !important;
+}
+
+/* Reduce task item heights */
+.force-glass .tac-task-item {
+  padding: 6px 10px !important;
+  font-size: 0.8rem !important;
+  margin-bottom: 4px !important;
+}
+
+/* Reduce headers and dropdowns */
+.force-glass select,
+.force-glass .tac-date-picker {
+  padding: 6px !important;
+  font-size: 0.8rem !important;
+  margin-bottom: 4px !important;
+}
+
+/* Reduce big stat values */
+.force-glass .pa-stat-val {
+  font-size: 1.2rem !important;
+}
+
+/* Squeeze Productivity Score circle */
+.force-glass .tac-score-circle {
+  transform: scale(0.7);
+  margin-top: -20px !important;
+  margin-bottom: -20px !important;
+}
+
+/* Adjust Dashboard grids in main file */
+.glass-task-preview-grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+.glass-bottom-grid {
+  grid-template-columns: repeat(2, 1fr);
+}

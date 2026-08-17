@@ -297,6 +297,7 @@ function Layout({ children }) {
 
   const navItems = [
     { label: "Dashboard", path: "/dashboard", icon: <DashIcon /> },
+    { label: "Glass Dash", path: "/glass-dashboard", icon: <SunIcon /> },
     { label: "Tasks", path: "/tasks", icon: <TaskIcon /> },
     // { label: "Planner", path: "/planner", icon: <PlanIcon /> },
     // { label: "Reports", path: "/reports", icon: <ReportIcon /> },
