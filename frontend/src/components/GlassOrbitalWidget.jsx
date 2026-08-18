@@ -17,10 +17,9 @@ const IcoTargetCenter = () => <svg width="28" height="28" viewBox="0 0 24 24" fi
 const IcoTargetOuter = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /></svg>;
 const IcoSubtaskList = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 10 4 15 9 20"></polyline><path d="M20 4v7a4 4 0 0 1-4 4H4"></path></svg>;
 const IcoSubtaskCompleted = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="9 10 4 15 9 20" opacity="0.3"></polyline>
-    <path d="M20 4v7a4 4 0 0 1-4 4H4" opacity="0.3"></path>
-    <polyline points="20 6 9 17 4 12" stroke="#fff" strokeWidth="3"></polyline>
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="9 10 4 15 9 20"></polyline>
+    <path d="M20 4v7a4 4 0 0 1-4 4H4"></path>
   </svg>
 );
 const IcoChevronDown = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>;
