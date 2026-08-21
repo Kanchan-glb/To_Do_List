@@ -1,0 +1,3280 @@
+import { useState, useEffect, useMemo, useRef } from "react";
+import { lazy, Suspense } from "react";
+const DraggableCard = lazy(() => import("./dnd/DraggableCard"));
+const DraggableGrid = lazy(() => import("./dnd/DraggableGrid"));
+const NeumorphicFilterPill = lazy(() => import("./NeumorphicFilterPill"));
+const NeumorphicComboSelect = lazy(() => import("./NeumorphicComboSelect"));
+const NeumorphicSelect = lazy(() => import("./NeumorphicSelect"));
+const TaskDetailsModal = lazy(() => import("./TaskDetailsModal"));
+import { clearLayout } from "../utils/layoutStorage";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useTasks } from "../context/TaskContext";
+import { format, parseISO, isToday, isYesterday, isTomorrow } from "date-fns";
+import { generateSubtasks } from "../services/gemini";
+import { getSpeechRecognizer, parseSpeechToTask } from "../services/speech";
+import { calculateDefaultDueTime } from "../utils/taskUtils";
+import { translateHinglishToEnglish, extractTaskDetails } from "../utils/voiceParser";
+import toast from "react-hot-toast";
+import axios from "axios";
+import "../tasks.css";
+import {
+  createTask,
+  updateTask,
+  getTasks
+} from "../services/taskApi";
+
+
+function getEmptyStateMessage(status, filterCategory, filterPriority) {
+  const isCategoryFiltered = filterCategory !== "All";
+  const isPriorityFiltered = filterPriority !== "All";
+
+
+  if (isCategoryFiltered && isPriorityFiltered) {
+    return `No ${filterPriority} priority tasks found in "${filterCategory}" category.`;
+  } else if (isCategoryFiltered) {
+    return `No tasks found in "${filterCategory}" category.`;
+  } else if (isPriorityFiltered) {
+    return `No ${filterPriority} priority tasks found.`;
+  } else {
+    switch (status) {
+      case "Pending": return "No pending tasks 🎉";
+      case "Overdue": return "No overdue tasks";
+      case "Completed": return "No completed tasks yet";
+      case "Incoming": return "No incoming tasks";
+      default: return "No tasks found";
+    }
+  }
+}
+
+const IcoReset = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7" /><polyline points="3 3 3 9 9 9" /></svg>;
+
+function TaskPage() {
+  const { tasks, loading, addTask, updateTask, deleteTask, toggleSubtask, fetchTasks, geminiApiKey } = useTasks();
+  const navigate = useNavigate();
+  const { statusOrId } = useParams();
+
+  // Search & Filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterCategory, setFilterCategory] = useState("All");
+  const [filterPriority, setFilterPriority] = useState("All");
+  const [selectedTopCategories, setSelectedTopCategories] = useState([]);
+  const [selectedTopPriorities, setSelectedTopPriorities] = useState([]);
+  const [filterStatus, setFilterStatus] = useState("All"); // All, Pending, Completed, Overdue
+  const [filterLimit, setFilterLimit] = useState("5");
+  const [viewAllStatus, setViewAllStatus] = useState(null); // null, Pending, Overdue, Completed, Incoming
+
+  // Dedicated Search & Category/Priority Filter Pills inside Each Status Card
+  const [pendingSearchQuery, setPendingSearchQuery] = useState("");
+  const [selectedPendingCategories, setSelectedPendingCategories] = useState([]);
+  const [selectedPendingPriorities, setSelectedPendingPriorities] = useState([]);
+
+  const [overdueSearchQuery, setOverdueSearchQuery] = useState("");
+  const [selectedOverdueCategories, setSelectedOverdueCategories] = useState([]);
+  const [selectedOverduePriorities, setSelectedOverduePriorities] = useState([]);
+
+  const [completedSearchQuery, setCompletedSearchQuery] = useState("");
+  const [selectedCompletedCategories, setSelectedCompletedCategories] = useState([]);
+  const [selectedCompletedPriorities, setSelectedCompletedPriorities] = useState([]);
+
+  const [incomingSearchQuery, setIncomingSearchQuery] = useState("");
+  const [selectedIncomingCategories, setSelectedIncomingCategories] = useState([]);
+  const [selectedIncomingPriorities, setSelectedIncomingPriorities] = useState([]);
+
+  const [selectedTask, setSelectedTask] = useState(null);
+
+  // Modal / Add Form State
+  const location = useLocation();
+  const [showAddModal, setShowAddModal] = useState(location.state?.openAddTaskModal || false);
+  const [editTaskId, setEditTaskId] = useState(null);
+
+  // Scroll to top when viewAllStatus opens
+  useEffect(() => {
+    if (viewAllStatus) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [viewAllStatus]);
+
+  // Synchronize routing parameter only for task details view (not status cards navigation)
+  useEffect(() => {
+    if (!statusOrId) {
+      setSelectedTask(null);
+      return;
+    }
+
+    const lowerStatus = statusOrId.toLowerCase();
+    if (!["pending", "overdue", "completed", "incoming"].includes(lowerStatus)) {
+      // It's a task ID! Find the task from the list and open details
+      const task = tasks.find(t => String(t.id) === statusOrId || String(t._id) === statusOrId);
+      if (task) {
+        setSelectedTask(task);
+      }
+    }
+  }, [statusOrId, tasks]);
+
+  useEffect(() => {
+    if (location.state?.editTask) {
+      handleEditClick(location.state.editTask);
+      window.history.replaceState({}, document.title);
+    } else if (location.state?.openAddTaskModal) {
+      setShowAddModal(true);
+      window.history.replaceState({}, document.title);
+    }
+    if (location.state?.filterStatus) {
+      setFilterStatus(location.state.filterStatus);
+      setViewAllStatus(location.state.filterStatus);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+  // Modal overlay scroll lock, position restoration, and element focus preservation
+  useEffect(() => {
+    if (showAddModal || viewAllStatus) {
+      if (!showAddModal) {
+        triggerElementRef.current = document.activeElement;
+        scrollPositionRef.current = window.scrollY;
+      }
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+      if (scrollPositionRef.current !== null && scrollPositionRef.current !== undefined) {
+        window.scrollTo(0, scrollPositionRef.current);
+      }
+      triggerElementRef.current?.focus();
+    }
+  }, [showAddModal, viewAllStatus]);
+  const addSubtaskItem = () => {
+    if (!newSubtaskTitle.trim()) return;
+
+    const newSubtask = {
+      id: Date.now().toString(),
+      title: newSubtaskTitle.trim(),
+      completed: false,
+    };
+
+    setSubtasksList((prev) => [...prev, newSubtask]);
+    setNewSubtaskTitle("");
+  };
+
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [isTitleSuggested, setIsTitleSuggested] = useState(false);
+  const [categoryChangeMsg, setCategoryChangeMsg] = useState("");
+  const [category, setCategory] = useState("Work");
+  const [customCategory, setCustomCategory] = useState("");
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [priority, setPriority] = useState("Medium");
+
+  // Voice recognition states
+  const [modalView, setModalView] = useState("edit"); // voice, processing, review, edit
+  const [isVoiceModeActive, setIsVoiceModeActive] = useState(false);
+  const [voiceState, setVoiceState] = useState("idle"); // idle, recording, paused, processing, success, error
+  const [voiceLanguage, setVoiceLanguage] = useState("english"); // english, hindi
+  const [originalTranscript, setOriginalTranscript] = useState("");
+  const [liveTranscript, setLiveTranscript] = useState("");
+  const [translatedTranscript, setTranslatedTranscript] = useState("");
+  const [filledFields, setFilledFields] = useState({});
+  const [voiceErrorText, setVoiceErrorText] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [voiceExtractedData, setVoiceExtractedData] = useState({
+    startTime: null,
+    endTime: null,
+    reminder: null,
+    person: null,
+    location: null,
+    tags: [],
+    recurrence: null,
+    notes: null,
+    originalTranscript: null,
+    translatedTranscript: null
+  });
+  const [showMoreDetails, setShowMoreDetails] = useState(false);
+  /* =================================================
+     STATUS CARD AND SUBTASK POPUP
+  ================================================= */
+
+  const [subtaskPopupTask, setSubtaskPopupTask] = useState(null);
+
+  /* Safe task ID */
+  const getTaskId = (task) => task?.id || task?._id;
+
+  /* Safe date formatter */
+  const formatTaskDate = (dateValue, includeTime = false) => {
+    if (!dateValue) return "Date not available";
+
+    try {
+      const parsedDate = new Date(dateValue);
+
+      if (Number.isNaN(parsedDate.getTime())) {
+        return "Date not available";
+      }
+
+      let dateLabel = "";
+      if (isToday(parsedDate)) {
+        dateLabel = "Today";
+      } else if (isYesterday(parsedDate)) {
+        dateLabel = "Yesterday";
+      } else if (isTomorrow(parsedDate)) {
+        dateLabel = "Tomorrow";
+      } else {
+        dateLabel = format(parsedDate, "dd MMM yyyy");
+      }
+
+      return includeTime
+        ? `${dateLabel}, ${format(parsedDate, "h:mm a")}`
+        : dateLabel;
+    } catch (error) {
+      return "Date not available";
+    }
+  };
+
+  /* Check whether every subtask is completed */
+  const areAllSubtasksCompleted = (task) => {
+    if (!task?.subtasks?.length) return true;
+
+    return task.subtasks.every(
+      (subtask) => subtask.completed === true
+    );
+  };
+
+  /* Complete main task */
+  const handleCompleteTask = async (task) => {
+    if (task.completed) return;
+
+    if (!areAllSubtasksCompleted(task)) {
+      setSubtaskPopupTask(task);
+
+      alert(
+        "Please complete all subtasks before completing the main task."
+      );
+
+      return;
+    }
+
+    const taskId = getTaskId(task);
+    const completedTime = new Date().toISOString();
+
+    try {
+      await updateTask(taskId, {
+        ...task,
+        completed: true,
+        status: "Completed",
+        completedAt: completedTime,
+        completedDate: format(new Date(), "yyyy-MM-dd")
+      });
+    } catch (error) {
+      console.error("Unable to complete task:", error);
+      alert("Task could not be completed.");
+    }
+  };
+
+  /* Complete or uncomplete a subtask */
+  const handleSubtaskToggle = async (
+    parentTask,
+    subtaskIndex
+  ) => {
+    const taskId = getTaskId(parentTask);
+
+    const updatedSubtasks = parentTask.subtasks.map(
+      (subtask, index) => {
+        if (index !== subtaskIndex) {
+          return subtask;
+        }
+
+        return {
+          ...subtask,
+          completed: !subtask.completed,
+          completedAt: !subtask.completed
+            ? new Date().toISOString()
+            : null
+        };
+      }
+    );
+
+    const updatedTask = {
+      ...parentTask,
+      subtasks: updatedSubtasks
+    };
+
+    try {
+      await updateTask(taskId, updatedTask);
+
+      /*
+        Popup ko bhi immediately update karega.
+        Isse checkbox click karte hi UI change dikhega.
+      */
+      setSubtaskPopupTask(updatedTask);
+    } catch (error) {
+      console.error("Unable to update subtask:", error);
+      alert("Subtask could not be updated.");
+    }
+  };
+
+  /* Complete all subtasks */
+  const handleCompleteAllSubtasks = async (task) => {
+    const taskId = getTaskId(task);
+    const completedTime = new Date().toISOString();
+
+    const updatedSubtasks = task.subtasks.map(
+      (subtask) => ({
+        ...subtask,
+        completed: true,
+        completedAt:
+          subtask.completedAt || completedTime
+      })
+    );
+
+    const updatedTask = {
+      ...task,
+      subtasks: updatedSubtasks
+    };
+
+    try {
+      await updateTask(taskId, updatedTask);
+      setSubtaskPopupTask(updatedTask);
+    } catch (error) {
+      console.error(
+        "Unable to complete all subtasks:",
+        error
+      );
+
+      alert("Subtasks could not be completed.");
+    }
+  };
+
+  /* Subtask progress */
+  const getSubtaskProgress = (task) => {
+    const total = task?.subtasks?.length || 0;
+
+    const completed =
+      task?.subtasks?.filter(
+        (subtask) => subtask.completed
+      ).length || 0;
+
+    return {
+      total,
+      completed
+    };
+  };
+  const userEmail = localStorage.getItem("smartEmail") || "guest";
+  const [draftStatus, setDraftStatus] = useState("");
+  const [hasDraft, setHasDraft] = useState(false);
+  const [savedDraft, setSavedDraft] = useState(null);
+
+  const isRestoringDraftRef = useRef(false);
+  const triggerElementRef = useRef(null);
+  const scrollPositionRef = useRef(0);
+
+  const titleInputRef = useRef(null);
+  const descInputRef = useRef(null);
+  const categorySelectRef = useRef(null);
+  const dateInputRef = useRef(null);
+  const timeInputRef = useRef(null);
+  const prioritySelectRef = useRef(null);
+  const micButtonRef = useRef(null);
+  const transcriptTextareaRef = useRef(null);
+  const reviewAddButtonRef = useRef(null);
+
+  const recognitionRef = useRef(null);
+  const silenceTimerRef = useRef(null);
+
+  const presetCategories = ["Work", "Personal", "Health", "Learning", "Shopping"];
+  const dynamicCategories = [...new Set([...tasks.map(t => t.category), category].filter(Boolean))];
+  const allCategories = [...new Set([...presetCategories, ...dynamicCategories])].filter(cat => cat !== "Custom");
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const currentTimeStr = format(new Date(), "HH:mm");
+
+  const [dueDate, setDueDate] = useState(todayStr);
+  const [isTimeManuallySet, setIsTimeManuallySet] = useState(false);
+  const [dueTime, setDueTime] = useState(() => calculateDefaultDueTime("Work"));
+  const [timeError, setTimeError] = useState("");
+  const [isLargeTask, setIsLargeTask] = useState(false);
+
+  // Automatically recalculate due time when category changes (if not manually overridden)
+  useEffect(() => {
+    if (!editTaskId && !isTimeManuallySet) {
+      setDueTime(calculateDefaultDueTime(category));
+    }
+  }, [category, editTaskId, isTimeManuallySet]);
+
+  // Subtasks building state
+  const [subtasksList, setSubtasksList] = useState([]);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
+  const [loadingAI, setLoadingAI] = useState(false);
+
+  // Category title suggestions state
+  const [suggestions, setSuggestions] = useState([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [suggestionError, setSuggestionError] = useState("");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+
+  const categoryName = useMemo(() => {
+    if (isAddingCategory) return "";
+    if (!category) return "";
+
+    // If dropdown stores only an ID, find the complete category from categories list
+    const selectedCategoryData = allCategories.find(
+      cat =>
+        (cat && typeof cat === 'object') &&
+        (cat._id === category || cat.id === category)
+    );
+
+    const resolvedName =
+      (selectedCategoryData && (selectedCategoryData.name || selectedCategoryData.label)) ||
+      (category && (category.name || category.label || category.title || category));
+
+    return typeof resolvedName === 'string' ? resolvedName.trim() : "";
+  }, [category, isAddingCategory, allCategories]);
+  const handleAIBreakdown = () => {
+    if (!title.trim()) {
+      alert("Enter task title first");
+      return;
+    }
+
+    const task = title.toLowerCase();
+    let aiSubtasks = [];
+
+    // Example breakdowns
+    if (task.includes("project")) {
+      aiSubtasks = [
+        "Understand requirements",
+        "Create project structure",
+        "Implement core features",
+        "Test functionality",
+        "Fix bugs",
+        "Deploy project",
+      ];
+    } else if (task.includes("assignment")) {
+      aiSubtasks = [
+        "Read assignment",
+        "Research the topic",
+        "Prepare outline",
+        "Write first draft",
+        "Review and edit",
+        "Submit assignment",
+      ];
+    } else if (task.includes("presentation")) {
+      aiSubtasks = [
+        "Research topic",
+        "Create slide outline",
+        "Design slides",
+        "Add visuals",
+        "Practice presentation",
+      ];
+    } else if (task.includes("react")) {
+      aiSubtasks = [
+        "Create components",
+        "Manage state",
+        "Connect API",
+        "Style UI",
+        "Test application",
+      ];
+    } else {
+      aiSubtasks = [
+        "Plan the task",
+        "Break into smaller steps",
+        "Start implementation",
+        "Review progress",
+        "Complete remaining work",
+        "Final review",
+      ];
+    }
+
+    const newSubtasks = aiSubtasks.map((item, index) => ({
+      id: `${Date.now()}-${index}`,
+      title: item,
+      completed: false,
+    }));
+
+    setSubtasksList(newSubtasks);
+  };
+  const selectedCategory = useMemo(() => {
+    if (!categoryName) return null;
+    return {
+      _id: category,
+      name: categoryName
+    };
+  }, [category, categoryName]);
+
+  useEffect(() => {
+    if (!showAddModal) return;
+
+    setSuggestions([]);
+    setSuggestionError("");
+
+    if (
+      !categoryName ||
+      categoryName.trim() === "" ||
+      categoryName.toLowerCase() === "category"
+    ) {
+      return;
+    }
+
+    const cleanName = categoryName.trim();
+    const cleanLower = cleanName.toLowerCase();
+
+
+    const keywordMappings = {
+      customer: [
+        "Follow Up with Customer",
+        "Resolve Customer Query",
+        "Schedule Customer Meeting",
+        "Update Customer Details",
+        "Collect Customer Feedback",
+        "Send Customer Invoice"
+      ],
+      shopping: [
+        "Buy Groceries",
+        "Purchase Essentials",
+        "Compare Prices",
+        "Order Online",
+        "Check Shopping List",
+        "Buy Household Items"
+      ],
+      health: [
+        "Book Doctor Appointment",
+        "Morning Exercise",
+        "Take Medicines",
+        "Drink Water",
+        "Evening Walk",
+        "Schedule Health Checkup"
+      ],
+      travel: [
+        "Book Tickets",
+        "Reserve Hotel",
+        "Pack Luggage",
+        "Plan Itinerary",
+        "Check Travel Documents",
+        "Exchange Currency"
+      ],
+      finance: [
+        "Pay Bills",
+        "Review Expenses",
+        "Update Budget",
+        "Check Bank Balance",
+        "Track Investments",
+        "Download Statement"
+      ],
+      interview: [
+        "Practice Coding",
+        "Revise Interview Questions",
+        "Update Resume",
+        "Research Company",
+        "Mock Interview",
+        "Apply for Jobs"
+      ],
+      wedding: [
+        "Finalize Guest List",
+        "Book Venue",
+        "Confirm Catering",
+        "Buy Decorations",
+        "Send Invitations",
+        "Meet Photographer"
+      ],
+      study: [
+        "Complete Assignment",
+        "Revise Notes",
+        "Practice Questions",
+        "Attend Online Class",
+        "Prepare for Exam",
+        "Read Chapter"
+      ],
+      fitness: [
+        "Gym Workout",
+        "Morning Run",
+        "Yoga Session",
+        "Track Calories",
+        "Stretching Routine",
+        "Drink Protein Shake"
+      ],
+      cooking: [
+        "Plan Cooking Tasks",
+        "Buy Ingredients",
+        "Prepare Meal",
+        "Try New Recipe",
+        "Clean Kitchen",
+        "Organize Pantry"
+      ],
+      photography: [
+        "Plan Photography Session",
+        "Edit Photos",
+        "Organize Camera Gear",
+        "Review Photography Notes",
+        "Schedule Photography Work",
+        "Backup Photos"
+      ],
+      gardening: [
+        "Plan Gardening Tasks",
+        "Buy Gardening Supplies",
+        "Complete Gardening Work",
+        "Review Gardening Checklist",
+        "Schedule Gardening Activity",
+        "Organize Gardening Items"
+      ]
+    };
+
+    // Find if the category clean name contains or matches any of the mapping keys
+    let matchedKey = Object.keys(keywordMappings).find(
+      key => cleanLower.includes(key) || key.includes(cleanLower)
+    );
+
+    let list = [];
+    if (matchedKey) {
+      list = keywordMappings[matchedKey];
+    } else {
+      const capitalized = cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
+      list = [
+        `Plan ${capitalized} Tasks`,
+        `Buy ${capitalized} Supplies`,
+        `Complete ${capitalized} Work`,
+        `Review ${capitalized} Checklist`,
+        `Schedule ${capitalized} Activity`,
+        `Organize ${capitalized} Items`
+      ];
+    }
+
+    setSuggestions(list.slice(0, 6));
+  }, [categoryName, showAddModal]);
+
+  // Clean up recording on unmount
+  useEffect(() => {
+    return () => {
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) { }
+      }
+    };
+  }, []);
+
+  const stopVoiceRecording = () => {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) { }
+      recognitionRef.current = null;
+    }
+    setVoiceState("paused");
+  };
+
+  const resetSilenceTimer = () => {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+    }
+    silenceTimerRef.current = setTimeout(() => {
+      stopVoiceRecording();
+    }, 4000);
+  };
+
+  const startVoiceRecording = () => {
+    setVoiceErrorText("");
+    setOriginalTranscript("");
+    setLiveTranscript("");
+    setTranslatedTranscript("");
+    setVoiceState("recording");
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setVoiceErrorText("Speech recognition is not supported in this browser. Please use Chrome or Edge.");
+      setVoiceState("error");
+      return;
+    }
+
+    try {
+      const rec = new SpeechRecognition();
+      rec.continuous = true;
+      rec.interimResults = true;
+
+      if (voiceLanguage === "hindi") {
+        rec.lang = "hi-IN";
+      } else {
+        rec.lang = "en-US";
+      }
+
+      let finalResult = "";
+
+      rec.onresult = (event) => {
+        resetSilenceTimer();
+        let interim = "";
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const trans = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalResult += trans;
+          } else {
+            interim += trans;
+          }
+        }
+        setLiveTranscript(interim);
+        if (finalResult) {
+          setOriginalTranscript(finalResult.trim());
+        }
+      };
+
+      rec.onerror = (event) => {
+        console.error("Speech error:", event.error);
+        if (event.error === "not-allowed") {
+          setVoiceErrorText("Microphone access denied. Please allow microphone permission in browser settings.");
+        } else if (event.error !== "no-speech") {
+          setVoiceErrorText(`Recognition error: ${event.error}`);
+        }
+        setVoiceState("error");
+      };
+
+      rec.onend = () => {
+        setVoiceState(prev => prev === "recording" ? "paused" : prev);
+      };
+
+      recognitionRef.current = rec;
+      rec.start();
+      resetSilenceTimer();
+    } catch (err) {
+      setVoiceErrorText(`Failed to initialize: ${err.message}`);
+      setVoiceState("error");
+    }
+  };
+
+  const isDraftEmpty = (draftData) => {
+    if (!draftData) return true;
+    const todayStr = format(new Date(), "yyyy-MM-dd");
+    return (
+      (!draftData.originalTranscript || !draftData.originalTranscript.trim()) &&
+      (!draftData.title || !draftData.title.trim()) &&
+      (!draftData.description || !draftData.description.trim()) &&
+      (!draftData.subtasksList || draftData.subtasksList.length === 0) &&
+      (!draftData.customCategory || !draftData.customCategory.trim()) &&
+      (draftData.category === "Work" || !draftData.category) &&
+      (draftData.priority === "Medium" || !draftData.priority) &&
+      (draftData.dueDate === todayStr || !draftData.dueDate)
+    );
+  };
+
+  const saveDraftImmediately = () => {
+    const draftData = {
+      modalView,
+      originalTranscript,
+      translatedTranscript,
+      title,
+      description,
+      category,
+      priority,
+      dueDate,
+      dueTime,
+      subtasksList,
+      filledFields,
+      voiceExtractedData,
+      isAddingCategory,
+      customCategory,
+      isLargeTask,
+      updatedAt: new Date().toISOString()
+    };
+
+    // Draft kept in component memory state
+  };
+
+  const closeModalCleanly = (shouldSaveDraft = true) => {
+    if (isSaving) return;
+    resetForm(shouldSaveDraft);
+    if (window.history.state?.modalOpen === true) {
+      window.history.back();
+    }
+  };
+
+  const focusFirstField = () => {
+    if (!showAddModal) return;
+
+    if (modalView === "voice") {
+      if (originalTranscript) {
+        transcriptTextareaRef.current?.focus();
+      } else {
+        micButtonRef.current?.focus();
+      }
+    } else if (modalView === "review") {
+      reviewAddButtonRef.current?.focus();
+    } else if (modalView === "edit") {
+      if (!title || !title.trim()) {
+        titleInputRef.current?.focus();
+      } else if (!description || !description.trim()) {
+        descInputRef.current?.focus();
+      } else if (!category) {
+        categorySelectRef.current?.focus();
+      } else if (!dueDate) {
+        dateInputRef.current?.focus();
+      } else if (!dueTime) {
+        timeInputRef.current?.focus();
+      } else if (!priority) {
+        prioritySelectRef.current?.focus();
+      } else {
+        titleInputRef.current?.focus();
+      }
+    }
+  };
+
+  const handleClearAllAction = () => {
+    stopVoiceRecording();
+
+    const isVoiceMode = modalView === "voice" || modalView === "review";
+
+    resetForm(false, false);
+
+    if (isVoiceMode) {
+      toast.success("Transcript cleared successfully.", { position: "top-right", duration: 3000 });
+      setModalView("voice");
+      setVoiceState("idle");
+    } else {
+      toast.success("Draft cleared successfully.", { position: "top-right", duration: 3000 });
+      setModalView("edit");
+    }
+
+    setDraftStatus("");
+    setTimeError("");
+    setVoiceErrorText("");
+
+    setTimeout(() => {
+      if (!isVoiceMode) {
+        focusFirstField();
+      }
+    }, 50);
+  };
+
+  // Esc key down listener
+  useEffect(() => {
+    if (!showAddModal) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        if (isSaving) return;
+        closeModalCleanly(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showAddModal, isSaving, modalView, originalTranscript, title, description, category, priority, dueDate, dueTime, subtasksList, customCategory, isAddingCategory]);
+
+  // Auto-save draft effect
+  useEffect(() => {
+    if (!showAddModal) return;
+    if (isRestoringDraftRef.current) return;
+
+    const draftData = {
+      modalView,
+      originalTranscript,
+      translatedTranscript,
+      title,
+      description,
+      category,
+      priority,
+      dueDate,
+      dueTime,
+      subtasksList,
+      filledFields,
+      voiceExtractedData,
+      isAddingCategory,
+      customCategory,
+      isLargeTask,
+      updatedAt: new Date().toISOString()
+    };
+
+    if (isDraftEmpty(draftData)) {
+      setDraftStatus("");
+      return;
+    }
+
+    setDraftStatus("Draft saved");
+  }, [
+    showAddModal,
+    modalView,
+    originalTranscript,
+    translatedTranscript,
+    title,
+    description,
+    category,
+    priority,
+    dueDate,
+    dueTime,
+    subtasksList,
+    filledFields,
+    voiceExtractedData,
+    isAddingCategory,
+    customCategory,
+    isLargeTask
+  ]);
+
+  // Popstate history browser back listener
+  useEffect(() => {
+    if (showAddModal) {
+      if (window.history.state?.modalOpen !== true) {
+        window.history.pushState({ modalOpen: true }, "");
+      }
+    }
+
+    const handlePopState = (e) => {
+      if (showAddModal) {
+        if (isSaving) {
+          window.history.pushState({ modalOpen: true }, "");
+          return;
+        }
+        resetForm(true);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [showAddModal, isSaving, modalView, originalTranscript, title, description, category, priority, dueDate, dueTime, subtasksList, customCategory, isAddingCategory]);
+
+  // Auto-focus effect
+  useEffect(() => {
+    if (!showAddModal) return;
+
+    const timer = setTimeout(() => {
+      focusFirstField();
+    }, 120);
+
+    return () => clearTimeout(timer);
+  }, [showAddModal, modalView]);
+
+  const handleProcessTask = () => {
+    if (!originalTranscript.trim()) {
+      setVoiceErrorText("Please speak or write a transcript first.");
+      setVoiceState("error");
+      return;
+    }
+
+    setVoiceState("processing");
+    setModalView("processing");
+
+    setTimeout(() => {
+      try {
+        let translated = originalTranscript;
+        if (voiceLanguage === "hindi") {
+          translated = translateHinglishToEnglish(originalTranscript);
+        }
+        setTranslatedTranscript(translated);
+
+        const details = extractTaskDetails(originalTranscript, translated);
+
+        // ⚡ Set isTimeManuallySet=true FIRST — before any setCategory/setDueTime
+        // This prevents the useEffect from overwriting the voice-parsed time
+        // when category changes trigger it.
+        const hasValidTime = details.dueTime && details.dueTime !== "00:00";
+        if (hasValidTime) {
+          setIsTimeManuallySet(true);
+        }
+
+        if (details.title) setTitle(details.title);
+        if (details.description) setDescription(details.description);
+
+        if (details.category) {
+          if (allCategories.includes(details.category)) {
+            setCategory(details.category);
+          } else {
+            setIsAddingCategory(true);
+            setCustomCategory(details.category);
+            setCategory(details.category);
+          }
+        }
+        if (details.priority) setPriority(details.priority);
+        if (details.dueDate) setDueDate(details.dueDate);
+        if (hasValidTime) {
+          setDueTime(details.dueTime);
+        }
+
+        setVoiceExtractedData({
+          startTime: details.startTime || null,
+          endTime: details.endTime || null,
+          reminder: details.reminder || null,
+          person: details.person || null,
+          location: details.location || null,
+          tags: details.tags || [],
+          recurrence: details.recurrence || null,
+          notes: details.notes || null,
+          originalTranscript: originalTranscript,
+          translatedTranscript: translated !== originalTranscript ? translated : null
+        });
+
+        const filled = {};
+        if (details.title) filled.title = true;
+        if (details.description) filled.description = true;
+        if (details.category) filled.category = true;
+        if (details.priority) filled.priority = true;
+        if (details.dueDate) filled.dueDate = true;
+        if (details.dueTime) filled.dueTime = true;
+        if (details.person) filled.person = true;
+        if (details.location) filled.location = true;
+        if (details.reminder) filled.reminder = true;
+        if (details.recurrence) filled.recurrence = true;
+        if (details.tags && details.tags.length > 0) filled.tags = true;
+
+        setFilledFields(filled);
+        setVoiceState("success");
+        setModalView("review");
+      } catch (err) {
+        console.error("Voice extract failed:", err);
+        setVoiceErrorText(`Failed to extract details: ${err.message}`);
+        setVoiceState("error");
+        setModalView("voice");
+      }
+    }, 800);
+  };
+
+  // Submit form handler
+  const handleSubmit = async (e) => {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+
+    try {
+      const taskObj = {
+        title,
+        description,
+        category,
+        priority,
+        dueDate,
+        dueTime,
+        subtasks: subtasksList,
+      };
+
+      let createdTask;
+
+      if (editTaskId) {
+        const res = await updateTask(editTaskId, taskObj);
+        createdTask = res?.data?.task;
+        toast.success("Task Updated");
+      } else {
+        const res = await addTask(taskObj);
+        createdTask = res?.data?.task;
+        toast.success("Task Added");
+      }
+
+      // ✅ Close and reset the form
+      setShowAddModal(false);
+      resetForm(false);
+
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message);
+    }
+  };
+
+  const resetForm = (shouldSaveDraft = true, closeModal = true) => {
+    if (showAddModal) {
+      if (shouldSaveDraft) {
+        saveDraftImmediately();
+        const draftData = {
+          modalView,
+          originalTranscript,
+          translatedTranscript,
+          title,
+          description,
+          category,
+          priority,
+          dueDate,
+          dueTime,
+          subtasksList,
+          filledFields,
+          voiceExtractedData,
+          isAddingCategory,
+          customCategory,
+          isLargeTask
+        };
+        if (!isDraftEmpty(draftData)) {
+          toast.success("Your task has been saved as a draft.");
+        }
+      }
+    }
+
+    setTitle("");
+    setDescription("");
+    setIsTitleSuggested(false);
+    setCategoryChangeMsg("");
+    setCategory("Work");
+    setCustomCategory("");
+    setIsAddingCategory(false);
+    setPriority("Medium");
+    setDueDate(format(new Date(), "yyyy-MM-dd"));
+    setIsTimeManuallySet(false);
+    setDueTime(calculateDefaultDueTime("Work"));
+    setIsLargeTask(false);
+    setSubtasksList([]);
+    setEditTaskId(null);
+    if (closeModal) {
+      setShowAddModal(false);
+      setModalView("edit");
+      setIsVoiceModeActive(false);
+      setShowMoreDetails(false);
+    }
+    setVoiceState("idle");
+    setOriginalTranscript("");
+    setLiveTranscript("");
+    setTranslatedTranscript("");
+    setFilledFields({});
+    setVoiceExtractedData({
+      startTime: null,
+      endTime: null,
+      reminder: null,
+      person: null,
+      location: null,
+      tags: [],
+      recurrence: null,
+      notes: null,
+      originalTranscript: null,
+      translatedTranscript: null
+    });
+  };
+
+  const handleEditClick = (task) => {
+    setTitle(task.title);
+    setDescription(task.description || "");
+    setIsTitleSuggested(false);
+    setCategoryChangeMsg("");
+    setCategory(task.category);
+    setPriority(task.priority);
+    setDueDate(task.dueDate);
+    setDueTime(task.dueTime);
+    setIsTimeManuallySet(true);
+    setSubtasksList(task.subtasks || []);
+    setIsLargeTask(task.subtasks?.length > 0);
+    setEditTaskId(task.id);
+
+    setVoiceExtractedData({
+      startTime: task.startTime || null,
+      endTime: task.endTime || null,
+      reminder: task.reminder || null,
+      person: task.person || null,
+      location: task.location || null,
+      tags: task.tags || [],
+      recurrence: task.recurrence || null,
+      notes: task.notes || null,
+      originalTranscript: task.originalTranscript || null,
+      translatedTranscript: task.translatedTranscript || null
+    });
+    setFilledFields({});
+    setVoiceState("idle");
+    setModalView("edit");
+    setShowAddModal(true);
+  };
+
+  const getTaskStatus = (task) => {
+    if (!task) return "Pending";
+    if (task.completed || task.status === "Completed") return "Completed";
+
+    const todayStr = format(new Date(), "yyyy-MM-dd");
+    const nowTimeStr = format(new Date(), "HH:mm");
+
+    let taskDue = todayStr;
+    if (task.dueDate) {
+      try {
+        const rawDate = typeof task.dueDate === "string" ? task.dueDate.split("T")[0] : task.dueDate;
+        taskDue = rawDate;
+      } catch (e) {
+        taskDue = todayStr;
+      }
+    } else if (task.status === "Incoming") {
+      return "Incoming";
+    }
+
+    const taskTime = task.dueTime || "23:59";
+
+    // 1. Overdue: past date or past time today
+    if (taskDue < todayStr) return "Overdue";
+    if (taskDue === todayStr && taskTime < nowTimeStr) return "Overdue";
+    if (task.status === "Overdue") return "Overdue";
+
+    // 2. Incoming: due date is TOMORROW or FUTURE (kal ka task / upcoming date)
+    if (taskDue > todayStr || task.status === "Incoming") return "Incoming";
+
+    // 3. Pending: due today
+    return "Pending";
+  };
+
+  // Helper to determine task status, color, and sort priority
+  const getTaskStatusInfo = (task) => {
+    const status = getTaskStatus(task);
+    if (status === "Completed") return { label: "Completed", colorClass: "green" };
+    if (status === "Overdue") return { label: "Overdue", colorClass: "red" };
+    if (status === "Pending") return { label: "Pending", colorClass: "yellow" };
+    return { label: "Incoming", colorClass: "blue" };
+  };
+
+  const TaskStatusDropdown = ({ task }) => {
+    const isCompleted = task.completed || task.status === "completed";
+
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: "6px" }} onClick={(e) => e.stopPropagation()}>
+        <input
+          type="checkbox"
+          checked={isCompleted}
+          disabled={isCompleted}
+          title={isCompleted ? "This task has already been completed." : "Mark as Completed"}
+          onChange={async (e) => {
+            if (isCompleted) return;
+
+            // Subtasks validation
+            const hasIncompleteSubtasks = task.subtasks && task.subtasks.length > 0 && task.subtasks.some(s => !s.completed);
+            if (hasIncompleteSubtasks) {
+              const completedCount = task.subtasks.filter(s => s.completed).length;
+              toast.error(`Complete all subtasks before marking this task as completed. (${completedCount} of ${task.subtasks.length} completed)`);
+              return;
+            }
+
+            try {
+              await updateTask(task.id, { completed: true, status: "completed" });
+            } catch (err) { }
+          }}
+          style={{
+            width: "16px",
+            height: "16px",
+            accentColor: "#10b981",
+            cursor: isCompleted ? "not-allowed" : "pointer"
+          }}
+        />
+        <span style={{ fontSize: "0.82rem", fontWeight: "700", color: isCompleted ? "#10b981" : "var(--text-muted)" }}>
+          {isCompleted ? "Completed ✓" : "Mark Complete"}
+        </span>
+      </div>
+    );
+  };
+
+  // Base filtered tasks (excluding status filter)
+  const baseFilteredTasks = useMemo(() => {
+    return tasks.filter((task) => {
+      // Search Query matching
+      const matchesSearch =
+        task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (task.description || "").toLowerCase().includes(searchQuery.toLowerCase());
+
+      // Category filter
+      const matchesCategory =
+        (selectedTopCategories.length === 0 || selectedTopCategories.includes(task.category)) &&
+        (filterCategory === "All" || task.category === filterCategory);
+
+      // Priority filter
+      const matchesPriority =
+        (selectedTopPriorities.length === 0 || selectedTopPriorities.includes(task.priority)) &&
+        (filterPriority === "All" || task.priority === filterPriority);
+
+      return matchesSearch && matchesCategory && matchesPriority;
+    });
+  }, [tasks, searchQuery, filterCategory, filterPriority, selectedTopCategories, selectedTopPriorities]);
+
+
+  const totalPendingCount = useMemo(() => tasks.filter(task => getTaskStatus(task) === 'Pending').length, [tasks]);
+  const totalOverdueCount = useMemo(() => tasks.filter(task => getTaskStatus(task) === 'Overdue').length, [tasks]);
+  const totalCompletedCount = useMemo(() => tasks.filter(task => getTaskStatus(task) === 'Completed').length, [tasks]);
+  const totalIncomingCount = useMemo(() => tasks.filter(task => getTaskStatus(task) === 'Incoming').length, [tasks]);
+
+  const pendingTasksList = useMemo(() => {
+    return baseFilteredTasks.filter(task => getTaskStatus(task) === "Pending");
+  }, [baseFilteredTasks]);
+
+  const overdueTasksList = useMemo(() => {
+    return baseFilteredTasks.filter(task => getTaskStatus(task) === "Overdue");
+  }, [baseFilteredTasks]);
+
+  const completedTasksList = useMemo(() => {
+    return baseFilteredTasks.filter(task => getTaskStatus(task) === "Completed");
+  }, [baseFilteredTasks]);
+
+  const incomingTasksList = useMemo(() => {
+    return baseFilteredTasks.filter(task => getTaskStatus(task) === "Incoming");
+  }, [baseFilteredTasks]);
+
+  const filteredPendingList = useMemo(() => {
+    return pendingTasksList.filter(task => {
+      if (pendingSearchQuery.trim()) {
+        const q = pendingSearchQuery.toLowerCase();
+        if (!(task.title || "").toLowerCase().includes(q) && !(task.description || "").toLowerCase().includes(q)) return false;
+      }
+      if (selectedPendingCategories.length > 0 && !selectedPendingCategories.includes(task.category)) return false;
+      if (selectedPendingPriorities.length > 0 && !selectedPendingPriorities.includes(task.priority)) return false;
+      return true;
+    });
+  }, [pendingTasksList, pendingSearchQuery, selectedPendingCategories, selectedPendingPriorities]);
+
+  const filteredOverdueList = useMemo(() => {
+    return overdueTasksList.filter(task => {
+      if (overdueSearchQuery.trim()) {
+        const q = overdueSearchQuery.toLowerCase();
+        if (!(task.title || "").toLowerCase().includes(q) && !(task.description || "").toLowerCase().includes(q)) return false;
+      }
+      if (selectedOverdueCategories.length > 0 && !selectedOverdueCategories.includes(task.category)) return false;
+      if (selectedOverduePriorities.length > 0 && !selectedOverduePriorities.includes(task.priority)) return false;
+      return true;
+    });
+  }, [overdueTasksList, overdueSearchQuery, selectedOverdueCategories, selectedOverduePriorities]);
+
+  const filteredCompletedList = useMemo(() => {
+    return completedTasksList.filter(task => {
+      if (completedSearchQuery.trim()) {
+        const q = completedSearchQuery.toLowerCase();
+        if (!(task.title || "").toLowerCase().includes(q) && !(task.description || "").toLowerCase().includes(q)) return false;
+      }
+      if (selectedCompletedCategories.length > 0 && !selectedCompletedCategories.includes(task.category)) return false;
+      if (selectedCompletedPriorities.length > 0 && !selectedCompletedPriorities.includes(task.priority)) return false;
+      return true;
+    });
+  }, [completedTasksList, completedSearchQuery, selectedCompletedCategories, selectedCompletedPriorities]);
+
+  const filteredIncomingList = useMemo(() => {
+    return incomingTasksList.filter(task => {
+      // 1. In-card Search Query
+      if (incomingSearchQuery.trim()) {
+        const q = incomingSearchQuery.toLowerCase();
+        const titleMatch = (task.title || "").toLowerCase().includes(q);
+        const descMatch = (task.description || "").toLowerCase().includes(q);
+        if (!titleMatch && !descMatch) return false;
+      }
+
+      // 2. Category Filter Pill (Matching screenshot!)
+      if (selectedIncomingCategories && selectedIncomingCategories.length > 0) {
+        if (!selectedIncomingCategories.includes(task.category)) return false;
+      }
+
+      // 3. Priority Filter Pill (Matching screenshot!)
+      if (selectedIncomingPriorities && selectedIncomingPriorities.length > 0) {
+        if (!selectedIncomingPriorities.includes(task.priority)) return false;
+      }
+
+      return true;
+    });
+  }, [incomingTasksList, incomingSearchQuery, selectedIncomingCategories, selectedIncomingPriorities]);
+
+  // Intelligent Chronological Sorting Logic
+  const sortedTasks = useMemo(() => {
+    const priorityWeight = { High: 3, Medium: 2, Low: 1 };
+
+    const statusFiltered = baseFilteredTasks.filter(task => {
+      if (filterStatus === "All") return true;
+      return getTaskStatus(task) === filterStatus;
+    });
+
+    return [...statusFiltered].sort((a, b) => {
+      // 1. Completed tasks always at the absolute bottom
+      if (a.completed && !b.completed) return 1;
+      if (!a.completed && b.completed) return -1;
+
+      // 2. Strict chronological sort (earliest deadline always appears first)
+      const dateA = new Date(`${a.dueDate}T${a.dueTime || "23:59"}`).getTime();
+      const dateB = new Date(`${b.dueDate}T${b.dueTime || "23:59"}`).getTime();
+
+      if (dateA !== dateB) {
+        return dateA - dateB; // Ascending order (earliest first)
+      }
+
+      // 3. Tiebreaker: Sort by Priority (High > Medium > Low)
+      const pA = priorityWeight[a.priority] || 0;
+      const pB = priorityWeight[b.priority] || 0;
+
+      if (pA !== pB) {
+        return pB - pA; // Descending order (highest weight first)
+      }
+
+      return 0; // Identical tasks
+    });
+  }, [baseFilteredTasks, filterStatus]);
+
+  const displayedTasks = useMemo(() => {
+    return filterLimit === "All" ? sortedTasks : sortedTasks.slice(0, parseInt(filterLimit, 10));
+  }, [sortedTasks, filterLimit]);
+
+  // Escape key listener to close View All modal
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setViewAllStatus(null);
+        setFilterStatus("All");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  const handleStatusFilterChange = (val) => {
+    setFilterStatus(val);
+    if (val === "All") {
+      setViewAllStatus(null);
+    } else {
+      setViewAllStatus(val);
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    if (status === "Pending") return "🕒";
+    if (status === "Overdue") return "🔴";
+    if (status === "Completed") return "🟢";
+    return "🔵";
+  };
+
+  const modalFilteredTasks = useMemo(() => {
+    const priorityWeight = { High: 3, Medium: 2, Low: 1 };
+
+    // Filter by category, priority, search, and status (which is fixed to viewAllStatus)
+    const list = tasks.filter(task => {
+      if (getTaskStatus(task) !== viewAllStatus) return false;
+
+      const matchesSearch =
+        task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (task.description || "").toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesCategory =
+        (selectedTopCategories.length === 0 || selectedTopCategories.includes(task.category)) &&
+        (filterCategory === "All" || task.category === filterCategory);
+
+      const matchesPriority =
+        (selectedTopPriorities.length === 0 || selectedTopPriorities.includes(task.priority)) &&
+        (filterPriority === "All" || task.priority === filterPriority);
+
+      return matchesSearch && matchesCategory && matchesPriority;
+    });
+
+    // Sort chronologically (Sort by due date)
+    return list.sort((a, b) => {
+      if (a.completed && !b.completed) return 1;
+      if (!a.completed && b.completed) return -1;
+
+      const dateA = new Date(`${a.dueDate}T${a.dueTime || "23:59"}`).getTime();
+      const dateB = new Date(`${b.dueDate}T${b.dueTime || "23:59"}`).getTime();
+
+      if (dateA !== dateB) return dateA - dateB;
+
+      const pA = priorityWeight[a.priority] || 0;
+      const pB = priorityWeight[b.priority] || 0;
+      return pB - pA;
+    });
+  }, [tasks, viewAllStatus, searchQuery, filterCategory, filterPriority, selectedTopCategories, selectedTopPriorities]);
+
+  return (
+    <div className="tasks-page">
+      {/* <section className="tasks-hero">
+        <div className="tasks-hero-content">
+          <p className="tasks-eyebrow">Task Management</p>
+          <h1 className="tasks-title">Keep your work moving</h1>
+        </div>
+        <button
+          type="button"
+          className="tasks-new-btn"
+          onClick={() => setShowAddModal(true)}
+        >
+          + New Task
+        </button>
+      </section> */}
+
+      <DraggableGrid page="tasks" defaultLayout={['filter-bar', 'pending', 'overdue', 'completed', 'incoming']}>
+        {({ layout }) => {
+          const renderCard = (id) => {
+            switch (id) {
+              case 'filter-bar': return (
+                <DraggableCard id="filter-bar" key="filter-bar" style={{ gridColumn: "1 / -1", zIndex: 100 }}>
+                  <section className="tasks-filter-bar" style={{ width: "100%", marginTop: 0 }}>
+                    <div className="tasks-search-wrapper">
+                      <span className="tasks-search-icon">🔍</span>
+                      <input
+                        type="text"
+                        placeholder="Search tasks..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="tasks-search-input"
+                      />
+                    </div>
+
+                    <div className="tasks-filters-group" style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                      <NeumorphicFilterPill
+                        label="Category"
+                        selectedValues={selectedTopCategories}
+                        onSelectionChange={(vals) => setSelectedTopCategories(vals)}
+                        options={allCategories.filter(c => c !== "All")}
+                      />
+                      <NeumorphicFilterPill
+                        label="Priority"
+                        selectedValues={selectedTopPriorities}
+                        onSelectionChange={(vals) => setSelectedTopPriorities(vals)}
+                        options={["High", "Medium", "Low"]}
+                        alignRight={true}
+                      />
+                    </div>
+                  </section>
+                </DraggableCard>
+              );
+              case 'pending': return (
+                <DraggableCard id="pending" key="pending">
+                  <div className="status-card pending" style={{ height: "235px", display: "flex", flexDirection: "column" }}>
+                    <header className="status-card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                      <div className="status-card-title-group" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span className="status-card-icon">🕒</span>
+                        <h3 className="status-card-title" style={{ fontSize: "1.15rem", fontWeight: 800, color: "#1e293b", margin: 0 }}>
+                          Pending
+                        </h3>
+                      </div>
+                      <span className="status-card-count">
+                        {totalPendingCount} Tasks
+                      </span>
+                    </header>
+
+                    {/* Embedded Search & Category/Priority Filter Pills */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px", overflow: "visible", zIndex: 50 }}>
+                      <div className="incoming-card-search" style={{
+                        flex: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        background: "#edf2f8",
+                        borderRadius: "999px",
+                        padding: "2px 14px",
+                        boxShadow: "inset 3px 3px 6px #b8c6d9, inset -3px -3px 6px #ffffff",
+                        border: "1px solid rgba(255,255,255,0.7)"
+                      }}>
+                        <input
+                          type="text"
+                          placeholder="Search pending..."
+                          value={pendingSearchQuery}
+                          onChange={(e) => setPendingSearchQuery(e.target.value)}
+                          style={{
+                            width: "100%",
+                            border: "none",
+                            background: "transparent",
+                            outline: "none",
+                            fontSize: "0.82rem",
+                            fontWeight: 500,
+                            color: "#2d3748",
+                            padding: "6px 4px"
+                          }}
+                        />
+                        <span style={{ color: "#718096", fontSize: "0.85rem" }}>🔍</span>
+                      </div>
+
+                      <NeumorphicFilterPill
+                        label="Category"
+                        selectedValues={selectedPendingCategories}
+                        onSelectionChange={(vals) => setSelectedPendingCategories(vals)}
+                        options={allCategories.filter(c => c !== "All")}
+                      />
+                      <NeumorphicFilterPill
+                        label="Priority"
+                        selectedValues={selectedPendingPriorities}
+                        onSelectionChange={(vals) => setSelectedPendingPriorities(vals)}
+                        options={["High", "Medium", "Low"]}
+                        alignRight={true}
+                      />
+                    </div>
+
+                    {/* Horizontal Tasks Row matching image layout */}
+                    <div className="incoming-horizontal-grid" style={{ flex: 1 }}>
+                      {filteredPendingList.length === 0 ? (
+                        <div className="status-card-empty" style={{ width: "100%" }}>{getEmptyStateMessage("Pending", filterCategory, filterPriority)}</div>
+                      ) : (
+                        filteredPendingList.slice(0, 6).map((task, idx) => {
+                          const iconGradients = [
+                            "linear-gradient(135deg, #6000ff 0%, #3b82f6 100%)",
+                            "linear-gradient(135deg, #3b82f6 0%, #00c6ff 100%)",
+                            "linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)",
+                            "linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)"
+                          ];
+                          const icons = ["🕒", "⚡", "🎯", "📊"];
+
+                          return (
+                            <div
+                              key={getTaskId(task)}
+                              className="incoming-task-pill-card"
+                              onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
+                              title="Click to view details"
+                            >
+                              <div className="incoming-pill-icon-badge" style={{ background: iconGradients[idx % iconGradients.length] }}>
+                                <span>{icons[idx % icons.length]}</span>
+                              </div>
+
+                              <div className="incoming-pill-title">
+                                {task.title}
+                              </div>
+
+                              <div style={{ display: "flex", alignItems: "center", gap: "5px", justifyContent: "center" }}>
+                                {task.subtasks?.length > 0 && (
+                                  <div className="pill-subtask-badge" title={`${task.subtasks.filter(s => s.completed).length} of ${task.subtasks.length} subtasks done`} onClick={(e) => { e.stopPropagation(); setSubtaskPopupTask(task); }} style={{ cursor: "pointer" }}>
+                                    <span className="pill-subtask-icon">≡</span>
+                                    <span className="pill-subtask-count">{task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}</span>
+                                  </div>
+                                )}
+                                <button
+                                  type="button"
+                                  className="incoming-check-btn"
+                                  title="Mark task completed"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCompleteTask(task);
+                                  }}
+                                >
+                                  ✓
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+
+                      <button
+                        type="button"
+                        className="incoming-plus-card"
+                        title="Add task"
+                        onClick={() => setShowAddModal(true)}
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    <footer className="status-card-footer" style={{ marginTop: "0px", paddingTop: "2px" }}>
+                      <button
+                        type="button"
+                        className="status-card-viewall"
+                        onClick={() => {
+                          setViewAllStatus("Pending");
+                          setFilterStatus("Pending");
+                        }}
+                      >
+                        View All →
+                      </button>
+                    </footer>
+                  </div>
+                </DraggableCard>
+              );
+              case 'overdue': return (
+                <DraggableCard id="overdue" key="overdue">
+                  <div className="status-card overdue" style={{ height: "235px", display: "flex", flexDirection: "column" }}>
+                    <header className="status-card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                      <div className="status-card-title-group" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span className="status-card-icon">🔴</span>
+                        <h3 className="status-card-title" style={{ fontSize: "1.15rem", fontWeight: 800, color: "#1e293b", margin: 0 }}>
+                          Overdue
+                        </h3>
+                      </div>
+                      <span className="status-card-count">
+                        {totalOverdueCount} Tasks
+                      </span>
+                    </header>
+
+                    {/* Embedded Search & Category/Priority Filter Pills */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px", overflow: "visible", zIndex: 50 }}>
+                      <div className="incoming-card-search" style={{
+                        flex: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        background: "#edf2f8",
+                        borderRadius: "999px",
+                        padding: "2px 14px",
+                        boxShadow: "inset 3px 3px 6px #b8c6d9, inset -3px -3px 6px #ffffff",
+                        border: "1px solid rgba(255,255,255,0.7)"
+                      }}>
+                        <input
+                          type="text"
+                          placeholder="Search overdue..."
+                          value={overdueSearchQuery}
+                          onChange={(e) => setOverdueSearchQuery(e.target.value)}
+                          style={{
+                            width: "100%",
+                            border: "none",
+                            background: "transparent",
+                            outline: "none",
+                            fontSize: "0.82rem",
+                            fontWeight: 500,
+                            color: "#2d3748",
+                            padding: "6px 4px"
+                          }}
+                        />
+                        <span style={{ color: "#718096", fontSize: "0.85rem" }}>🔍</span>
+                      </div>
+
+                      <NeumorphicFilterPill
+                        label="Category"
+                        selectedValues={selectedOverdueCategories}
+                        onSelectionChange={(vals) => setSelectedOverdueCategories(vals)}
+                        options={allCategories.filter(c => c !== "All")}
+                      />
+                      <NeumorphicFilterPill
+                        label="Priority"
+                        selectedValues={selectedOverduePriorities}
+                        onSelectionChange={(vals) => setSelectedOverduePriorities(vals)}
+                        options={["High", "Medium", "Low"]}
+                        alignRight={true}
+                      />
+                    </div>
+
+                    {/* Horizontal Tasks Row matching image layout */}
+                    <div className="incoming-horizontal-grid" style={{ flex: 1 }}>
+                      {filteredOverdueList.length === 0 ? (
+                        <div className="status-card-empty" style={{ width: "100%" }}>{getEmptyStateMessage("Overdue", filterCategory, filterPriority)}</div>
+                      ) : (
+                        filteredOverdueList.slice(0, 6).map((task, idx) => {
+                          const iconGradients = [
+                            "linear-gradient(135deg, #ef4444 0%, #f97316 100%)",
+                            "linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)",
+                            "linear-gradient(135deg, #ec4899 0%, #ef4444 100%)",
+                            "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)"
+                          ];
+                          const icons = ["🔴", "⚠️", "⏰", "⚡"];
+
+                          return (
+                            <div
+                              key={getTaskId(task)}
+                              className="incoming-task-pill-card"
+                              onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
+                              title="Click to view details"
+                            >
+                              <div className="incoming-pill-icon-badge" style={{ background: iconGradients[idx % iconGradients.length] }}>
+                                <span>{icons[idx % icons.length]}</span>
+                              </div>
+
+                              <div className="incoming-pill-title">
+                                {task.title}
+                              </div>
+
+                              <div style={{ display: "flex", alignItems: "center", gap: "5px", justifyContent: "center" }}>
+                                {task.subtasks?.length > 0 && (
+                                  <div className="pill-subtask-badge" title={`${task.subtasks.filter(s => s.completed).length} of ${task.subtasks.length} subtasks done`} onClick={(e) => { e.stopPropagation(); setSubtaskPopupTask(task); }} style={{ cursor: "pointer" }}>
+                                    <span className="pill-subtask-icon">≡</span>
+                                    <span className="pill-subtask-count">{task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}</span>
+                                  </div>
+                                )}
+                                <button
+                                  type="button"
+                                  className="incoming-check-btn"
+                                  title="Mark task completed"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCompleteTask(task);
+                                  }}
+                                >
+                                  ✓
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+
+                      <button
+                        type="button"
+                        className="incoming-plus-card"
+                        title="Add task"
+                        onClick={() => setShowAddModal(true)}
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    <footer className="status-card-footer" style={{ marginTop: "0px", paddingTop: "2px" }}>
+                      <button
+                        type="button"
+                        className="status-card-viewall"
+                        onClick={() => {
+                          setViewAllStatus("Overdue");
+                          setFilterStatus("Overdue");
+                        }}
+                      >
+                        View All →
+                      </button>
+                    </footer>
+                  </div>
+                </DraggableCard>
+              );
+              case 'completed': return (
+                <DraggableCard id="completed" key="completed">
+                  <div className="status-card completed" style={{ height: "235px", display: "flex", flexDirection: "column" }}>
+                    <header className="status-card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                      <div className="status-card-title-group" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span className="status-card-icon">🟢</span>
+                        <h3 className="status-card-title" style={{ fontSize: "1.15rem", fontWeight: 800, color: "#1e293b", margin: 0 }}>
+                          Completed
+                        </h3>
+                      </div>
+                      <span className="status-card-count">
+                        {totalCompletedCount} Tasks
+                      </span>
+                    </header>
+
+                    {/* Embedded Search & Category/Priority Filter Pills */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px", overflow: "visible", zIndex: 50 }}>
+                      <div className="incoming-card-search" style={{
+                        flex: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        background: "#edf2f8",
+                        borderRadius: "999px",
+                        padding: "2px 14px",
+                        boxShadow: "inset 3px 3px 6px #b8c6d9, inset -3px -3px 6px #ffffff",
+                        border: "1px solid rgba(255,255,255,0.7)"
+                      }}>
+                        <input
+                          type="text"
+                          placeholder="Search completed..."
+                          value={completedSearchQuery}
+                          onChange={(e) => setCompletedSearchQuery(e.target.value)}
+                          style={{
+                            width: "100%",
+                            border: "none",
+                            background: "transparent",
+                            outline: "none",
+                            fontSize: "0.82rem",
+                            fontWeight: 500,
+                            color: "#2d3748",
+                            padding: "6px 4px"
+                          }}
+                        />
+                        <span style={{ color: "#718096", fontSize: "0.85rem" }}>🔍</span>
+                      </div>
+
+                      <NeumorphicFilterPill
+                        label="Category"
+                        selectedValues={selectedCompletedCategories}
+                        onSelectionChange={(vals) => setSelectedCompletedCategories(vals)}
+                        options={allCategories.filter(c => c !== "All")}
+                      />
+                      <NeumorphicFilterPill
+                        label="Priority"
+                        selectedValues={selectedCompletedPriorities}
+                        onSelectionChange={(vals) => setSelectedCompletedPriorities(vals)}
+                        options={["High", "Medium", "Low"]}
+                        alignRight={true}
+                      />
+                    </div>
+
+                    {/* Horizontal Tasks Row matching image layout */}
+                    <div className="incoming-horizontal-grid" style={{ flex: 1 }}>
+                      {filteredCompletedList.length === 0 ? (
+                        <div className="status-card-empty" style={{ width: "100%" }}>{getEmptyStateMessage("Completed", filterCategory, filterPriority)}</div>
+                      ) : (
+                        filteredCompletedList.slice(0, 6).map((task, idx) => {
+                          const iconGradients = [
+                            "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                            "linear-gradient(135deg, #059669 0%, #047857 100%)",
+                            "linear-gradient(135deg, #34d399 0%, #10b981 100%)",
+                            "linear-gradient(135deg, #10b981 0%, #3b82f6 100%)"
+                          ];
+                          const icons = ["🟢", "✨", "🎉", "✓"];
+
+                          return (
+                            <div
+                              key={getTaskId(task)}
+                              className="incoming-task-pill-card"
+                              onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
+                              title="Click to view details"
+                            >
+                              <div className="incoming-pill-icon-badge" style={{ background: iconGradients[idx % iconGradients.length] }}>
+                                <span>{icons[idx % icons.length]}</span>
+                              </div>
+
+                              <div className="incoming-pill-title">
+                                {task.title}
+                              </div>
+
+                              {task.subtasks?.length > 0 && (
+                                <div className="pill-subtask-badge" title={`${task.subtasks.filter(s => s.completed).length} of ${task.subtasks.length} subtasks done`} onClick={(e) => { e.stopPropagation(); setSubtaskPopupTask(task); }} style={{ cursor: "pointer" }}>
+                                  <span className="pill-subtask-icon">≡</span>
+                                  <span className="pill-subtask-count">{task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}</span>
+                                </div>
+                              )}
+
+
+                            </div>
+                          );
+                        })
+                      )}
+
+                      <button
+                        type="button"
+                        className="incoming-plus-card"
+                        title="Add task"
+                        onClick={() => setShowAddModal(true)}
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    <footer className="status-card-footer" style={{ marginTop: "0px", paddingTop: "2px" }}>
+                      <button
+                        type="button"
+                        className="status-card-viewall"
+                        onClick={() => {
+                          setViewAllStatus("Completed");
+                          setFilterStatus("Completed");
+                        }}
+                      >
+                        View All →
+                      </button>
+                    </footer>
+                  </div>
+                </DraggableCard>
+              );
+              case 'incoming': return (
+                <DraggableCard id="incoming" key="incoming">
+                  <div className="status-card incoming" style={{ height: "235px", display: "flex", flexDirection: "column" }}>
+                    <header className="status-card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                      <div className="status-card-title-group" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span className="status-card-icon">🔵</span>
+                        <h3 className="status-card-title" style={{ fontSize: "1.15rem", fontWeight: 800, color: "#1e293b", margin: 0 }}>
+                          Incoming
+                        </h3>
+                      </div>
+                      <span className="status-card-count">
+                        {totalIncomingCount} Tasks
+                      </span>
+                    </header>
+
+                    {/* Embedded Search & Combo Filter Bar inside Incoming Div */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px", overflow: "visible", zIndex: 50 }}>
+                      {/* Search Bar inside Incoming Card */}
+                      <div className="incoming-card-search" style={{
+                        flex: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        background: "#edf2f8",
+                        borderRadius: "999px",
+                        padding: "2px 14px",
+                        boxShadow: "inset 3px 3px 6px #b8c6d9, inset -3px -3px 6px #ffffff",
+                        border: "1px solid rgba(255,255,255,0.7)"
+                      }}>
+                        <input
+                          type="text"
+                          placeholder="Search incoming..."
+                          value={incomingSearchQuery}
+                          onChange={(e) => setIncomingSearchQuery(e.target.value)}
+                          style={{
+                            width: "100%",
+                            border: "none",
+                            background: "transparent",
+                            outline: "none",
+                            fontSize: "0.82rem",
+                            fontWeight: 500,
+                            color: "#2d3748",
+                            padding: "6px 4px"
+                          }}
+                        />
+                        <span style={{ color: "#718096", fontSize: "0.85rem" }}>🔍</span>
+                      </div>
+
+                      {/* Side-by-side Category & Priority Filter Pills (Matching Screenshot 100%) */}
+                      <NeumorphicFilterPill
+                        label="Category"
+                        selectedValues={selectedIncomingCategories}
+                        onSelectionChange={(vals) => setSelectedIncomingCategories(vals)}
+                        options={allCategories.filter(c => c !== "All")}
+                      />
+                      <NeumorphicFilterPill
+                        label="Priority"
+                        selectedValues={selectedIncomingPriorities}
+                        onSelectionChange={(vals) => setSelectedIncomingPriorities(vals)}
+                        options={["High", "Medium", "Low"]}
+                        alignRight={true}
+                      />
+                    </div>
+
+                    {/* Horizontal Tasks Row matching image layout */}
+                    <div className="incoming-horizontal-grid" style={{ flex: 1 }}>
+                      {filteredIncomingList.length === 0 ? (
+                        <div className="status-card-empty" style={{ width: "100%" }}>{getEmptyStateMessage("Incoming", filterCategory, filterPriority)}</div>
+                      ) : (
+                        filteredIncomingList.slice(0, 6).map((task, idx) => {
+                          const iconGradients = [
+                            "linear-gradient(135deg, #6000ff 0%, #3b82f6 100%)",
+                            "linear-gradient(135deg, #3b82f6 0%, #00c6ff 100%)",
+                            "linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)",
+                            "linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)"
+                          ];
+                          const icons = ["👤", "📊", "🎯", "⚡"];
+
+                          return (
+                            <div
+                              key={getTaskId(task)}
+                              className="incoming-task-pill-card"
+                              onClick={() => navigate(`/tasks/${getTaskId(task)}`)}
+                              title="Click to view details"
+                            >
+                              {/* Top Icon Badge */}
+                              <div className="incoming-pill-icon-badge" style={{ background: iconGradients[idx % iconGradients.length] }}>
+                                <span>{icons[idx % icons.length]}</span>
+                              </div>
+
+                              {/* Task Title */}
+                              <div className="incoming-pill-title">
+                                {task.title}
+                              </div>
+
+                              {/* Bottom: subtask badge + checkmark side by side */}
+                              <div style={{ display: "flex", alignItems: "center", gap: "5px", justifyContent: "center" }}>
+                                {task.subtasks?.length > 0 && (
+                                  <div className="pill-subtask-badge" title={`${task.subtasks.filter(s => s.completed).length} of ${task.subtasks.length} subtasks done`} onClick={(e) => { e.stopPropagation(); setSubtaskPopupTask(task); }} style={{ cursor: "pointer" }}>
+                                    <span className="pill-subtask-icon">≡</span>
+                                    <span className="pill-subtask-count">{task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}</span>
+                                  </div>
+                                )}
+                                {/* Bottom Green Checkmark Button */}
+                                <button
+                                  type="button"
+                                  className="incoming-check-btn"
+                                  title="Mark task completed"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCompleteTask(task);
+                                  }}
+                                >
+                                  ✓
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+
+                      {/* Plus Card Button */}
+                      <button
+                        type="button"
+                        className="incoming-plus-card"
+                        title="Add task"
+                        onClick={() => setShowAddModal(true)}
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    <footer className="status-card-footer" style={{ marginTop: "0px", paddingTop: "2px" }}>
+                      <button
+                        type="button"
+                        className="status-card-viewall"
+                        onClick={() => {
+                          setViewAllStatus("Incoming");
+                          setFilterStatus("Incoming");
+                        }}
+                      >
+                        View All →
+                      </button>
+                    </footer>
+                  </div>
+                </DraggableCard>
+              );
+              default: return null;
+            }
+          };
+
+          return (
+            <section className="status-grid">
+              {layout.map(renderCard)}
+            </section>
+          );
+        }}
+      </DraggableGrid>
+
+      {subtaskPopupTask && (
+        <div
+          className="subtask-popup-overlay"
+          onMouseDown={(event) => {
+            if (
+              event.target === event.currentTarget
+            ) {
+              setSubtaskPopupTask(null);
+            }
+          }}
+        >
+          <div
+            className="subtask-popup"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="subtask-popup-title"
+          >
+            <header className="subtask-popup-header">
+              <div>
+                <p className="subtask-popup-label">
+                  Subtasks
+                </p>
+
+                <h3 id="subtask-popup-title">
+                  {subtaskPopupTask.title}
+                </h3>
+              </div>
+
+              <button
+                type="button"
+                className="subtask-popup-close"
+                onClick={() =>
+                  setSubtaskPopupTask(null)
+                }
+                aria-label="Close subtask popup"
+              >
+                ✕
+              </button>
+            </header>
+
+            <div className="subtask-popup-progress">
+              <span>
+                {
+                  getSubtaskProgress(
+                    subtaskPopupTask
+                  ).completed
+                }
+                /
+                {
+                  getSubtaskProgress(
+                    subtaskPopupTask
+                  ).total
+                }{" "}
+                completed
+              </span>
+
+              {!subtaskPopupTask.completed &&
+                !areAllSubtasksCompleted(
+                  subtaskPopupTask
+                ) && (
+                  <button
+                    type="button"
+                    className="complete-all-subtasks-btn"
+                    onClick={() =>
+                      handleCompleteAllSubtasks(
+                        subtaskPopupTask
+                      )
+                    }
+                  >
+                    Complete All
+                  </button>
+                )}
+            </div>
+
+            <div className="subtask-popup-list">
+              {subtaskPopupTask.subtasks?.length ? (
+                subtaskPopupTask.subtasks.map(
+                  (subtask, index) => (
+                    <label
+                      key={
+                        subtask.id ||
+                        subtask._id ||
+                        `${subtask.title}-${index}`
+                      }
+                      className={`subtask-popup-item ${subtask.completed
+                        ? "is-completed"
+                        : ""
+                        }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={
+                          Boolean(
+                            subtask.completed
+                          )
+                        }
+                        disabled={
+                          Boolean(
+                            subtaskPopupTask.completed
+                          )
+                        }
+                        onChange={() =>
+                          handleSubtaskToggle(
+                            subtaskPopupTask,
+                            index
+                          )
+                        }
+                      />
+
+                      <span className="subtask-popup-checkmark">
+                        {subtask.completed
+                          ? "✓"
+                          : ""}
+                      </span>
+
+                      <span className="subtask-popup-title">
+                        {subtask.title ||
+                          subtask.name ||
+                          `Subtask ${index + 1}`}
+                      </span>
+                    </label>
+                  )
+                )
+              ) : (
+                <div className="subtask-popup-empty">
+                  No subtasks available.
+                </div>
+              )}
+            </div>
+
+            {!subtaskPopupTask.completed && (
+              <button
+                type="button"
+                className="complete-main-task-btn"
+                disabled={
+                  !areAllSubtasksCompleted(
+                    subtaskPopupTask
+                  )
+                }
+                onClick={() => {
+                  handleCompleteTask(
+                    subtaskPopupTask
+                  );
+
+                  if (
+                    areAllSubtasksCompleted(
+                      subtaskPopupTask
+                    )
+                  ) {
+                    setSubtaskPopupTask(null);
+                  }
+                }}
+              >
+                {areAllSubtasksCompleted(
+                  subtaskPopupTask
+                )
+                  ? "Complete Main Task"
+                  : "Complete All Subtasks First"}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── View All Large Modal Overlay ── */}
+      {viewAllStatus && (
+        <div className="modal-overlay" onClick={() => { setViewAllStatus(null); setFilterStatus("All"); }}>
+          <div
+            className="viewall-modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "min(950px, 92vw)",
+              maxHeight: "85vh",
+              background: "var(--bg-card)",
+              borderRadius: "24px",
+              boxShadow: "0 24px 64px rgba(0,0,0,0.15)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              animation: "fadeIn 0.2s ease-out",
+              border: "1px solid rgba(226, 232, 240, 0.8)",
+              position: "relative"
+            }}
+          >
+            {/* Modal Header */}
+            <header
+              style={{
+                padding: "20px 24px",
+                borderBottom: "1px solid rgba(226, 232, 240, 0.8)",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                background: "var(--bg-card)",
+                position: "sticky",
+                top: 0,
+                zIndex: 10
+              }}
+            >
+              <div>
+                <h2 style={{ margin: 0, fontSize: "1.4rem", fontWeight: "800", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span>{getStatusIcon(viewAllStatus)}</span> {viewAllStatus} Tasks
+                </h2>
+                <p style={{ margin: "4px 0 0", fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: "600" }}>
+                  {modalFilteredTasks.length} tasks found
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setViewAllStatus(null); setFilterStatus("All"); }}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  fontSize: "1.2rem",
+                  cursor: "pointer",
+                  color: "#64748b",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "50%",
+                  padding: 0
+                }}
+                onMouseOver={(e) => e.target.style.background = "#f1f5f9"}
+                onMouseOut={(e) => e.target.style.background = "transparent"}
+                title="Close"
+              >
+                ✕
+              </button>
+            </header>
+
+            {/* Compact Controls inside modal */}
+            <div
+              style={{
+                padding: "12px 24px",
+                background: "var(--bg-app)",
+                borderBottom: "1px solid rgba(226, 232, 240, 0.8)",
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "12px",
+                alignItems: "center"
+              }}
+            >
+              {/* Search */}
+              <div className="tasks-search-wrapper" style={{ flex: "1 1 200px", minWidth: "180px" }}>
+                <span className="tasks-search-icon">🔍</span>
+                <input
+                  type="text"
+                  placeholder="Search tasks..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="tasks-search-input"
+                  style={{ width: "100%", padding: "8px 12px 8px 36px", fontSize: "0.85rem", boxSizing: "border-box" }}
+                />
+              </div>
+
+              {/* Category multi-select pill */}
+              <NeumorphicFilterPill
+                label="Category"
+                selectedValues={selectedTopCategories}
+                onSelectionChange={(vals) => setSelectedTopCategories(vals)}
+                options={allCategories.filter(c => c !== "All")}
+              />
+
+              {/* Priority multi-select pill */}
+              <NeumorphicFilterPill
+                label="Priority"
+                selectedValues={selectedTopPriorities}
+                onSelectionChange={(vals) => setSelectedTopPriorities(vals)}
+                options={["High", "Medium", "Low"]}
+                alignRight={true}
+              />
+
+              {/* Clear all filters */}
+              {(selectedTopCategories.length > 0 || selectedTopPriorities.length > 0 || searchQuery) && (
+                <button
+                  type="button"
+                  onClick={() => { setSelectedTopCategories([]); setSelectedTopPriorities([]); setSearchQuery(""); }}
+                  style={{
+                    background: "transparent",
+                    border: "1.5px solid #ef4444",
+                    color: "#ef4444",
+                    borderRadius: "999px",
+                    padding: "6px 14px",
+                    fontSize: "0.78rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    transition: "all 0.2s ease"
+                  }}
+                  onMouseOver={(e) => { e.currentTarget.style.background = "#fef2f2"; }}
+                  onMouseOut={(e) => { e.currentTarget.style.background = "transparent"; }}
+                >
+                  ✕ Clear All
+                </button>
+              )}
+            </div>
+
+            {/* Scrollable Tasks list */}
+            <div
+              className="view-all-task-grid"
+              style={{
+                padding: "24px",
+                overflowY: "auto",
+                flex: 1,
+                alignContent: "start",
+                background: "var(--bg-app)"
+              }}
+            >
+              {modalFilteredTasks.length === 0 ? (
+                <div style={{ padding: "40px 20px", textAlign: "center", color: "var(--text-muted)", fontStyle: "italic", margin: "auto" }}>
+                  {viewAllStatus === "Pending" && "No pending tasks 🎉"}
+                  {viewAllStatus === "Overdue" && "No overdue tasks"}
+                  {viewAllStatus === "Completed" && "No completed tasks yet"}
+                  {viewAllStatus === "Incoming" && "No incoming tasks"}
+                </div>
+              ) : (
+                modalFilteredTasks.map((task) => {
+                  const statusColors = {
+                    Pending: "#eab308",
+                    Overdue: "#ef4444",
+                    Completed: "#22c55e",
+                    Incoming: "#3b82f6"
+                  };
+                  const statusBorderColor = statusColors[viewAllStatus] || "#cbd5e1";
+
+                  return (
+                    <div
+                      key={task.id}
+                      style={{
+                        background: "var(--bg-card)",
+                        borderRadius: "12px",
+                        border: "1px solid rgba(226, 232, 240, 0.8)",
+                        borderLeft: `4px solid ${statusBorderColor}`,
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
+                        padding: "16px",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "8px",
+                        position: "relative"
+                      }}
+                    >
+                      {/* Top Row: Title */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", overflow: "hidden" }}>
+                          {viewAllStatus !== "Completed" && (
+                            <input
+                              type="checkbox"
+                              style={{
+                                width: "16px",
+                                height: "16px",
+                                cursor: "pointer",
+                                accentColor: "#10b981",
+                                flexShrink: 0,
+                              }}
+                              onChange={async (e) => {
+                                e.stopPropagation();
+
+                                const hasIncompleteSubtasks =
+                                  task.subtasks &&
+                                  task.subtasks.length > 0 &&
+                                  task.subtasks.some((s) => !s.completed);
+
+                                if (hasIncompleteSubtasks) {
+                                  const completedCount = task.subtasks.filter((s) => s.completed).length;
+                                  toast.error(
+                                    `Complete all subtasks before marking this task as completed. (${completedCount} of ${task.subtasks.length} completed)`
+                                  );
+                                  return;
+                                }
+
+                                try {
+                                  await updateTask(task.id, {
+                                    completed: true,
+                                    status: "Completed",
+                                    completedAt: new Date().toISOString(),
+                                    completedDate: format(new Date(), "yyyy-MM-dd"),
+                                  });
+
+                                  toast.success("✅ Task marked as completed.");
+                                } catch (err) {
+                                  console.error(err);
+                                  toast.error("Failed to mark task as completed.");
+                                }
+                              }}
+                            />
+                          )}
+                          <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: "700", color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {task.title}
+                          </h3>
+                        </div>
+                        <span className={`task-preview-badge priority ${task.priority.toLowerCase()}`} style={{ fontSize: "0.6rem", padding: "2px 6px", flexShrink: 0 }}>
+                          {task.priority}
+                        </span>
+                      </div>
+
+                      {/* Extra info removed to simplify card */}
+
+                      {/* Action buttons */}
+                      <div style={{ display: "flex", gap: "8px", justifyContent: "space-between", marginTop: "auto", paddingTop: "8px" }}>
+                        <button
+                          type="button"
+                          className="task-action-btn task-view-btn"
+                          onClick={() => setSelectedTask(task)}
+                          style={{ padding: "4px 10px", fontSize: "0.75rem", borderRadius: "6px", background: "#e0f2fe", color: "#0284c7", border: "none", cursor: "pointer" }}
+                        >
+                          View Details
+                        </button>
+                        {!task.completed && (
+                          <button
+                            type="button"
+                            className="task-action-btn task-edit-btn"
+                            onClick={() => handleEditClick(task)}
+                            style={{ padding: "4px 10px", fontSize: "0.75rem", borderRadius: "6px" }}
+                          >
+                            Edit
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="task-action-btn task-delete-btn"
+                          onClick={async () => {
+                            const confirmed = window.confirm(
+                              "Are you sure you want to delete this task?"
+                            );
+
+                            if (!confirmed) return;
+
+                            try {
+                              await deleteTask(task.id);
+                              toast.success("Task deleted successfully.");
+                            } catch (err) {
+                              console.error(err);
+                              toast.error("Failed to delete task.");
+                            }
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Task Details Modal */}
+      {selectedTask && (
+        <TaskDetailsModal
+          task={selectedTask}
+          onClose={() => {
+            setSelectedTask(null);
+            navigate("/tasks");
+          }}
+          onEdit={(task) => {
+            setSelectedTask(null);
+            handleEditClick(task);
+          }}
+          onDelete={(taskId) => {
+            setSelectedTask(null);
+            deleteTask(taskId);
+            navigate("/tasks");
+          }}
+        />
+      )}
+
+      {/* Add / Edit Task Modal Overlay */}
+      {showAddModal && (
+        <div className="modal-overlay">
+          <style>{`
+            @keyframes voicePulse {
+              0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+              70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+              100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+            }
+            .listening-pulse {
+              animation: voicePulse 1.5s infinite;
+            }
+          `}</style>
+          <div className="modal-content" style={{ maxHeight: '85vh', overflowY: 'auto' }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0 0 4px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <h2 style={{ margin: 0 }}>{editTaskId ? "Edit Task" : "Create New Task"}</h2>
+                {draftStatus && (
+                  <span style={{ fontSize: "0.72rem", color: draftStatus === "Saving draft..." ? "#94a3b8" : draftStatus === "Draft saved" ? "#10b981" : "#3b82f6", fontStyle: "italic", fontWeight: 500 }}>
+                    {draftStatus === "Saving draft..." ? "⏳ Saving draft..." : draftStatus === "Draft saved" ? "✓ Draft saved" : "✦ Draft restored"}
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => closeModalCleanly(true)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  fontSize: "1.2rem",
+                  cursor: "pointer",
+                  color: "#64748b",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "50%",
+                  padding: 0
+                }}
+                onMouseOver={(e) => e.target.style.background = "#f1f5f9"}
+                onMouseOut={(e) => e.target.style.background = "transparent"}
+                title="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Draft Recovery Banner */}
+            {hasDraft && savedDraft && (
+              <div style={{
+                background: "#fffbeb",
+                border: "1px solid #fbbf24",
+                borderRadius: "10px",
+                padding: "12px 16px",
+                marginBottom: "14px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "10px"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={{ fontSize: "1rem" }}>📝</span>
+                  <span style={{ fontWeight: "700", fontSize: "0.9rem", color: "#92400e" }}>An unfinished task draft was found.</span>
+                </div>
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    onClick={handleContinueDraft}
+                    style={{ background: "#f59e0b", color: "white", border: "none", borderRadius: "8px", padding: "6px 14px", fontSize: "0.82rem", fontWeight: "700", cursor: "pointer" }}
+                  >
+                    Continue Draft
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleStartNew}
+                    style={{ background: "white", color: "#64748b", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "6px 14px", fontSize: "0.82rem", fontWeight: "600", cursor: "pointer" }}
+                  >
+                    Start New
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDismissDraft}
+                    style={{ background: "transparent", color: "#94a3b8", border: "none", borderRadius: "8px", padding: "6px 10px", fontSize: "0.82rem", cursor: "pointer" }}
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STATE 1: VOICE */}
+            {modalView === "voice" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                <div style={{
+                  background: "#f8fafc",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "16px",
+                  padding: "16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "12px"
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: "0.85rem", fontWeight: "700", color: "#334155" }}>
+                      🎙️ Voice typing workspace
+                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <label htmlFor="voice-lang-select" style={{ fontSize: "0.75rem", color: "#64748b", margin: 0 }}>Language:</label>
+                      <select
+                        id="voice-lang-select"
+                        value={voiceLanguage}
+                        onChange={(e) => setVoiceLanguage(e.target.value)}
+                        style={{ fontSize: "0.75rem", padding: "2px 6px", borderRadius: "6px", border: "1px solid #cbd5e1" }}
+                      >
+                        <option value="english">English</option>
+                        <option value="hindi">Hindi</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: "0.8rem", fontWeight: "500", color: voiceState === "recording" ? "#3b82f6" : "#64748b" }}>
+                    {voiceState === "idle" && "Tap the microphone and describe your complete task."}
+                    {voiceState === "recording" && (
+                      <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="listening-pulse" style={{ display: "inline-block", width: "8px", height: "8px", borderRadius: "50%", background: "#ef4444" }}></span>
+                        Listening... Speak your complete task.
+                      </span>
+                    )}
+                    {voiceState === "paused" && "Review your transcript before creating the task."}
+                    {voiceState === "error" && (voiceErrorText || "We could not identify all task details. You can complete them manually.")}
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <label style={{ fontSize: "0.75rem", fontWeight: "600", color: "#64748b" }}>Speech Transcript (Editable):</label>
+                    <textarea
+                      ref={transcriptTextareaRef}
+                      value={originalTranscript}
+                      onChange={(e) => setOriginalTranscript(e.target.value)}
+                      placeholder='Speak details like "Call Rahul tomorrow at 5 PM regarding website update..."'
+                      style={{
+                        width: "100%",
+                        minHeight: "70px",
+                        padding: "10px",
+                        borderRadius: "8px",
+                        border: "1px solid #cbd5e1",
+                        fontSize: "0.85rem",
+                        resize: "vertical"
+                      }}
+                    />
+                    {liveTranscript && (
+                      <div style={{ fontSize: "0.8rem", color: "#94a3b8", fontStyle: "italic" }}>
+                        Typing: {liveTranscript}...
+                      </div>
+                    )}
+                  </div>
+
+                  {voiceLanguage === "hindi" && translatedTranscript && (
+                    <div style={{ background: "#f0fdf4", padding: "10px", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
+                      <div style={{ fontSize: "0.75rem", fontWeight: "600", color: "#166534" }}>Translated (English):</div>
+                      <div style={{ fontSize: "0.85rem", color: "#1e3a8a", marginTop: "2px" }}>
+                        {translatedTranscript}
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    {voiceState === "recording" ? (
+                      <button
+                        type="button"
+                        onClick={stopVoiceRecording}
+                        style={{ background: "#ef4444", color: "white", border: "none", borderRadius: "8px", padding: "6px 12px", fontSize: "0.8rem", fontWeight: "600", cursor: "pointer" }}
+                      >
+                        🛑 Stop
+                      </button>
+                    ) : (
+                      <button
+                        ref={micButtonRef}
+                        type="button"
+                        onClick={startVoiceRecording}
+                        style={{
+                          background: "#4f46e5",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "8px",
+                          padding: "6px 12px",
+                          fontSize: "0.8rem",
+                          fontWeight: "600",
+                          cursor: "pointer"
+                        }}
+                      >
+                        {originalTranscript ? "Record Again" : "Start Recording"}
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={handleProcessTask}
+                      disabled={!originalTranscript || !originalTranscript.trim()}
+                      style={{
+                        background: "#8b5cf6",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "8px",
+                        padding: "6px 12px",
+                        fontSize: "0.8rem",
+                        fontWeight: "600",
+                        cursor: (!originalTranscript || !originalTranscript.trim()) ? "not-allowed" : "pointer",
+                        opacity: (!originalTranscript || !originalTranscript.trim()) ? 0.5 : 1
+                      }}
+                    >
+                      Proceed
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleClearAllAction}
+                      style={{ background: "#f1f5f9", color: "#475569", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "6px 12px", fontSize: "0.8rem", fontWeight: "600", cursor: "pointer" }}
+                    >
+                      Clear All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => closeModalCleanly(true)}
+                      style={{ background: "#cbd5e1", color: "#475569", border: "none", borderRadius: "8px", padding: "6px 12px", fontSize: "0.8rem", fontWeight: "600", cursor: "pointer", marginLeft: "auto" }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STATE 2: PROCESSING */}
+            {modalView === "processing" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px", padding: "20px", alignItems: "center", justifyContent: "center", minHeight: "150px" }}>
+                <span className="listening-pulse" style={{ fontSize: "2rem" }}>🧠</span>
+                <div style={{ fontWeight: "700", color: "#4f46e5" }}>Understanding your task details...</div>
+                <div style={{ fontSize: "0.85rem", color: "#64748b", fontStyle: "italic", textAlign: "center" }}>
+                  "{originalTranscript}"
+                </div>
+              </div>
+            )}
+
+            {/* STATE 3: REVIEW */}
+            {modalView === "review" && (
+              <div style={{
+                background: "#f8fafc",
+                border: "1px solid #cbd5e1",
+                borderRadius: "16px",
+                padding: "16px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "14px"
+              }}>
+                <div style={{ fontWeight: "700", color: "#334155", fontSize: "0.95rem" }}>
+                  📋 Task Review
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px", fontSize: "0.9rem" }}>
+                  {[
+                    { label: "Title", value: title },
+                    { label: "Description", value: description },
+                    { label: "Category", value: category },
+                    { label: "Priority", value: priority },
+                    { label: "Date", value: dueDate },
+                    { label: "Time", value: dueTime },
+                    { label: "Reminder", value: voiceExtractedData.reminder },
+                    { label: "Person", value: voiceExtractedData.person },
+                    { label: "Location", value: voiceExtractedData.location },
+                    { label: "Tags", value: voiceExtractedData.tags && voiceExtractedData.tags.length > 0 ? voiceExtractedData.tags.join(", ") : null },
+                    { label: "Recurrence", value: voiceExtractedData.recurrence },
+                    { label: "Notes", value: voiceExtractedData.notes }
+                  ]
+                    .filter(f => f.value && (typeof f.value === "string" ? f.value.trim() !== "" : true))
+                    .map((f, idx) => (
+                      <div key={idx} style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: "10px", borderBottom: "1px solid #f1f5f9", paddingBottom: "6px" }}>
+                        <span style={{ fontWeight: "600", color: "#64748b" }}>{f.label}:</span>
+                        <span style={{ color: "#0f172a" }}>{f.value}</span>
+                      </div>
+                    ))
+                  }
+                </div>
+                <div style={{ display: "flex", gap: "8px", marginTop: "12px", flexWrap: "wrap" }}>
+                  <button
+                    ref={reviewAddButtonRef}
+                    type="button"
+                    onClick={() => handleSubmit()}
+                    disabled={isSaving}
+                    style={{ background: "#10b981", color: "white", border: "none", borderRadius: "8px", padding: "8px 16px", fontSize: "0.85rem", fontWeight: "700", cursor: "pointer", flex: 1 }}
+                  >
+                    {isSaving ? "Saving..." : "Add Task"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalView("edit");
+                    }}
+                    style={{ background: "#3b82f6", color: "white", border: "none", borderRadius: "8px", padding: "8px 16px", fontSize: "0.85rem", fontWeight: "600", cursor: "pointer", flex: 1 }}
+                  >
+                    Edit Details
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalView("voice");
+                      startVoiceRecording();
+                    }}
+                    style={{ background: "#4f46e5", color: "white", border: "none", borderRadius: "8px", padding: "8px 16px", fontSize: "0.85rem", fontWeight: "600", cursor: "pointer" }}
+                  >
+                    Record Again
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleClearAllAction}
+                    style={{ background: "#f1f5f9", color: "#475569", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "8px 16px", fontSize: "0.85rem", fontWeight: "600", cursor: "pointer" }}
+                  >
+                    Clear All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => closeModalCleanly(true)}
+                    style={{ background: "#ef4444", color: "white", border: "none", borderRadius: "8px", padding: "8px 16px", fontSize: "0.85rem", fontWeight: "600", cursor: "pointer" }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STATE 4: EDIT (NORMAL FORM) */}
+            {modalView === "edit" && (
+              <>
+                {originalTranscript && (
+                  <details style={{ background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: "10px", padding: "10px", marginBottom: "14px" }}>
+                    <summary style={{ cursor: "pointer", fontSize: "0.85rem", color: "#4f46e5", fontWeight: "600" }}>
+                      🎤 View Original Voice Transcript
+                    </summary>
+                    <div style={{ fontSize: "0.85rem", color: "#334155", marginTop: "8px", lineHeight: "1.4" }}>
+                      <strong>Transcript:</strong> "{originalTranscript}"
+                    </div>
+                    {translatedTranscript && translatedTranscript !== originalTranscript && (
+                      <div style={{ fontSize: "0.85rem", color: "#166534", marginTop: "6px", lineHeight: "1.4" }}>
+                        <strong>Translated:</strong> "{translatedTranscript}"
+                      </div>
+                    )}
+                  </details>
+                )}
+                <form
+                  onSubmit={handleSubmit}
+                  style={{ display: "flex", flexDirection: "column", gap: "16px" }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      e.preventDefault();
+                      resetForm(false, true); // Close without saving
+                      return;
+                    }
+                    if (e.key === 'Enter') {
+                      if (e.shiftKey) {
+                        return; // Let Shift+Enter pass (e.g. for textareas)
+                      }
+                      e.preventDefault();
+                      if (!editTaskId) {
+                        const finalCat = category || "Work";
+                        const finalPrio = priority || "Medium";
+                        const finalDate = dueDate || format(new Date(), "yyyy-MM-dd");
+                        const finalTime = dueTime || calculateDefaultDueTime(finalCat, new Date());
+                        setCategory(finalCat);
+                        setPriority(finalPrio);
+                        setDueDate(finalDate);
+                        setDueTime(finalTime);
+                      }
+                      setTimeout(() => handleSubmit(new Event('submit')), 0);
+                    }
+                  }}
+                >
+                  <div className="form-group">
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+                      <label htmlFor="modal-task-title" style={{ display: "flex", alignItems: "center" }}>
+                        Task Title
+                        {filledFields.title && <span style={{ color: "#3b82f6", fontSize: "0.7rem", fontWeight: "600", marginLeft: "6px" }}>✨ Detected from voice</span>}
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setModalView("voice");
+                          startVoiceRecording();
+                        }}
+                        className="secondary-button"
+                        style={{ padding: "4px 10px", fontSize: "0.8rem", display: "flex", gap: "4px", alignItems: "center" }}
+                      >
+                        🎤 Voice Dictation Mode
+                      </button>
+                    </div>
+                    <input
+                      ref={titleInputRef}
+                      type="text"
+                      id="modal-task-title"
+                      placeholder="What needs to be done?"
+                      value={title}
+                      onChange={(e) => {
+                        setTitle(e.target.value);
+                        setIsTitleSuggested(false);
+                        setCategoryChangeMsg("");
+                      }}
+                      className="form-input-styled"
+                      required
+                    />
+                    {categoryChangeMsg && <p style={{ color: "#3b82f6", fontSize: "0.8rem", margin: "4px 0 0", fontStyle: "italic" }}>{categoryChangeMsg}</p>}
+
+                    {/* Intelligent Task Title Suggestions */}
+                    <div style={{ marginTop: "10px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                        <p style={{ fontSize: "0.8rem", color: "#64748b", margin: 0, fontWeight: "600" }}>
+                          Suggested titles based on the selected category
+                        </p>
+                      </div>
+                      {!categoryName ? (
+                        <p style={{ fontSize: "0.8rem", color: "#64748b", margin: "4px 0 0", fontStyle: "italic" }}>
+                          Select a category to get suggestions.
+                        </p>
+                      ) : (
+                        suggestions.length > 0 && (
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                            {suggestions.map((suggestion, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                className="suggestion-chip"
+                                onClick={() => {
+                                  setTitle(suggestion);
+                                  setIsTitleSuggested(true);
+                                  setCategoryChangeMsg("");
+                                }}
+                              >
+                                {suggestion}
+                              </button>
+                            ))}
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </div>
+
+                  {!editTaskId && (
+                    <button
+                      type="button"
+                      onClick={() => setShowMoreDetails(prev => !prev)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#64748b',
+                        cursor: 'pointer',
+                        fontSize: '0.9rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        alignSelf: 'flex-start',
+                        marginTop: '-4px',
+                        marginBottom: '8px',
+                        fontWeight: '600'
+                      }}
+                    >
+                      {showMoreDetails ? "▲ Hide Details" : "▼ More Details"}
+                    </button>
+                  )}
+
+                  {(showMoreDetails || editTaskId) && (
+                    <>
+                      {/* Task Description Input field */}
+                      <div className="form-group">
+                        <label htmlFor="modal-task-desc" style={{ display: "flex", alignItems: "center" }}>
+                          Description
+                          {filledFields.description && <span style={{ color: "#3b82f6", fontSize: "0.7rem", fontWeight: "600", marginLeft: "6px" }}>✨ Detected from voice</span>}
+                        </label>
+                        <textarea
+                          ref={descInputRef}
+                          id="modal-task-desc"
+                          placeholder="Add task description here..."
+                          value={description}
+                          onChange={(e) => setDescription(e.target.value)}
+                          className="form-input-styled"
+                          style={{ minHeight: "60px", resize: "vertical" }}
+                        />
+                      </div>
+
+                      <div className="form-row">
+                        <div className="form-group" style={{ flex: 1 }}>
+                          <label htmlFor="modal-task-cat" style={{ display: "flex", alignItems: "center" }}>
+                            Category
+                            {filledFields.category && <span style={{ color: "#3b82f6", fontSize: "0.7rem", fontWeight: "600", marginLeft: "6px" }}>✨ Detected from voice</span>}
+                          </label>
+                          {!isAddingCategory ? (
+                            <select
+                              ref={categorySelectRef}
+                              id="modal-task-cat"
+                              value={category}
+                              onChange={(e) => {
+                                const newCat = e.target.value;
+                                if (title.trim() !== "") {
+                                  if (!isTitleSuggested) {
+                                    const confirmed = window.confirm("Changing the category will clear your current title. Do you want to continue?");
+                                    if (!confirmed) return;
+                                  }
+                                  setTitle("");
+                                  setIsTitleSuggested(false);
+                                  setCategoryChangeMsg("Category changed. Please select a title for the selected category.");
+                                }
+
+                                if (newCat === "Custom") {
+                                  setIsAddingCategory(true);
+                                } else {
+                                  setCategory(newCat);
+                                }
+                              }}
+                              className="form-input-styled"
+                              style={{ width: "100%" }}
+                            >
+                              {allCategories.map(cat => (
+                                <option key={`opt-${cat}`} value={cat}>{cat}</option>
+                              ))}
+                              <option value="Custom" style={{ fontWeight: 'bold' }}>+ Add New Category</option>
+                            </select>
+                          ) : (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%" }}>
+                              <div style={{ display: "flex", gap: "8px" }}>
+                                <input
+                                  type="text"
+                                  placeholder="New category..."
+                                  value={customCategory}
+                                  onChange={(e) => setCustomCategory(e.target.value)}
+                                  className="form-input-styled"
+                                  style={{ flex: 1 }}
+                                  autoFocus
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => { setIsAddingCategory(false); setCustomCategory(""); setCategory("Work"); }}
+                                  style={{ background: "#e2e8f0", color: "#475569", border: "none", borderRadius: "8px", width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontWeight: "bold", flexShrink: 0 }}
+                                  title="Cancel"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                              <div style={{
+                                display: "flex",
+                                alignItems: "flex-start",
+                                gap: "8px",
+                                background: "#eff6ff",
+                                border: "1px solid #bfdbfe",
+                                borderRadius: "8px",
+                                padding: "10px 12px",
+                                color: "#1e3a8a",
+                                fontSize: "0.75rem",
+                                lineHeight: "1.4",
+                                marginTop: "4px"
+                              }}>
+                                <span style={{ fontSize: "0.95rem", lineHeight: "1", flexShrink: 0 }}>ℹ️</span>
+                                <span>Once you create this category, it will be saved and automatically appear in the category list the next time you add a task.</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="form-group" style={{ flex: 1 }}>
+                          <label htmlFor="modal-task-priority" style={{ display: "flex", alignItems: "center" }}>
+                            Priority
+                            {filledFields.priority && <span style={{ color: "#3b82f6", fontSize: "0.7rem", fontWeight: "600", marginLeft: "6px" }}>✨ Detected from voice</span>}
+                          </label>
+                          <select
+                            ref={prioritySelectRef}
+                            id="modal-task-priority"
+                            value={priority}
+                            onChange={(e) => setPriority(e.target.value)}
+                            className="form-input-styled"
+                          >
+                            <option value="High">High</option>
+                            <option value="Medium">Medium</option>
+                            <option value="Low">Low</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="form-row">
+                        <div className="form-group" style={{ flex: 1 }}>
+                          <label htmlFor="modal-task-date" style={{ display: "flex", alignItems: "center" }}>
+                            Due Date
+                            {filledFields.dueDate && <span style={{ color: "#3b82f6", fontSize: "0.7rem", fontWeight: "600", marginLeft: "6px" }}>✨ Detected from voice</span>}
+                          </label>
+                          <input
+                            ref={dateInputRef}
+                            type="date"
+                            id="modal-task-date"
+                            value={dueDate}
+                            min={todayStr}
+                            onChange={(e) => {
+                              const selectedDate = e.target.value;
+                              setDueDate(selectedDate);
+                              if (selectedDate === todayStr) {
+                                const nowTime = format(new Date(), "HH:mm");
+                                if (dueTime < nowTime) {
+                                  setTimeError("You can't select a previous time for today.");
+                                } else {
+                                  setTimeError("");
+                                }
+                              } else {
+                                setTimeError("");
+                              }
+                            }}
+                            onClick={(e) => {
+                              try {
+                                e.target.showPicker();
+                              } catch (err) {
+                                // ignore if browser doesn't support or blocks it
+                              }
+                            }}
+                            className="form-input-styled"
+                            required
+                          />
+                        </div>
+                        <div className="form-group" style={{ flex: 1 }}>
+                          <label htmlFor="modal-task-time" style={{ display: "flex", alignItems: "center" }}>
+                            Due Time
+                            {filledFields.dueTime && <span style={{ color: "#3b82f6", fontSize: "0.7rem", fontWeight: "600", marginLeft: "6px" }}>✨ Detected from voice</span>}
+                          </label>
+                          <input
+                            ref={timeInputRef}
+                            type="time"
+                            id="modal-task-time"
+                            value={dueTime}
+                            min={dueDate === todayStr ? currentTimeStr : undefined}
+                            onChange={(e) => {
+                              const selectedTime = e.target.value;
+                              setIsTimeManuallySet(true);
+                              if (dueDate === todayStr) {
+                                const nowTime = format(new Date(), "HH:mm");
+                                if (selectedTime < nowTime) {
+                                  setTimeError("You can't select a previous time for today.");
+                                  setDueTime(selectedTime);
+                                  return;
+                                }
+                              }
+                              setTimeError("");
+                              setDueTime(selectedTime);
+                            }}
+                            onClick={(e) => {
+                              try {
+                                e.target.showPicker();
+                              } catch (err) {
+                                // ignore
+                              }
+                            }}
+                            className="form-input-styled"
+                            required
+                          />
+                          {timeError && (
+                            <div style={{ color: "#ef4444", fontSize: "0.8rem", marginTop: "4px" }}>
+                              {timeError}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Subtask Section */}
+                      <div style={{ borderTop: "1px solid #eee", paddingTop: "24px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                          <label style={{ display: "flex", alignItems: "center", gap: "10px", fontWeight: "700", fontSize: "0.95rem", cursor: "pointer", color: "#1e293b" }}>
+                            <input
+                              type="checkbox"
+                              checked={isLargeTask}
+                              onChange={(e) => setIsLargeTask(e.target.checked)}
+                              style={{ width: "18px", height: "18px", accentColor: "#4f46e5", cursor: "pointer" }}
+                            />
+                            Enable Subtasks
+                          </label>
+                          {isLargeTask && (
+                            <button
+                              type="button"
+                              onClick={handleAIBreakdown}
+                              disabled={loadingAI}
+                              style={{ padding: "6px 14px", fontSize: "0.85rem", background: "#eef2ff", color: "#4f46e5", border: "1px solid #c7d2fe", borderRadius: "10px", fontWeight: "700", cursor: "pointer", transition: "all 0.2s" }}
+                            >
+                              {loadingAI ? "⏳ Processing..." : "✨ Auto-Generate with AI"}
+                            </button>
+                          )}
+                        </div>
+
+                        {isLargeTask && (
+                          <div style={{ background: "#f8fafc", padding: "20px", borderRadius: "16px", border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", gap: "16px", marginTop: "8px" }}>
+
+                            {/* Manual Subtask Input */}
+                            <div style={{ display: "flex", gap: "10px" }}>
+                              <input
+                                type="text"
+                                placeholder="Add subtask manually..."
+                                value={newSubtaskTitle}
+                                onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                                className="form-input-styled"
+                                style={{ padding: "12px 16px", flex: 1 }}
+                              />
+                              <button
+                                type="button"
+                                onClick={addSubtaskItem}
+                                style={{ border: "none", background: "#4f46e5", color: "white", padding: "0 20px", borderRadius: "12px", fontSize: "1.25rem", fontWeight: "800", cursor: "pointer", boxShadow: "0 4px 12px rgba(79, 70, 229, 0.2)" }}
+                              >
+                                +
+                              </button>
+                            </div>
+
+                            {/* Subtasks List */}
+                            {subtasksList.length > 0 && (
+                              <ul style={{ padding: "0", margin: "0", listStyle: "none", display: "flex", flexDirection: "column", gap: "10px" }}>
+                                {subtasksList.map((sub) => (
+                                  <li key={sub.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "white", padding: "12px 16px", borderRadius: "12px", border: "1px solid #cbd5e1", boxShadow: "0 2px 6px rgba(0,0,0,0.02)" }}>
+                                    <span style={{ fontWeight: 600, color: "#1e293b", fontSize: "0.95rem" }}>{sub.title}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeSubtaskItem(sub.id)}
+                                      style={{ border: "none", background: "#fee2e2", color: "#ef4444", padding: "4px 8px", borderRadius: "8px", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1 }}
+                                    >
+                                      ✕
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="btn-group" style={{ borderTop: "1px solid #e2e8f0", paddingTop: "20px", marginTop: "16px" }}>
+                        <button type="button" className="secondary-button" onClick={handleClearAllAction}>Clear All</button>
+                        <button type="button" className="secondary-button" onClick={() => closeModalCleanly(true)}>Cancel</button>
+                        <button type="submit" className="primary-btn" style={{ color: "black", fontWeight: "bold", opacity: timeError ? 0.5 : 1 }} disabled={!!timeError}>
+                          {editTaskId ? "Save Changes" : "Create Task"}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default TaskPage;

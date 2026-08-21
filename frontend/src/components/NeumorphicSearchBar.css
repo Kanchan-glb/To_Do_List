@@ -1,0 +1,60 @@
+/* ══════════════════════════════════════════════════════════════
+   NEUMORPHIC 3D RECESSED SEARCH BAR (Matching Design Screenshot 1)
+   ══════════════════════════════════════════════════════════════ */
+
+.neo-search-container {
+  position: relative;
+  width: 100%;
+  max-width: 540px;
+  background: #edf2f8;
+  border-radius: 50px;
+  box-shadow: 
+    inset 4px 4px 10px #b8c6d9,
+    inset -4px -4px 10px #ffffff;
+  display: flex;
+  align-items: center;
+  padding: 2px 20px;
+  box-sizing: border-box;
+  transition: all 0.25s ease;
+}
+
+.neo-search-container:focus-within {
+  box-shadow: 
+    inset 5px 5px 12px #a8b8cc,
+    inset -5px -5px 12px #ffffff,
+    0 0 0 3px rgba(99, 102, 241, 0.18);
+}
+
+.neo-search-input {
+  flex: 1;
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 12px 14px 12px 12px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #2d3748;
+}
+
+.neo-search-input::placeholder {
+  color: #a0aec0;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+.neo-search-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #718096;
+  margin-left: 8px;
+  cursor: pointer;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.neo-search-container:focus-within .neo-search-icon {
+  color: #4f46e5;
+  transform: scale(1.08);
+}

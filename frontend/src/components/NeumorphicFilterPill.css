@@ -1,0 +1,211 @@
+/* ══════════════════════════════════════════════════════════════
+   NEUMORPHIC FILTER PILL WITH GREEN COUNT BADGE & CHECKBOXES
+   (Matching Design Screenshot 100%)
+   ══════════════════════════════════════════════════════════════ */
+
+.neo-filter-pill-container {
+  position: relative;
+  width: auto;
+  user-select: none;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.neo-filter-pill-container.open-active {
+  z-index: 99999 !important;
+}
+
+/* Trigger Button */
+.neo-filter-pill-trigger {
+  background: #edf2f8;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  padding: 7px 14px;
+  box-shadow: 
+    -4px -4px 10px #ffffff,
+    4px 4px 12px #b8c6d9;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.neo-filter-pill-trigger.has-count {
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.neo-filter-pill-trigger:hover,
+.neo-filter-pill-trigger.open {
+  transform: translateY(-1px);
+  box-shadow: 
+    -5px -5px 12px #ffffff,
+    5px 5px 14px #a8b8cc,
+    0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+.neo-filter-pill-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #334155;
+  white-space: nowrap;
+}
+
+/* Green Circular Count Badge (Matching Screenshot!) */
+.neo-filter-count-badge {
+  background: #10b981;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4);
+}
+
+.neo-filter-pill-arrow {
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.25s ease;
+}
+
+.neo-filter-pill-arrow.rotate {
+  transform: rotate(180deg);
+}
+
+/* Expanded Dropdown Card (Smart Directional) */
+.neo-filter-dropdown-card {
+  position: absolute;
+  left: 0;
+  min-width: 175px;
+  z-index: 9999999 !important;
+  background: #edf2f8;
+  border-radius: 18px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-sizing: border-box;
+}
+
+.neo-filter-dropdown-card.open-down {
+  top: calc(100% + 6px);
+  bottom: auto;
+  animation: fadeInDown 0.2s ease-out;
+  box-shadow: 
+    -6px -6px 18px #ffffff,
+    6px 6px 22px rgba(164, 177, 194, 0.7),
+    0 12px 32px rgba(15, 23, 42, 0.16);
+}
+
+.neo-filter-dropdown-card.open-up {
+  bottom: calc(100% + 6px);
+  top: auto;
+  animation: fadeInUp 0.2s ease-out;
+  box-shadow: 
+    -6px -6px 18px #ffffff,
+    6px 6px 22px rgba(164, 177, 194, 0.7),
+    0 -12px 32px rgba(15, 23, 42, 0.16);
+}
+
+.neo-filter-dropdown-card.align-right {
+  left: auto;
+  right: 0;
+}
+
+.neo-filter-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px dashed rgba(203, 213, 225, 0.6);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: lowercase;
+}
+
+.neo-filter-clear {
+  cursor: pointer;
+  color: #ef4444;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.neo-filter-clear:hover {
+  text-decoration: underline;
+}
+
+.neo-filter-options-list {
+  max-height: 118px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 2px;
+}
+
+.neo-filter-options-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.neo-filter-options-list::-webkit-scrollbar-track {
+  background: #e2e8f0;
+  border-radius: 999px;
+}
+
+.neo-filter-options-list::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 999px;
+}
+
+.neo-filter-option-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.neo-filter-option-row:hover {
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.neo-filter-option-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.neo-filter-option-row.checked .neo-filter-option-label {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+/* Green Rounded Checkbox (Matching Screenshot 100%) */
+.neo-green-checkbox {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1.8px solid #cbd5e1;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.neo-green-checkbox.active {
+  background: #10b981;
+  border-color: #10b981;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4);
+}

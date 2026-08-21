@@ -1,0 +1,165 @@
+/* ══════════════════════════════════════════════════════════════
+   NEUMORPHIC LINEAR PROGRESS BAR (Matching Design Screenshot 1)
+   ══════════════════════════════════════════════════════════════ */
+
+.neo-linear-card {
+  width: 100%;
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 16px;
+  border: var(--border-light);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+}
+
+.neo-linear-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.neo-linear-title {
+  color: var(--text-primary);
+  font-weight: 800;
+}
+
+.neo-linear-badge {
+  color: #7c3aed;
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+/* Outer Soft Capsule Bar (Matching Image 1 Pill Container) */
+.neo-capsule-container {
+  width: 100%;
+  background: #edf2f8;
+  border-radius: 50px;
+  padding: 14px 22px;
+  box-shadow: 
+    -6px -6px 16px #ffffff,
+    6px 6px 18px #b8c6d9;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+/* Recessed Inset Groove Track */
+.neo-groove-track {
+  position: relative;
+  flex: 1;
+  height: 14px;
+  background: #e4ebf5;
+  border-radius: 99px;
+  box-shadow: 
+    inset 3px 3px 6px #a6b5c9,
+    inset -3px -3px 6px #ffffff;
+  display: flex;
+  align-items: center;
+}
+
+/* Vibrant Purple-to-Blue Gradient Fill */
+.neo-groove-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6000ff 0%, #7b2cbf 45%, #3b82f6 100%);
+  border-radius: 99px;
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 8px rgba(96, 0, 255, 0.35);
+}
+
+/* Elevated Neumorphic Knob / Handle */
+.neo-knob-wrapper {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5;
+  cursor: pointer;
+  transition: left 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.neo-knob-outer {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #edf2f8;
+  box-shadow: 
+    -3px -3px 8px #ffffff,
+    3px 3px 8px #a1b2c7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+}
+
+.neo-knob-wrapper:hover .neo-knob-outer {
+  transform: scale(1.1);
+}
+
+.neo-knob-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7000ff 0%, #3b82f6 100%);
+  box-shadow: 0 2px 5px rgba(59, 130, 246, 0.5);
+}
+
+/* Speech Bubble Tooltip Below Knob (Matching Image 1) */
+.neo-speech-bubble {
+  position: absolute;
+  top: 38px;
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: #edf2f8;
+  padding: 8px 14px;
+  border-radius: 12px;
+  box-shadow: 
+    -4px -4px 10px #ffffff,
+    4px 4px 12px #b8c6d9;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  z-index: 10;
+}
+
+.neo-speech-bubble::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid #edf2f8;
+}
+
+.neo-speech-bubble.visible,
+.neo-knob-wrapper:hover .neo-speech-bubble {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+
+.neo-bubble-text {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #4a5568;
+}
+
+/* Right Percentage Display Text */
+.neo-pct-text {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #4a5568;
+  letter-spacing: -0.02em;
+  min-width: 48px;
+  text-align: right;
+}
